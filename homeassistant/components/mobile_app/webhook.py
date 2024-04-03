@@ -44,9 +44,10 @@ from homeassistant.const import (
     CONF_NAME,
     CONF_UNIQUE_ID,
     CONF_WEBHOOK_ID,
+    EVENT_STATE_CHANGED,
     EntityCategory,
 )
-from homeassistant.core import EventOrigin, HomeAssistant
+from homeassistant.core import EventOrigin, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError, ServiceNotFound, TemplateError
 from homeassistant.helpers import (
     config_validation as cv,
@@ -55,7 +56,10 @@ from homeassistant.helpers import (
     template,
 )
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.event import EventStateChangedData
+from homeassistant.helpers.json import json_fragment
 from homeassistant.util.decorator import Registry
+from homeassistant.util.event_type import EventType
 
 from .const import (
     ATTR_ALTITUDE,
@@ -278,14 +282,34 @@ async def handle_webhook(
 async def webhook_call_service(
     hass: HomeAssistant, config_entry: ConfigEntry, data: dict[str, Any]
 ) -> Response:
-    """Handle a call service webhook."""
+    """Handle a call service webhook.
+
+    Returns a list of changed states.
+    """
+
+    context = registration_context(config_entry.data)
+    changed_states: list[json_fragment] = []
+
+    @callback
+    def _async_save_changed_entities(
+        event: EventType[EventStateChangedData],
+    ) -> None:
+        if event.context == context and (state := event.data["new_state"]):
+            changed_states.append(state.json_fragment)
+
+    cancel_listen = hass.bus.async_listen(
+        EVENT_STATE_CHANGED,
+        _async_save_changed_entities,
+        run_immediately=True,
+    )
+
     try:
         await hass.services.async_call(
             data[ATTR_DOMAIN],
             data[ATTR_SERVICE],
             data[ATTR_SERVICE_DATA],
             blocking=True,
-            context=registration_context(config_entry.data),
+            context=context,
         )
     except (vol.Invalid, ServiceNotFound, Exception) as ex:
         _LOGGER.error(
@@ -297,8 +321,10 @@ async def webhook_call_service(
             ex,
         )
         raise HTTPBadRequest from ex
+    finally:
+        cancel_listen()
 
-    return empty_okay_response()
+    return webhook_response(changed_states, registration=config_entry.data)
 
 
 @WEBHOOK_COMMANDS.register("fire_event")
