@@ -5887,6 +5887,12 @@
       "config_flow": true,
       "iot_class": "local_polling"
     },
+    "stellantis": {
+      "name": "Stellantis",
+      "integration_type": "hub",
+      "config_flow": true,
+      "iot_class": "cloud_polling"
+    },
     "stiebel_eltron": {
       "name": "STIEBEL ELTRON",
       "integration_type": "hub",

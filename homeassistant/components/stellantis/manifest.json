@@ -1,0 +1,9 @@
+{
+  "domain": "stellantis",
+  "name": "Stellantis",
+  "codeowners": ["@diegorro98"],
+  "config_flow": true,
+  "dependencies": ["application_credentials"],
+  "documentation": "https://www.home-assistant.io/integrations/stellantis",
+  "iot_class": "cloud_polling"
+}

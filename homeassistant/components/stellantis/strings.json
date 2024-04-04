@@ -1,0 +1,26 @@
+{
+  "config": {
+    "step": {
+      "brand_country": {
+        "data": {
+          "brand": "Manufacturer brand:",
+          "country": "Country"
+        },
+        "description": "Select your car brand and select a country:"
+      },
+      "login": {
+        "title": "Login into {brand}",
+        "description": "To access to your {brand} account, you will need to do the following steps in a browser that can use DevTools:\n\n1. Open this [link]({oauth_url}) and login with your account.\n2. After login, click on \"Ok\" button.\n\tIf the {brand} app gets opened, uninstall it temporary.\n3. Open the console in DevTools and look for an error message saying \"Failed to launch '`{redirect_uri}?code=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx...`' because the scheme does not have a registered handler\".\n4. Copy the url into the field.",
+        "data": {
+          "url": "[%key:common::config_flow::data::url%]"
+        }
+      }
+    },
+    "abort": {
+      "invalid_brand_selected": "The brand selected is invalid. Please check that it has been correctly written and try again.",
+      "no_brand_selected": "The brand is required. Please select a brand.",
+      "no_country_selected": "The country is required. Please select a country.",
+      "invalid_url": "The url is invalid. Please check that it has been correctly pasted and try again."
+    }
+  }
+}
