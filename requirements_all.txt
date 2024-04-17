@@ -1222,6 +1222,7 @@ jellyfin-apiclient-python==1.9.2
 
 # homeassistant.components.command_line
 # homeassistant.components.rest
+# homeassistant.components.stellantis
 jsonpath==0.82.2
 
 # homeassistant.components.justnimbus
@@ -2731,6 +2732,7 @@ streamlabswater==1.0.1
 
 # homeassistant.components.huawei_lte
 # homeassistant.components.solaredge
+# homeassistant.components.stellantis
 # homeassistant.components.traccar
 stringcase==1.2.0
 

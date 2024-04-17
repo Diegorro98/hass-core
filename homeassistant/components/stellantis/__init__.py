@@ -1,17 +1,30 @@
 """Stellantis integration."""
 
-from asyncio import timeout
-from http import HTTPStatus
+from dataclasses import dataclass
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.config_entry_oauth2_flow import OAuth2Session
 
-from .const import API_ENDPOINT, CONF_BRAND, DOMAIN, Brand
+from .const import CONF_BRAND, DOMAIN, Brand
+from .coordinator import StellantisUpdateCoordinator
 from .oauth import StellantisOauth2Implementation, StellantisOAuth2Session
 
-PLATFORMS: list[Platform] = []
+PLATFORMS = [
+    Platform.BINARY_SENSOR,
+    Platform.DEVICE_TRACKER,
+    Platform.SENSOR,
+]
+
+
+@dataclass
+class HomeAssistantStellantisData:
+    """Spotify data stored in the Home Assistant data object."""
+
+    coordinator: StellantisUpdateCoordinator
+    session: OAuth2Session
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -22,54 +35,30 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     oauth_session = StellantisOAuth2Session(hass, entry, implementation)
 
-    params = {
-        "extension": [
-            # "onboardCapabilities", Causes HTTP 500 error
-            "branding",
-            "pictures",
-        ],
-    }
-    async with timeout(10):
-        response = await oauth_session.async_request(
-            "GET",
-            API_ENDPOINT + "/user/vehicles",
-            params=params,
-        )
+    coordinator = StellantisUpdateCoordinator(
+        hass, implementation, oauth_session, entry
+    )
+    await coordinator.async_config_entry_first_refresh()
 
-    if response.status != HTTPStatus.OK:
-        result = await response.json()
-        return False
-
-    result = await response.json()
-    vehicles = result["_embedded"]["vehicles"]
-    while "next" in result["_links"]:
-        next_page = result["_links"]["next"]["href"]
-        async with timeout(10):
-            response = await oauth_session.async_request(
-                "POST", next_page, params=params
-            )
-            if response.status == HTTPStatus.OK:
-                result = await response.json()
-                vehicles += result["_embedded"]["vehicles"]
-            else:
-                break
-
-    device_registry = dr.async_get(hass)
-
-    for vehicle in vehicles:
-        branding = vehicle["_embedded"]["extension"]["branding"]
-        device_registry.async_get_or_create(
-            config_entry_id=entry.entry_id,
-            identifiers={(DOMAIN, vehicle["id"])},
-            manufacturer=branding["brand"],
-            # model=branding["label"], TODO waiting for server fix
-            model="unknown",
-            # name=f'{branding["brand"]} {vehicle["label"]}', TODO waiting for server fix
-            name=f'{branding["brand"]} {vehicle["vin"]}',
-            serial_number=vehicle["vin"],
-        )
-
+    hass.data.setdefault(DOMAIN, {})
+    hass.data[DOMAIN][entry.entry_id] = HomeAssistantStellantisData(
+        coordinator,
+        oauth_session,
+    )
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    # Clean up vehicles which are not assigned to the account anymore
+    vehicles = {(DOMAIN, v.vin) for v in coordinator.vehicles_data}
+    device_registry = dr.async_get(hass)
+    device_entries = dr.async_entries_for_config_entry(
+        device_registry, config_entry_id=entry.entry_id
+    )
+
+    for device in device_entries:
+        if not device.identifiers.intersection(vehicles):
+            device_registry.async_update_device(
+                device.id, remove_config_entry_id=entry.entry_id
+            )
 
     return True
 

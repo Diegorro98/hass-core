@@ -22,5 +22,268 @@
       "no_country_selected": "The country is required. Please select a country.",
       "invalid_url": "The url is invalid. Please check that it has been correctly pasted and try again."
     }
+  },
+  "entity": {
+    "binary_sensor": {
+      "plugged": {
+        "name": "Plugged"
+      },
+      "driver_door_state": {
+        "name": "Driver door state"
+      },
+      "passenger_door_state": {
+        "name": "Passenger door state"
+      },
+      "rear_left_door_state": {
+        "name": "Rear left door state"
+      },
+      "rear_right_door_state": {
+        "name": "Rear right door state"
+      },
+      "trunk_state": {
+        "name": "Trunk state"
+      },
+      "rear_window_state": {
+        "name": "Rear window state"
+      },
+      "roof_window_state": {
+        "name": "Roof window state"
+      },
+      "driver_belt_status": {
+        "name": "Driver belt status",
+        "state": {
+          "on": "Normal",
+          "off": "Omission"
+        }
+      },
+      "passenger_belt_status": {
+        "name": "Passenger belt status",
+        "state": {
+          "on": "[%key:component::stellantis::entity::binary_sensor::driver_belt_status::state::on%]",
+          "off": "[%key:component::stellantis::entity::binary_sensor::driver_belt_status::state::off%]"
+        }
+      },
+      "moving": {
+        "name": "Moving"
+      },
+      "environment_light": {
+        "name": "Environment light"
+      },
+      "front_turn_right_light": {
+        "name": "Front turn right light"
+      },
+      "rear_turn_right_light": {
+        "name": "Rear turn right light"
+      },
+      "front_turn_left_light": {
+        "name": "Front turn left light"
+      },
+      "rear_turn_left_light": {
+        "name": "Rear turn left light"
+      },
+      "front_right_fog_light": {
+        "name": "Front right fog light"
+      },
+      "front_left_fog_light": {
+        "name": "Front left fog light"
+      },
+      "rear_right_fog_light": {
+        "name": "Rear right fog light"
+      },
+      "rear_left_fog_light": {
+        "name": "Rear left fog light"
+      }
+    },
+    "sensor": {
+      "fuel_energy_level": {
+        "name": "Fuel energy level"
+      },
+      "fuel_energy_autonomy": {
+        "name": "Fuel energy autonomy"
+      },
+      "fuel_consumption": {
+        "name": "Fuel consumption"
+      },
+      "fuel_instant_consumption": {
+        "name": "Fuel instant consumption"
+      },
+      "electric_energy_level": {
+        "name": "Electric energy level"
+      },
+      "electric_energy_autonomy": {
+        "name": "Electric energy autonomy"
+      },
+      "battery_total_capacity": {
+        "name": "Battery total capacity"
+      },
+      "residual_electric_energy": {
+        "name": "Residual electric energy"
+      },
+      "battery_capacity": {
+        "name": "Battery capacity"
+      },
+      "battery_resistance": {
+        "name": "Battery resistance"
+      },
+      "charging_status": {
+        "name": "Charging status",
+        "state": {
+          "disconnected": "[%key:common::state::disconnected%]",
+          "in_progress": "In Progress",
+          "failure": "Failure",
+          "stopped": "Stopped",
+          "finished": "Finished"
+        }
+      },
+      "charging_remaining_time": {
+        "name": "Charging remaining time"
+      },
+      "charging_rate": {
+        "name": "Charging speed"
+      },
+      "charging_power_level": {
+        "name": "Charging power level",
+        "state": {
+          "level_1": "Level 1",
+          "level_2": "Level 2",
+          "level_3": "Level 3",
+          "level_4": "Level 4",
+          "level_5": "Level 5"
+        }
+      },
+      "charging_mode": {
+        "name": "Charging mode",
+        "state": {
+          "no": "[%key:component::binary_sensor::entity_component::battery_charging::state::off%]",
+          "slow": "Slow",
+          "quick": "Quick"
+        }
+      },
+      "next_charge": {
+        "name": "Next charge"
+      },
+      "charging_type": {
+        "name": "Charging type",
+        "state": {
+          "partial": "Partial",
+          "full": "Full"
+        }
+      },
+      "thermic_engine_speed": {
+        "name": "Thermic engine speed"
+      },
+      "thermic_engine_coolant_level": {
+        "name": "Thermic engine coolant level"
+      },
+      "thermic_engine_coolant_temperature": {
+        "name": "Thermic engine coolant temperature"
+      },
+      "thermic_engine_oil_level": {
+        "name": "Thermic engine oil level"
+      },
+      "thermic_engine_oil_temperature": {
+        "name": "Thermic engine oil temperature"
+      },
+      "thermic_engine_air_temperature": {
+        "name": "Thermic engine air temperature"
+      },
+      "electric_engine_speed": {
+        "name": "Electric engine speed"
+      },
+      "ignition": {
+        "name": "Ignition",
+        "state": {
+          "stop": "[%key:common::action::stop%]",
+          "start_up": "Start Up",
+          "start": "[%key:common::action::start%]"
+        }
+      },
+      "preconditioning_status": {
+        "name": "Preconditioning status",
+        "state": {
+          "enabled": "[%key:common::state::enabled%]",
+          "disabled": "[%key:common::state::disabled%]",
+          "finished": "Finished",
+          "failure": "Failure"
+        }
+      },
+      "powertrain_status": {
+        "name": "Powertrain status",
+        "state": {
+          "not_running": "Not running",
+          "starting": "Starting",
+          "running": "Running",
+          "stopping": "Stopping",
+          "stopped": "Stopped"
+        }
+      },
+      "doors_lock_state": {
+        "name": "Doors lock state",
+        "state": {
+          "unlocked": "Unlocked",
+          "locked": "Locked",
+          "super_locked": "Super locked",
+          "driver_door_unlocked": "Driver door unlocked",
+          "cabin_doors_unlocked": "Cabin doors unlocked",
+          "cargo_doors_locked": "Cargo doors locked",
+          "cargo_doors_unlocked": "Cargo doors unlocked",
+          "rear_doors_unlocked": "Rear doors unlocked",
+          "rear_doors_locked": "Rear doors locked",
+          "trunk_locked": "Trunk locked",
+          "trunk_un_locked": "Trunk unlocked"
+        }
+      },
+      "privacy": {
+        "name": "Privacy",
+        "state": {
+          "none": "[%key:component::climate::entity_component::_::state_attributes::preset_mode::state::none%]",
+          "geolocation": "Geolocation",
+          "full": "Full"
+        }
+      },
+      "auxiliary_battery_health": {
+        "name": "Auxiliary battery health"
+      },
+      "auto_e_call_triggering": {
+        "name": "Auto E-Call triggering",
+        "state": {
+          "not_detected": "Not detected",
+          "detected": "[%key:component::binary_sensor::entity_component::gas::state::on%]",
+          "shock_detection_unabled": "Shock detection unabled"
+        }
+      },
+      "mileage": {
+        "name": "Mileage"
+      },
+      "acceleration": {
+        "name": "Acceleration"
+      },
+      "speed": {
+        "name": "Speed"
+      },
+      "environment_air_temperature": {
+        "name": "Environment air temperature"
+      },
+      "driving_mode": {
+        "name": "Driving mode",
+        "state": {
+          "normal": "Normal",
+          "sport": "Sport",
+          "comfort": "Comfort",
+          "eco": "Eco",
+          "sand": "Sand",
+          "mud": "Mud",
+          "snow": "Snow",
+          "z_e_v": "ZEV",
+          "hybrid": "Hybrid",
+          "z_e_v_eco": "ZEVEco",
+          "hybrid_eco": "HybridEco",
+          "eco_plus": "EcoPlus",
+          "e_a_w_d": "eAWD",
+          "4_a_w_d": "4AWD",
+          "reinforced_load": "Reinforced load"
+        }
+      }
+    }
   }
 }
