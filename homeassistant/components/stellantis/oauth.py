@@ -15,7 +15,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.config_entry_oauth2_flow import OAuth2Session, _encode_jwt
 
-from .const import Brand
+from .const import API_ENDPOINT, Brand
 
 
 class StellantisOauth2Implementation(AuthImplementation):
@@ -134,6 +134,7 @@ class StellantisOauth2Implementation(AuthImplementation):
                             "redirect_uri": redirect_uri + country_code,
                         },
                     ),
+                    "locale": f"{self.hass.config.language}-{country_code.upper()}",
                 }
             )
             .update_query(self.extra_authorize_data)
@@ -185,6 +186,16 @@ class StellantisOAuth2Session(OAuth2Session):
                 **headers,
                 "x-introspect-realm": self.implementation.realm,
             },
+        )
+
+    async def async_request_to_path(
+        self, method: str, path: str, **kwargs: Any
+    ) -> client.ClientResponse:
+        """Make a request to Stellantis api endpoint and the given path."""
+        return await self.async_request(
+            method,
+            API_ENDPOINT + path,
+            **kwargs,
         )
 
     async def async_revoke_token(self) -> None:

@@ -3,6 +3,7 @@
 from asyncio import timeout
 from http import HTTPStatus
 import logging
+import secrets
 from typing import Any
 
 import aiohttp
@@ -11,7 +12,7 @@ import voluptuous as vol
 from yarl import URL
 
 from homeassistant.config_entries import ConfigFlowResult
-from homeassistant.const import CONF_COUNTRY, CONF_URL
+from homeassistant.const import CONF_COUNTRY, CONF_URL, CONF_WEBHOOK_ID
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.config_entry_oauth2_flow import (
     AbstractOAuth2FlowHandler,
@@ -147,4 +148,5 @@ class StellantisConfigFlow(AbstractOAuth2FlowHandler, domain=DOMAIN):
         except (TimeoutError, aiohttp.ClientError):
             pass
         data[CONF_BRAND] = self.brand.value
+        data[CONF_WEBHOOK_ID] = secrets.token_hex()
         return self.async_create_entry(title=f"{self.brand.value}: {email}", data=data)

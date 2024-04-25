@@ -5,10 +5,12 @@ import contextlib
 from typing import Any
 
 from homeassistant.components.device_tracker import SourceType
-from homeassistant.components.device_tracker.config_entry import TrackerEntity
+from homeassistant.components.device_tracker.config_entry import (
+    TrackerEntity,
+    TrackerEntityDescription,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import EntityDescription
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import HomeAssistantStellantisData
@@ -28,7 +30,7 @@ async def async_setup_entry(
         StellantisTrackerEntity(
             data.coordinator,
             vehicle_data,
-            EntityDescription(
+            TrackerEntityDescription(
                 key="device_tracker",
                 name="",
                 icon="mdi:car-arrow-right",
@@ -41,6 +43,7 @@ async def async_setup_entry(
 class StellantisTrackerEntity(StellantisBaseEntity, TrackerEntity):
     """Representation of a Stellantis vehicle tracker entity."""
 
+    entity_description: TrackerEntityDescription
     source_type = SourceType.GPS
 
     @property

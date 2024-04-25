@@ -65,6 +65,11 @@
         }
       }
     },
+    "light": {
+      "lights": {
+        "default": "mdi:car-light-high"
+      }
+    },
     "sensor": {
       "fuel_energy_level": {
         "default": "mdi:gas-station"
@@ -194,6 +199,46 @@
       "driving_mode": {
         "default": "mdi:steering"
       }
+    },
+    "siren": {
+      "horn": {
+        "default": "mdi:bugle"
+      }
+    },
+    "switch": {
+      "charging_type": {
+        "default": "mdi:battery-50",
+        "state": {
+          "on": "mdi:battery-50",
+          "off": "mdi:battery"
+        }
+      },
+      "delayed_charge": {
+        "default": "mdi:battery-clock"
+      },
+      "preconditioning": {
+        "default": "mdi:air-conditioner"
+      }
+    }
+  },
+  "services": {
+    "delete_preconditioning_program": {
+      "service": "mdi:delete"
+    },
+    "send_navigation_positions": {
+      "service": "mdi:map-marker-multiple"
+    },
+    "set_charging_power_level": {
+      "service": "mdi:lightning-bolt"
+    },
+    "set_next_charging_time": {
+      "service": "mdi:battery-clock"
+    },
+    "set_preconditioning_program": {
+      "service": "mdi:air-conditioner"
+    },
+    "wake_up": {
+      "service": "mdi:car-connected"
     }
   }
 }

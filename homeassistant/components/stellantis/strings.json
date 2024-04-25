@@ -94,6 +94,16 @@
         "name": "Rear left fog light"
       }
     },
+    "light": {
+      "lights": {
+        "name": "Lights"
+      }
+    },
+    "lock": {
+      "doors": {
+        "name": "Doors"
+      }
+    },
     "sensor": {
       "fuel_energy_level": {
         "name": "Fuel energy level"
@@ -282,6 +292,181 @@
           "e_a_w_d": "eAWD",
           "4_a_w_d": "4AWD",
           "reinforced_load": "Reinforced load"
+        }
+      }
+    },
+    "siren": {
+      "horn": {
+        "name": "Horn",
+        "state": {
+          "on": "Activated",
+          "off": "Deactivated"
+        }
+      }
+    },
+    "switch": {
+      "charging_type": {
+        "name": "Charging type",
+        "state": {
+          "on": "Partial",
+          "off": "Full"
+        }
+      },
+      "delayed_charge": {
+        "name": "Delayed charge",
+        "state": {
+          "off": "Charging",
+          "on": "Stopped and delayed"
+        }
+      },
+      "preconditioning": {
+        "name": "Preconditioning"
+      }
+    }
+  },
+  "selector": {
+    "weekdays": {
+      "options": {
+        "mon": "[%key:common::time::monday%]",
+        "tue": "[%key:common::time::tuesday%]",
+        "wed": "[%key:common::time::wednesday%]",
+        "thu": "[%key:common::time::thursday%]",
+        "fri": "[%key:common::time::friday%]",
+        "sat": "[%key:common::time::saturday%]",
+        "sun": "[%key:common::time::sunday%]"
+      }
+    }
+  },
+  "services": {
+    "delete_preconditioning_program": {
+      "name": "Delete preconditioning program",
+      "description": "Delete a preconditioning program from the vehicle.",
+      "fields": {
+        "device_id": {
+          "name": "Device ID",
+          "description": "Device identifier of the vehicle."
+        },
+        "program_number": {
+          "name": "Program number",
+          "description": "Number of the preconditioning program to delete."
+        }
+      }
+    },
+    "send_navigation_positions": {
+      "name": "Send navigation positions",
+      "description": "Send positions to the vehicle so that it creates a route based on them. You don't need to use all the positions in order (for example, you can use optional positions 1 and 3).",
+      "fields": {
+        "device_id": {
+          "name": "[%key:component::stellantis::services::delete_preconditioning_program::fields::device_id::name%]",
+          "description": "[%key:component::stellantis::services::delete_preconditioning_program::fields::device_id::description%]"
+        },
+        "position": {
+          "name": "Position",
+          "description": "Position to navigate to. If additional positions are used, this will be the first one."
+        },
+        "position_1": {
+          "name": "[%key:component::stellantis::services::send_navigation_positions::fields::position::name%]",
+          "description": "Additional position"
+        },
+        "position_2": {
+          "name": "[%key:component::stellantis::services::send_navigation_positions::fields::position::name%]",
+          "description": "[%key:component::stellantis::services::send_navigation_positions::fields::position_1::description%]"
+        },
+        "position_3": {
+          "name": "[%key:component::stellantis::services::send_navigation_positions::fields::position::name%]",
+          "description": "[%key:component::stellantis::services::send_navigation_positions::fields::position_1::description%]"
+        },
+        "position_4": {
+          "name": "[%key:component::stellantis::services::send_navigation_positions::fields::position::name%]",
+          "description": "[%key:component::stellantis::services::send_navigation_positions::fields::position_1::description%]"
+        },
+        "position_5": {
+          "name": "[%key:component::stellantis::services::send_navigation_positions::fields::position::name%]",
+          "description": "[%key:component::stellantis::services::send_navigation_positions::fields::position_1::description%]"
+        },
+        "position_6": {
+          "name": "[%key:component::stellantis::services::send_navigation_positions::fields::position::name%]",
+          "description": "[%key:component::stellantis::services::send_navigation_positions::fields::position_1::description%]"
+        },
+        "position_7": {
+          "name": "[%key:component::stellantis::services::send_navigation_positions::fields::position::name%]",
+          "description": "[%key:component::stellantis::services::send_navigation_positions::fields::position_1::description%]"
+        },
+        "position_8": {
+          "name": "[%key:component::stellantis::services::send_navigation_positions::fields::position::name%]",
+          "description": "[%key:component::stellantis::services::send_navigation_positions::fields::position_1::description%]"
+        },
+        "position_9": {
+          "name": "[%key:component::stellantis::services::send_navigation_positions::fields::position::name%]",
+          "description": "[%key:component::stellantis::services::send_navigation_positions::fields::position_1::description%]"
+        }
+      }
+    },
+    "set_charging_power_level": {
+      "name": "Set charging power level",
+      "description": "Set the charging power level for the vehicle.",
+      "fields": {
+        "device_id": {
+          "name": "[%key:component::stellantis::services::delete_preconditioning_program::fields::device_id::name%]",
+          "description": "[%key:component::stellantis::services::delete_preconditioning_program::fields::device_id::description%]"
+        },
+        "level": {
+          "name": "Level",
+          "description": "Charging power level to set."
+        }
+      }
+    },
+    "set_next_charging_time": {
+      "name": "Next charging time",
+      "description": "Set the next charging time for the vehicle.",
+      "fields": {
+        "device_id": {
+          "name": "[%key:component::stellantis::services::delete_preconditioning_program::fields::device_id::name%]",
+          "description": "[%key:component::stellantis::services::delete_preconditioning_program::fields::device_id::description%]"
+        },
+        "time": {
+          "name": "Time",
+          "description": "The time at which the charging will begin (Seconds are ignored)."
+        }
+      }
+    },
+    "set_preconditioning_program": {
+      "name": "Set preconditioning program",
+      "description": "Add or adjust a preconditioning program for in the vehicle. The fields that are not set will be kept unchanged.",
+      "fields": {
+        "device_id": {
+          "name": "[%key:component::stellantis::services::delete_preconditioning_program::fields::device_id::name%]",
+          "description": "[%key:component::stellantis::services::delete_preconditioning_program::fields::device_id::description%]"
+        },
+        "program_number": {
+          "name": "[%key:component::stellantis::services::delete_preconditioning_program::fields::program_number::name%]",
+          "description": "Number of the preconditioning program to modify or position where the new program will be stored."
+        },
+        "enabled": {
+          "name": "Enabled",
+          "description": "Enable or disable the program."
+        },
+        "start": {
+          "name": "Start",
+          "description": "Time to start the program (Seconds are ignored)."
+        },
+        "daily_recurrence": {
+          "name": "Daily recurrence",
+          "description": "Enable or disable if the program should be repeated over the week."
+        },
+        "occurrence": {
+          "name": "Occurrence",
+          "description": "Days of the week to repeat the program."
+        }
+      }
+    },
+    "wake_up": {
+      "name": "Wake up vehicle",
+      "description": "Wake up the vehicle so it can update its data.",
+      "fields": {
+        "device_id": {
+          "name": "[%key:component::stellantis::services::delete_preconditioning_program::fields::device_id::name%]",
+          "description": "[%key:component::stellantis::services::delete_preconditioning_program::fields::device_id::description%]"
         }
       }
     }
