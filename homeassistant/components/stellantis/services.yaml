@@ -1,0 +1,151 @@
+delete_preconditioning_program:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: stellantis
+    program_number:
+      required: true
+      selector:
+        number:
+          mode: "box"
+          min: 1
+          max: 4
+
+send_navigation_positions:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: stellantis
+    position:
+      required: true
+      selector:
+        location:
+          radius: false
+    position_1:
+      required: false
+      selector:
+        location:
+          radius: false
+    position_2:
+      required: false
+      selector:
+        location:
+          radius: false
+    position_3:
+      required: false
+      selector:
+        location:
+          radius: false
+    position_4:
+      required: false
+      selector:
+        location:
+          radius: false
+    position_5:
+      required: false
+      selector:
+        location:
+          radius: false
+    position_6:
+      required: false
+      selector:
+        location:
+          radius: false
+    position_7:
+      required: false
+      selector:
+        location:
+          radius: false
+    position_8:
+      required: false
+      selector:
+        location:
+          radius: false
+    position_9:
+      required: false
+      selector:
+        location:
+          radius: false
+
+set_charging_power_level:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: stellantis
+    level:
+      required: true
+      example: 8
+      selector:
+        number:
+          min: 1
+          max: 5
+
+set_next_charging_time:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: stellantis
+    time:
+      required: true
+      example: "20:00"
+      selector:
+        time:
+
+set_preconditioning_program:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: stellantis
+    program_number:
+      required: true
+      selector:
+        number:
+          mode: "box"
+          min: 1
+          max: 4
+    enabled:
+      required: false
+      selector:
+        boolean:
+    start:
+      required: false
+      example: "20:00"
+      selector:
+        time:
+    daily_recurrence:
+      required: false
+      selector:
+        boolean:
+    occurrence:
+      required: false
+      selector:
+        select:
+          multiple: true
+          mode: "list"
+          translation_key: "weekdays"
+          options:
+            - mon
+            - tue
+            - wed
+            - thu
+            - fri
+            - sat
+            - sun
+
+wake_up:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: stellantis

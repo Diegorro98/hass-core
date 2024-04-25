@@ -117,12 +117,6 @@ ELECTRIC_ENERGY_EXTENSION_SENSORS: tuple[StellantisSensorEntityDescription, ...]
         device_class=SensorDeviceClass.TIMESTAMP,
         value_path="$.energies[?(@.type == 'Electric')].extension.electric.charging.nextDelayedTime",
     ),
-    StellantisSensorEntityDescription(
-        key="charging_type",
-        translation_key="charging_type",
-        device_class=SensorDeviceClass.ENUM,
-        value_path="$.energies[?(@.type == 'Electric')].extension.electric.charging.type",
-    ),
 )
 
 
