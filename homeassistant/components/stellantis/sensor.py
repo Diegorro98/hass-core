@@ -1,5 +1,6 @@
 """Stellantis sensor platform."""
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
@@ -16,6 +17,7 @@ from homeassistant.components.sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     PERCENTAGE,
+    WEEKDAYS,
     UnitOfEnergy,
     UnitOfLength,
     UnitOfSpeed,
@@ -38,6 +40,13 @@ class StellantisSensorEntityDescription(SensorEntityDescription):
     """Describes Stellantis sensor entity."""
 
     value_path: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class StellantisPreconditioningSensorEntityDescription(SensorEntityDescription):
+    """Describes Stellantis sensor entity."""
+
+    slot: int
 
 
 FUEL_ENERGY_EXTENSION_SENSORS: tuple[StellantisSensorEntityDescription, ...] = (
@@ -173,12 +182,6 @@ SENSORS: tuple[StellantisSensorEntityDescription, ...] = (
         value_path="$.ignition.type",
     ),
     StellantisSensorEntityDescription(
-        key="preconditioning_status",
-        translation_key="preconditioning_status",
-        device_class=SensorDeviceClass.ENUM,
-        value_path="$.preconditioning.airConditioning.status",
-    ),
-    StellantisSensorEntityDescription(
         key="powertrain_status",
         translation_key="powertrain_status",
         device_class=SensorDeviceClass.ENUM,
@@ -247,6 +250,16 @@ SENSORS: tuple[StellantisSensorEntityDescription, ...] = (
         translation_key="driving_mode",
         device_class=SensorDeviceClass.ENUM,
         value_path="$.drivingBehavior.mode",
+    ),
+)
+
+
+PRECONDITIONING_SENSORS = (
+    StellantisSensorEntityDescription(
+        key="preconditioning_status",
+        translation_key="preconditioning_status",
+        device_class=SensorDeviceClass.ENUM,
+        value_path="$.preconditioning.airConditioning.status",
     ),
 )
 
@@ -332,6 +345,25 @@ async def async_setup_entry(
             )
         )
 
+        if jsonpath(
+            data.coordinator.vehicles_status,
+            f"$.{vehicle_data.vin}.preconditioning.airConditioning",
+        ):
+            sensors += PRECONDITIONING_SENSORS
+            async_add_entities(
+                StellantisPreconditioningProgramSensor(
+                    data.coordinator,
+                    vehicle_data,
+                    StellantisPreconditioningSensorEntityDescription(
+                        key=f"preconditioning_program_{slot}",
+                        translation_key=f"preconditioning_program_{slot}",
+                        device_class=SensorDeviceClass.TIMESTAMP,
+                        slot=slot,
+                    ),
+                )
+                for slot in range(1, 5)
+            )
+
         if matches := jsonpath(
             data.coordinator.vehicles_status,
             f"$.{vehicle_data.vin}.energies[?(@.type == 'Fuel')]",
@@ -394,6 +426,55 @@ class StellantisSensor(StellantisBaseEntity, SensorEntity):
         return self.native_value is not None and super().available
 
 
+class StellantisPreconditioningProgramSensor(StellantisBaseEntity, SensorEntity):
+    """Representation of a Stellantis preconditioning sensor."""
+
+    entity_description: StellantisPreconditioningSensorEntityDescription
+
+    @property
+    def native_value(self) -> StateType | datetime:
+        """Calculate timestamp of the next time the preconditioning program will get activated."""
+        program = self.get_from_vehicle_status(
+            f"$.preconditioning.airConditioning.programs[?(@.slot == {self.entity_description.slot})]"
+        )
+        if not program:
+            return None
+
+        try:
+            if not program["enabled"]:
+                return None
+
+            return get_next_timestamp_on_weekdays(
+                program["start"],
+                program["occurence"]["day"],  # codespell:ignore occurence
+            )
+        except KeyError:
+            return None
+
+    @property
+    def extra_state_attributes(self) -> Mapping[str, Any] | None:
+        """Return the state attributes."""
+        program = self.get_from_vehicle_status(
+            f"$.preconditioning.airConditioning.programs[?(@.slot == {self.entity_description.slot})]"
+        )
+        if not program:
+            return None
+
+        return {
+            "start": program["start"],
+            "recurrence": program["recurrence"],
+            "occurrence": program["occurence"],  # codespell:ignore occurence
+        }
+
+    @property
+    def available(self) -> bool:
+        """Return available if the program exists."""
+        program = self.get_from_vehicle_status(
+            f"$.preconditioning.airConditioning.programs[?(@.slot == {self.entity_description.slot})]"
+        )
+        return program and super().available
+
+
 def get_next_timestamp(time_on_day: str) -> datetime | None:
     """Get the next time on the day that have not passed yet.
 
@@ -407,3 +488,30 @@ def get_next_timestamp(time_on_day: str) -> datetime | None:
         next_time = next_time + timedelta(days=1)
 
     return next_time
+
+
+def get_next_timestamp_on_weekdays(
+    time_on_day: str, weekdays: list[str]
+) -> datetime | None:
+    """Get the nearest timestamp for the given weekdays and time that is in the future."""
+    if not weekdays:
+        return None
+
+    weekdays_numbers = [WEEKDAYS.index(day.lower()) for day in weekdays]
+    now = dt_util.now()
+    current_day = now.weekday()
+
+    if (duration := dt_util.parse_duration(time_on_day)) is None:
+        return None
+
+    if current_day in weekdays_numbers:
+        next_time = dt_util.start_of_local_day() + duration
+        if now < next_time:
+            return next_time
+
+    for i in range(1, 8):
+        next_day = (current_day + i) % 7
+        if next_day in weekdays_numbers:
+            return dt_util.start_of_local_day() + timedelta(days=i) + duration
+    return None
+

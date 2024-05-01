@@ -217,6 +217,18 @@
           "failure": "Failure"
         }
       },
+      "preconditioning_program_1": {
+        "name": "Preconditioning program 1"
+      },
+      "preconditioning_program_2": {
+        "name": "Preconditioning program 2"
+      },
+      "preconditioning_program_3": {
+        "name": "Preconditioning program 3"
+      },
+      "preconditioning_program_4": {
+        "name": "Preconditioning program 4"
+      },
       "powertrain_status": {
         "name": "Powertrain status",
         "state": {
@@ -321,6 +333,34 @@
       },
       "preconditioning": {
         "name": "Preconditioning"
+      },
+      "preconditioning_program_1": {
+        "name": "[%key:component::stellantis::entity::sensor::preconditioning_program_1::name%]",
+        "state": {
+          "on": "[%key:common::state::enabled%]",
+          "off": "[%key:common::state::disabled%]"
+        }
+      },
+      "preconditioning_program_2": {
+        "name": "[%key:component::stellantis::entity::sensor::preconditioning_program_2::name%]",
+        "state": {
+          "on": "[%key:common::state::enabled%]",
+          "off": "[%key:common::state::disabled%]"
+        }
+      },
+      "preconditioning_program_3": {
+        "name": "[%key:component::stellantis::entity::sensor::preconditioning_program_3::name%]",
+        "state": {
+          "on": "[%key:common::state::enabled%]",
+          "off": "[%key:common::state::disabled%]"
+        }
+      },
+      "preconditioning_program_4": {
+        "name": "[%key:component::stellantis::entity::sensor::preconditioning_program_4::name%]",
+        "state": {
+          "on": "[%key:common::state::enabled%]",
+          "off": "[%key:common::state::disabled%]"
+        }
       }
     }
   },
