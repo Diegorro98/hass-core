@@ -164,6 +164,18 @@
       "preconditioning_status": {
         "default": "mdi:air-conditioner"
       },
+      "preconditioning_program_1": {
+        "default": "mdi:air-conditioner"
+      },
+      "preconditioning_program_2": {
+        "default": "mdi:air-conditioner"
+      },
+      "preconditioning_program_3": {
+        "default": "mdi:air-conditioner"
+      },
+      "preconditioning_program_4": {
+        "default": "mdi:air-conditioner"
+      },
       "powertrain_status": {
         "default": "mdi:car-info"
       },
@@ -217,6 +229,18 @@
         "default": "mdi:battery-clock"
       },
       "preconditioning": {
+        "default": "mdi:air-conditioner"
+      },
+      "preconditioning_program_1": {
+        "default": "mdi:air-conditioner"
+      },
+      "preconditioning_program_2": {
+        "default": "mdi:air-conditioner"
+      },
+      "preconditioning_program_3": {
+        "default": "mdi:air-conditioner"
+      },
+      "preconditioning_program_4": {
         "default": "mdi:air-conditioner"
       }
     }
