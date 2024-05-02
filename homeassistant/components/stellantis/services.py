@@ -15,7 +15,6 @@ from homeassistant.helpers import device_registry as dr
 import homeassistant.helpers.config_validation as cv
 
 from .const import (
-    ATTR_CHARGING_POWER_LEVEL,
     ATTR_DAILY_RECURRENCE,
     ATTR_ENABLED,
     ATTR_FAILURE_CAUSE,
@@ -25,18 +24,16 @@ from .const import (
     ATTR_REMOTE_ACTION_ID,
     ATTR_START,
     ATTR_STATUS,
-    ATTR_TIME,
     CONF_CALLBACK_ID,
     DOMAIN,
     LOGGER,
     SERVICE_DELETE_PRECONDITIONING_PROGRAM,
     SERVICE_SEND_NAVIGATION_POSITIONS,
-    SERVICE_SET_CHARGING_POWER_LEVEL,
-    SERVICE_SET_NEXT_CHARGING_TIME,
     SERVICE_SET_PRECONDITIONING_PROGRAM,
     SERVICE_WAKE_UP,
 )
 from .coordinator import StellantisUpdateCoordinator, VehicleData
+from .helpers import preconditioning_program_setter_body
 from .webhook import StellantisCallbackEvent
 
 SCHEDULE_SCHEMA: dict[vol.Marker, Any] = {
@@ -176,38 +173,6 @@ async def async_setup_hass_services(hass: HomeAssistant) -> None:
             SERVICE_SEND_NAVIGATION_POSITIONS,
         )
 
-    async def async_set_charging_power_level_service(call: ServiceCall) -> None:
-        """Handle the service call."""
-        await async_send_remote_requests(
-            hass,
-            call,
-            {
-                "charging": {
-                    "preferences": {
-                        "level": f"Level{call.data[ATTR_CHARGING_POWER_LEVEL]}"
-                    }
-                }
-            },
-            SERVICE_SET_CHARGING_POWER_LEVEL,
-        )
-
-    async def async_set_next_charging_time_service(call: ServiceCall) -> None:
-        """Handle the service call."""
-        await async_send_remote_requests(
-            hass,
-            call,
-            {
-                "charging": {
-                    "schedule": {
-                        "nextDelayedTime": transform_to_stellantis_time_schema(
-                            call.data[ATTR_TIME]
-                        )
-                    }
-                }
-            },
-            SERVICE_SET_NEXT_CHARGING_TIME,
-        )
-
     async def async_set_preconditioning_program_service(call: ServiceCall) -> None:
         """Handle the service call."""
         device_id = call.data.get(ATTR_DEVICE_ID)
@@ -276,18 +241,7 @@ async def async_setup_hass_services(hass: HomeAssistant) -> None:
         await async_send_remote_requests(
             hass,
             call,
-            {
-                "preconditioning": {
-                    "airConditioning": {
-                        "programs": [
-                            {
-                                **program_to_set,
-                                "actionsType": "Set",
-                            }
-                        ],
-                    }
-                }
-            },
+            preconditioning_program_setter_body(program_to_set),
             SERVICE_SET_PRECONDITIONING_PROGRAM,
         )
 
@@ -323,32 +277,6 @@ async def async_setup_hass_services(hass: HomeAssistant) -> None:
         SERVICE_SEND_NAVIGATION_POSITIONS,
         async_set_navigation_positions_service,
         vol.Schema(navigation_positions_schema, extra=vol.ALLOW_EXTRA),
-    )
-
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_SET_CHARGING_POWER_LEVEL,
-        async_set_charging_power_level_service,
-        vol.Schema(
-            {
-                vol.Required(ATTR_DEVICE_ID): cv.string,
-                vol.Required(ATTR_CHARGING_POWER_LEVEL): vol.All(
-                    vol.Coerce(int), vol.Range(min=1, max=5), msg="invalid level"
-                ),
-            }
-        ),
-    )
-
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_SET_NEXT_CHARGING_TIME,
-        async_set_next_charging_time_service,
-        vol.Schema(
-            {
-                vol.Required(ATTR_DEVICE_ID): cv.string,
-                vol.Required(ATTR_TIME): cv.time_period_str,
-            }
-        ),
     )
 
     hass.services.async_register(

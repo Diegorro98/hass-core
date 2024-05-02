@@ -1,5 +1,6 @@
-"""Stellantis entity base class."""
+"""Stellantis entity base classes."""
 
+from abc import abstractmethod
 from asyncio import timeout
 from typing import Any
 
@@ -9,7 +10,12 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.entity import Entity, EntityDescription, ToggleEntity
+from homeassistant.helpers.entity import (
+    Entity,
+    EntityDescription,
+    ToggleEntity,
+    ToggleEntityDescription,
+)
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
@@ -66,8 +72,8 @@ class StellantisBaseEntity(CoordinatorEntity[StellantisUpdateCoordinator], Entit
         self._handle_coordinator_update()
 
 
-class StellantisBaseToggleEntity(StellantisBaseEntity, ToggleEntity):
-    """Common base for Stellantis entities that can be toggled."""
+class StellantisBaseActionableEntity(StellantisBaseEntity):
+    """Common base for Stellantis entities that can call remote actions."""
 
     def __init__(
         self,
@@ -76,22 +82,19 @@ class StellantisBaseToggleEntity(StellantisBaseEntity, ToggleEntity):
         vehicle: VehicleData,
         description: EntityDescription,
         entry: ConfigEntry,
-        request_body_on: dict[str, Any],
-        request_body_off: dict[str, Any],
-        logger_action_on: str,
-        logger_action_off: str,
     ) -> None:
         """Initialize entity."""
         super().__init__(coordinator, vehicle, description)
         self.hass = hass
         self.entry = entry
-        self.request_body_on = request_body_on
-        self.request_body_off = request_body_off
-        self.logger_action_on = logger_action_on
-        self.logger_action_off = logger_action_off
+
+    @abstractmethod
+    def on_remote_action_success(self, state_if_success: Any) -> None:
+        """Handle the success of a remote action."""
+        raise NotImplementedError
 
     async def async_call_remote_action(
-        self, request_body: dict[str, Any], state_if_success: bool, logger_action: str
+        self, request_body: dict[str, Any], state_if_success: Any, logger_action: str
     ) -> None:
         """Call a remote action and handle the response."""
         async with timeout(10):
@@ -117,11 +120,34 @@ class StellantisBaseToggleEntity(StellantisBaseEntity, ToggleEntity):
                             f"Remote action failed. Cause: {event_status[ATTR_FAILURE_CAUSE]}"
                         )
                     if self._attr_assumed_state:
-                        self._attr_is_on = state_if_success
+                        self.on_remote_action_success(state_if_success)
             except TimeoutError:
                 LOGGER.warning(
                     f"Confirmation of the remote action to {logger_action} was not received in time"
                 )
+
+
+class StellantisBaseToggleEntity(StellantisBaseActionableEntity, ToggleEntity):
+    """Common base for Stellantis entities that can be toggled."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        coordinator: StellantisUpdateCoordinator,
+        vehicle: VehicleData,
+        description: ToggleEntityDescription,
+        entry: ConfigEntry,
+        request_body_on: dict[str, Any],
+        request_body_off: dict[str, Any],
+        logger_action_on: str,
+        logger_action_off: str,
+    ) -> None:
+        """Initialize entity."""
+        super().__init__(hass, coordinator, vehicle, description, entry)
+        self.request_body_on = request_body_on
+        self.request_body_off = request_body_off
+        self.logger_action_on = logger_action_on
+        self.logger_action_off = logger_action_off
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Send a remote action to turn on something."""
@@ -135,7 +161,14 @@ class StellantisBaseToggleEntity(StellantisBaseEntity, ToggleEntity):
             self.request_body_off, False, self.logger_action_off
         )
 
+    def on_remote_action_success(self, state_if_success: Any) -> None:
+        """Handle the success of a remote action."""
+        self._attr_is_on = state_if_success
+
     @property
     def available(self) -> bool:
         """Return true if the vehicle is turned off."""
-        return self.get_from_vehicle_status("$.ignition.type") == "Stop"
+        return (
+            self.get_from_vehicle_status("$.ignition.type") == "Stop"
+            and super().available
+        )

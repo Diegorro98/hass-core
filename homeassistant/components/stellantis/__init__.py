@@ -28,9 +28,11 @@ PLATFORMS = [
     Platform.DEVICE_TRACKER,
     Platform.LIGHT,
     Platform.LOCK,
+    Platform.NUMBER,
     Platform.SENSOR,
     Platform.SIREN,
     Platform.SWITCH,
+    Platform.TIME,
 ]
 
 CONFIG_SCHEMA = cv.empty_config_schema(DOMAIN)
@@ -64,15 +66,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     await coordinator.async_config_entry_first_refresh()
 
-    hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id] = HomeAssistantStellantisData(
+    hass.data.setdefault(entry.domain, {})
+    hass.data[entry.domain][entry.entry_id] = HomeAssistantStellantisData(
         coordinator,
         oauth_session,
     )
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     # Clean up vehicles which are not assigned to the account anymore
-    vehicles = {(DOMAIN, v.vin) for v in coordinator.vehicles_data}
+    vehicles = {(entry.domain, v.vin) for v in coordinator.vehicles_data}
     device_registry = dr.async_get(hass)
     device_entries = dr.async_entries_for_config_entry(
         device_registry, config_entry_id=entry.entry_id
@@ -92,7 +94,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        hass.data[DOMAIN].pop(entry.entry_id)
+        hass.data[entry.domain].pop(entry.entry_id)
     webhook_unregister(hass, entry.data[CONF_WEBHOOK_ID])
 
     return unload_ok
@@ -131,7 +133,7 @@ async def async_ensure_reusable_callback_created(
                 "No external URL available, services and controls will not work as they require an url for the callbacks: %s",
             )
             return
-    webhook_register(hass, DOMAIN, entry.title, webhook_id, handle_webhook)
+    webhook_register(hass, entry.domain, entry.title, webhook_id, handle_webhook)
 
     if CONF_CALLBACK_ID in entry.data:
         callback_id = entry.data[CONF_CALLBACK_ID]

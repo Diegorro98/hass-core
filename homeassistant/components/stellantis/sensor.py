@@ -109,12 +109,6 @@ ELECTRIC_ENERGY_EXTENSION_SENSORS: tuple[StellantisSensorEntityDescription, ...]
         value_path="$.energies[?(@.type == 'Electric')].extension.electric.charging.chargingRate",
     ),
     StellantisSensorEntityDescription(
-        key="charging_power_level",
-        translation_key="charging_power_level",
-        device_class=SensorDeviceClass.ENUM,
-        value_path="$.energies[?(@.type == 'Electric')].extension.electric.charging.chargingPowerLevel",
-    ),
-    StellantisSensorEntityDescription(
         key="charging_mode",
         translation_key="charging_mode",
         device_class=SensorDeviceClass.ENUM,
