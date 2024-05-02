@@ -7,12 +7,14 @@ from jsonpath import jsonpath
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import HomeAssistantStellantisData
-from .const import DOMAIN
+from .const import ATTR_ENABLED, DOMAIN
 from .coordinator import StellantisUpdateCoordinator, VehicleData
 from .entity import StellantisBaseToggleEntity
+from .helpers import preconditioning_program_setter_body
 
 
 async def async_setup_entry(
@@ -62,7 +64,7 @@ async def async_setup_entry(
                         vehicle_data,
                         entry,
                     ),
-                    StellantisChargingTypeSwitch(
+                    StellantisPartialChargeSwitch(
                         hass,
                         data.coordinator,
                         vehicle_data,
@@ -181,19 +183,12 @@ class StellantisPreconditioningProgramSwitch(StellantisBaseToggleEntity, SwitchE
         program = self.get_from_vehicle_status(
             f"$.preconditioning.airConditioning.programs[?(@.slot == {self.slot})]"
         )
-        program["enabled"] = enabled
-        return {
-            "preconditioning": {
-                "airConditioning": {
-                    "programs": [
-                        {
-                            **program,
-                            "actionsType": "Set",
-                        }
-                    ],
-                }
-            }
-        }
+        if not program:
+            raise HomeAssistantError(
+                f"Preconditioning program {self.slot} does not exists, define it first using stellantis.set_preconditioning_program service"
+            )
+        program[ATTR_ENABLED] = enabled
+        return preconditioning_program_setter_body(program)
 
     @property
     def is_on(self) -> bool | None:
@@ -219,7 +214,7 @@ class StellantisPreconditioningProgramSwitch(StellantisBaseToggleEntity, SwitchE
         program = self.get_from_vehicle_status(
             f"$.preconditioning.airConditioning.programs[?(@.slot == {self.slot})]"
         )
-        return program
+        return program and self.coordinator.last_update_success
 
 
 class StellantisDelayedChargeSwitch(StellantisBaseToggleEntity, SwitchEntity):
@@ -269,7 +264,7 @@ class StellantisDelayedChargeSwitch(StellantisBaseToggleEntity, SwitchEntity):
         return super().available and charging_status in ("stopped", "in_progress")
 
 
-class StellantisChargingTypeSwitch(StellantisBaseToggleEntity, SwitchEntity):
+class StellantisPartialChargeSwitch(StellantisBaseToggleEntity, SwitchEntity):
     """Representation of Stellantis partial charge switch."""
 
     def __init__(
@@ -285,8 +280,8 @@ class StellantisChargingTypeSwitch(StellantisBaseToggleEntity, SwitchEntity):
             coordinator,
             vehicle,
             SwitchEntityDescription(
-                key="charging_type",
-                translation_key="charging_type",
+                key="partial_charge",
+                translation_key="partial_charge",
             ),
             entry,
             {"charging": {"preferences": {"type": "Partial"}}},

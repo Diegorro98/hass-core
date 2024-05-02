@@ -104,6 +104,11 @@
         "name": "Doors"
       }
     },
+    "number": {
+      "charging_power_level": {
+        "name": "Charging power level"
+      }
+    },
     "sensor": {
       "fuel_energy_level": {
         "name": "Fuel energy level"
@@ -150,16 +155,6 @@
       },
       "charging_rate": {
         "name": "Charging speed"
-      },
-      "charging_power_level": {
-        "name": "Charging power level",
-        "state": {
-          "level_1": "Level 1",
-          "level_2": "Level 2",
-          "level_3": "Level 3",
-          "level_4": "Level 4",
-          "level_5": "Level 5"
-        }
       },
       "charging_mode": {
         "name": "Charging mode",
@@ -317,19 +312,15 @@
       }
     },
     "switch": {
-      "charging_type": {
-        "name": "Charging type",
-        "state": {
-          "on": "Partial",
-          "off": "Full"
-        }
-      },
       "delayed_charge": {
         "name": "Delayed charge",
         "state": {
           "off": "Charging",
           "on": "Stopped and delayed"
         }
+      },
+      "partial_charge": {
+        "name": "Partial charge"
       },
       "preconditioning": {
         "name": "Preconditioning"
@@ -361,6 +352,23 @@
           "on": "[%key:common::state::enabled%]",
           "off": "[%key:common::state::disabled%]"
         }
+      }
+    },
+    "time": {
+      "charging_time": {
+        "name": "Charging time"
+      },
+      "preconditioning_program_1_start_time": {
+        "name": "Preconditioning program 1 start time"
+      },
+      "preconditioning_program_2_start_time": {
+        "name": "Preconditioning program 2 start time"
+      },
+      "preconditioning_program_3_start_time": {
+        "name": "Preconditioning program 3 start time"
+      },
+      "preconditioning_program_4_start_time": {
+        "name": "Preconditioning program 4 start time"
       }
     }
   },
@@ -439,34 +447,6 @@
         "position_9": {
           "name": "[%key:component::stellantis::services::send_navigation_positions::fields::position::name%]",
           "description": "[%key:component::stellantis::services::send_navigation_positions::fields::position_1::description%]"
-        }
-      }
-    },
-    "set_charging_power_level": {
-      "name": "Set charging power level",
-      "description": "Set the charging power level for the vehicle.",
-      "fields": {
-        "device_id": {
-          "name": "[%key:component::stellantis::services::delete_preconditioning_program::fields::device_id::name%]",
-          "description": "[%key:component::stellantis::services::delete_preconditioning_program::fields::device_id::description%]"
-        },
-        "level": {
-          "name": "Level",
-          "description": "Charging power level to set."
-        }
-      }
-    },
-    "set_next_charging_time": {
-      "name": "Next charging time",
-      "description": "Set the next charging time for the vehicle.",
-      "fields": {
-        "device_id": {
-          "name": "[%key:component::stellantis::services::delete_preconditioning_program::fields::device_id::name%]",
-          "description": "[%key:component::stellantis::services::delete_preconditioning_program::fields::device_id::description%]"
-        },
-        "time": {
-          "name": "Time",
-          "description": "The time at which the charging will begin (Seconds are ignored)."
         }
       }
     },

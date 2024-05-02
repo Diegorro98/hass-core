@@ -70,6 +70,11 @@
         "default": "mdi:car-light-high"
       }
     },
+    "number": {
+      "charging_power_level": {
+        "default": "mdi:lightning-bolt"
+      }
+    },
     "sensor": {
       "fuel_energy_level": {
         "default": "mdi:gas-station"
@@ -114,28 +119,11 @@
       "charging_rate": {
         "default": "mdi:lightning-bolt"
       },
-      "charging_power_level": {
-        "default": "mdi:lightning-bolt",
-        "state": {
-          "level_1": "mdi:numeric-1",
-          "level_2": "mdi:numeric-2",
-          "level_3": "mdi:numeric-3",
-          "level_4": "mdi:numeric-4",
-          "level_5": "mdi:numeric-5"
-        }
-      },
       "charging_mode": {
         "default": "mdi:lightning-bolt"
       },
       "next_charge": {
         "default": "mdi:battery-clock"
-      },
-      "charging_type": {
-        "default": "mdi:battery-50",
-        "state": {
-          "partial": "mdi:battery-50",
-          "full": "mdi:battery"
-        }
       },
       "thermic_engine_speed": {
         "default": "mdi:speedometer"
@@ -228,6 +216,13 @@
       "delayed_charge": {
         "default": "mdi:battery-clock"
       },
+      "partial_charge": {
+        "default": "mdi:battery-50",
+        "state": {
+          "on": "mdi:battery-50",
+          "off": "mdi:battery"
+        }
+      },
       "preconditioning": {
         "default": "mdi:air-conditioner"
       },
@@ -243,6 +238,23 @@
       "preconditioning_program_4": {
         "default": "mdi:air-conditioner"
       }
+    },
+    "time": {
+      "charging_time": {
+        "default": "mdi:battery-clock"
+      },
+      "preconditioning_program_1_start_time": {
+        "default": "mdi:air-conditioner"
+      },
+      "preconditioning_program_2_start_time": {
+        "default": "mdi:air-conditioner"
+      },
+      "preconditioning_program_3_start_time": {
+        "default": "mdi:air-conditioner"
+      },
+      "preconditioning_program_4_start_time": {
+        "default": "mdi:air-conditioner"
+      }
     }
   },
   "services": {
@@ -251,12 +263,6 @@
     },
     "send_navigation_positions": {
       "service": "mdi:map-marker-multiple"
-    },
-    "set_charging_power_level": {
-      "service": "mdi:lightning-bolt"
-    },
-    "set_next_charging_time": {
-      "service": "mdi:battery-clock"
     },
     "set_preconditioning_program": {
       "service": "mdi:air-conditioner"
