@@ -33,6 +33,8 @@ async def async_setup_entry(
 
     data: HomeAssistantStellantisData = hass.data[DOMAIN][entry.entry_id]
 
+    # In the future, when "onboardCapabilities" extension header works, we will know
+    # whether to add the door lock if the vehicle has the capability to lock/unlock the doors remotely.
     async_add_entities(
         StellantisDoorsLock(
             hass,
@@ -147,4 +149,7 @@ class StellantisDoorsLock(StellantisBaseEntity, LockEntity):
     @property
     def available(self) -> bool:
         """Return true if the vehicle is turned off."""
-        return self.get_from_vehicle_status("$.ignition.type") == "Stop"
+        return (
+            self.get_from_vehicle_status("$.ignition.type") == "Stop"
+            and super().available
+        )

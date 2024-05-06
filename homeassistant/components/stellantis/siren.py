@@ -24,6 +24,8 @@ async def async_setup_entry(
 
     data: HomeAssistantStellantisData = hass.data[DOMAIN][entry.entry_id]
 
+    # In the future, when "onboardCapabilities" extension header works, we will know
+    # whether to add the horn if the vehicle has the capability to honk the horn
     async_add_entities(
         StellantisHorn(
             hass,
@@ -55,6 +57,7 @@ class StellantisHorn(StellantisBaseToggleEntity, SirenEntity):
                 translation_key="horn",
             ),
             entry,
+            None,
             {"horn": {"state": "Activated"}},
             {"horn": {"state": "Unactivated"}},
             "activate the horn",

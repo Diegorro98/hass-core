@@ -24,6 +24,8 @@ async def async_setup_entry(
 
     data: HomeAssistantStellantisData = hass.data[DOMAIN][entry.entry_id]
 
+    # In the future, when "onboardCapabilities" extension header works, we will know
+    # whether to add lights if the vehicle has the capability to toggle the lights remotely
     async_add_entities(
         StellantisLights(
             hass,
@@ -55,6 +57,7 @@ class StellantisLights(StellantisBaseToggleEntity, LightEntity):
                 translation_key="lights",
             ),
             entry,
+            None,
             {"lights": {"on": True}},
             {"lights": {"on": False}},
             "turn on the lights",
