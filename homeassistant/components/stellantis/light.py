@@ -65,4 +65,9 @@ class StellantisLights(StellantisBaseToggleEntity, LightEntity):
         )
         self._attr_color_mode = ColorMode.ONOFF
         self._attr_supported_color_modes = {ColorMode.ONOFF}
-        self._attr_assumed_state = False
+
+    def on_remote_action_success(self, state_if_success) -> None:
+        """Handle the success of the remote action.
+
+        Because we cannot get the status of the lights, we don't assume the state.
+        """

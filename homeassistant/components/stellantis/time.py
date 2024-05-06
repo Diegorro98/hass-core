@@ -138,6 +138,7 @@ class StellantisPreconditioningProgramStartTime(
     def on_remote_action_success(self, state_if_success: Any) -> None:
         """Handle the success of a remote action."""
         self._attr_native_value = state_if_success
+        self.async_write_ha_state()
 
 
 class StellantisChargingTime(StellantisBaseActionableEntity, TimeEntity):
@@ -199,3 +200,4 @@ class StellantisChargingTime(StellantisBaseActionableEntity, TimeEntity):
     def on_remote_action_success(self, state_if_success: Any) -> None:
         """Handle the success of a remote action."""
         self._attr_native_value = state_if_success
+        self.async_write_ha_state()
