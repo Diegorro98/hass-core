@@ -89,7 +89,7 @@ class StellantisBaseActionableEntity(StellantisBaseEntity):
         self.entry = entry
 
     @abstractmethod
-    def on_remote_action_success(self, state_if_success: Any) -> None:
+    def on_remote_action_success(self, state_if_success: Any):
         """Handle the success of a remote action."""
         raise NotImplementedError
 
@@ -119,8 +119,7 @@ class StellantisBaseActionableEntity(StellantisBaseEntity):
                         raise HomeAssistantError(
                             f"Remote action failed. Cause: {event_status[ATTR_FAILURE_CAUSE]}"
                         )
-                    if self._attr_assumed_state:
-                        self.on_remote_action_success(state_if_success)
+                    self.on_remote_action_success(state_if_success)
             except TimeoutError:
                 LOGGER.warning(
                     f"Confirmation of the remote action to {logger_action} was not received in time"
@@ -168,9 +167,10 @@ class StellantisBaseToggleEntity(StellantisBaseActionableEntity, ToggleEntity):
             self.request_body_off, False, self.logger_action_off
         )
 
-    def on_remote_action_success(self, state_if_success: Any) -> None:
+    def on_remote_action_success(self, state_if_success: Any):
         """Handle the success of a remote action."""
         self._attr_is_on = state_if_success
+        self.async_write_ha_state()
 
     @property
     def available(self) -> bool:
