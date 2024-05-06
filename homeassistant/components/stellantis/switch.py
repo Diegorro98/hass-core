@@ -94,6 +94,7 @@ class StellantisPreconditioningSwitch(StellantisBaseToggleEntity, SwitchEntity):
                 translation_key="preconditioning",
             ),
             entry,
+            "$.preconditioning.airConditioning.status",
             {"preconditioning": {"airConditioning": {"immediate": True}}},
             {"preconditioning": {"airConditioning": {"immediate": False}}},
             "turn on preconditioning",
@@ -107,10 +108,7 @@ class StellantisPreconditioningSwitch(StellantisBaseToggleEntity, SwitchEntity):
             ret = self._attr_is_on
             self._attr_is_on = None
             return ret
-        status = self.get_from_vehicle_status(
-            "$.energies[?(@.type == 'Electric')].extension.electric.charging.status"
-        )
-        return None if not status else status == "Stopped"
+        return None if not self.native_value else self.native_value == "Enabled"
 
     @property
     def available(self) -> bool:
@@ -166,6 +164,7 @@ class StellantisPreconditioningProgramSwitch(StellantisBaseToggleEntity, SwitchE
                 translation_key=f"preconditioning_program_{slot}",
             ),
             entry,
+            f"$.preconditioning.airConditioning.programs[?(@.slot == {slot})]",
             {},
             {},
             f"enable preconditioning program {slot}",
@@ -180,23 +179,17 @@ class StellantisPreconditioningProgramSwitch(StellantisBaseToggleEntity, SwitchE
 
         Because API requires the whole program to be sent, we need to copy the program and set the enabled value.
         """
-        program = self.get_from_vehicle_status(
-            f"$.preconditioning.airConditioning.programs[?(@.slot == {self.slot})]"
-        )
-        if not program:
+        if not self.native_value:
             raise HomeAssistantError(
                 f"Preconditioning program {self.slot} does not exists, define it first using stellantis.set_preconditioning_program service"
             )
-        program[ATTR_ENABLED] = enabled
-        return preconditioning_program_setter_body(program)
+        self.native_value[ATTR_ENABLED] = enabled
+        return preconditioning_program_setter_body(self.native_value)
 
     @property
     def is_on(self) -> bool | None:
         """Return if the preconditioning program is enabled."""
-        program = self.get_from_vehicle_status(
-            f"$.preconditioning.airConditioning.programs[?(@.slot == {self.slot})]"
-        )
-        return None if not program else program["enabled"]
+        return None if not self.native_value else self.native_value["enabled"]
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Send a remote action to enable preconditioning program."""
@@ -211,10 +204,7 @@ class StellantisPreconditioningProgramSwitch(StellantisBaseToggleEntity, SwitchE
     @property
     def available(self) -> bool:
         """Return available if the program exists."""
-        program = self.get_from_vehicle_status(
-            f"$.preconditioning.airConditioning.programs[?(@.slot == {self.slot})]"
-        )
-        return program and self.coordinator.last_update_success
+        return self.native_value and self.coordinator.last_update_success
 
 
 class StellantisDelayedChargeSwitch(StellantisBaseToggleEntity, SwitchEntity):
@@ -237,6 +227,7 @@ class StellantisDelayedChargeSwitch(StellantisBaseToggleEntity, SwitchEntity):
                 translation_key="delayed_charge",
             ),
             entry,
+            "$.energies[?(@.type == 'Electric')].extension.electric.charging.status",
             {"charging": {"immediate": True}},
             {"charging": {"immediate": False}},
             "stop and delay charge",
@@ -250,18 +241,12 @@ class StellantisDelayedChargeSwitch(StellantisBaseToggleEntity, SwitchEntity):
             ret = self._attr_is_on
             self._attr_is_on = None
             return ret
-        status = self.get_from_vehicle_status(
-            "$.energies[?(@.type == 'Electric')].extension.electric.charging.status"
-        )
-        return None if not status else status == "Stopped"
+        return None if not self.native_value else self.native_value == "Stopped"
 
     @property
     def available(self) -> bool:
         """Return true if the the vehicle has is able to control the charge."""
-        charging_status = self.get_from_vehicle_status(
-            "$.energies[?(@.type == 'Electric')].extension.electric.charging.status"
-        )
-        return super().available and charging_status in ("stopped", "in_progress")
+        return super().available and self.native_value in ("Stopped", "InProgress")
 
 
 class StellantisPartialChargeSwitch(StellantisBaseToggleEntity, SwitchEntity):
@@ -284,6 +269,7 @@ class StellantisPartialChargeSwitch(StellantisBaseToggleEntity, SwitchEntity):
                 translation_key="partial_charge",
             ),
             entry,
+            "$.energies[?(@.type == 'Electric')].extension.electric.charging.type",
             {"charging": {"preferences": {"type": "Partial"}}},
             {"charging": {"preferences": {"type": "Full"}}},
             "set partial charge",
@@ -297,15 +283,9 @@ class StellantisPartialChargeSwitch(StellantisBaseToggleEntity, SwitchEntity):
             ret = self._attr_is_on
             self._attr_is_on = None
             return ret
-        status = self.get_from_vehicle_status(
-            "$.energies[?(@.type == 'Electric')].extension.electric.charging.type"
-        )
-        return None if not status else status == "Partial"
+        return None if not self.native_value else self.native_value == "Partial"
 
     @property
     def available(self) -> bool:
         """Return true if the the vehicle has is able to control the charge."""
-        charging_status = self.get_from_vehicle_status(
-            "$.energies[?(@.type == 'Electric')].extension.electric.charging.status"
-        )
-        return super().available and charging_status in ("stopped", "in_progress")
+        return super().available and self.native_value in ("Stopped", "InProgress")

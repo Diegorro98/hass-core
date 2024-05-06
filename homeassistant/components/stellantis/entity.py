@@ -137,6 +137,7 @@ class StellantisBaseToggleEntity(StellantisBaseActionableEntity, ToggleEntity):
         vehicle: VehicleData,
         description: ToggleEntityDescription,
         entry: ConfigEntry,
+        value_path: str | None,
         request_body_on: dict[str, Any],
         request_body_off: dict[str, Any],
         logger_action_on: str,
@@ -144,10 +145,16 @@ class StellantisBaseToggleEntity(StellantisBaseActionableEntity, ToggleEntity):
     ) -> None:
         """Initialize entity."""
         super().__init__(hass, coordinator, vehicle, description, entry)
+        self.value_path = value_path
         self.request_body_on = request_body_on
         self.request_body_off = request_body_off
         self.logger_action_on = logger_action_on
         self.logger_action_off = logger_action_off
+
+    @property
+    def native_value(self):
+        """Return the state reported from the API."""
+        return self.get_from_vehicle_status(self.value_path)
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Send a remote action to turn on something."""
@@ -170,5 +177,6 @@ class StellantisBaseToggleEntity(StellantisBaseActionableEntity, ToggleEntity):
         """Return true if the vehicle is turned off."""
         return (
             self.get_from_vehicle_status("$.ignition.type") == "Stop"
+            and (not self.value_path or self.native_value)
             and super().available
         )
