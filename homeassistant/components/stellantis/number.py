@@ -10,8 +10,9 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import HomeAssistantStellantisData
+from .api import StellantisVehicle
 from .const import DOMAIN, LOGGER
-from .coordinator import StellantisUpdateCoordinator, VehicleData
+from .coordinator import StellantisUpdateCoordinator
 from .entity import StellantisBaseActionableEntity
 
 
@@ -24,17 +25,17 @@ async def async_setup_entry(
 
     data: HomeAssistantStellantisData = hass.data[DOMAIN][entry.entry_id]
 
-    for vehicle_data in data.coordinator.vehicles_data:
+    for vehicle in data.coordinator.data:
         if jsonpath(
-            data.coordinator.vehicles_status,
-            f"$.{vehicle_data.vin}.energies[?(@.type == 'Electric')]",
+            vehicle.status,
+            "$.energies[?(@.type == 'Electric')]",
         ):
             async_add_entities(
                 (
                     StellantisChargingPowerLevelNumber(
                         hass,
                         data.coordinator,
-                        vehicle_data,
+                        vehicle,
                         entry,
                     ),
                 )
@@ -48,7 +49,7 @@ class StellantisChargingPowerLevelNumber(StellantisBaseActionableEntity, NumberE
         self,
         hass: HomeAssistant,
         coordinator: StellantisUpdateCoordinator,
-        vehicle: VehicleData,
+        vehicle: StellantisVehicle,
         entry: ConfigEntry,
     ) -> None:
         """Initialize the charging power level number entity."""

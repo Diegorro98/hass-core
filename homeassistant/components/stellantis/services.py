@@ -14,6 +14,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
 import homeassistant.helpers.config_validation as cv
 
+from .api import StellantisVehicle
 from .const import (
     ATTR_DAILY_RECURRENCE,
     ATTR_ENABLED,
@@ -32,7 +33,7 @@ from .const import (
     SERVICE_SET_PRECONDITIONING_PROGRAM,
     SERVICE_WAKE_UP,
 )
-from .coordinator import StellantisUpdateCoordinator, VehicleData
+from .coordinator import StellantisUpdateCoordinator
 from .helpers import preconditioning_program_setter_body
 from .webhook import StellantisCallbackEvent
 
@@ -79,10 +80,10 @@ async def async_send_remote_requests(
         config_entry_id
     ].coordinator
 
-    vehicle: VehicleData | None = None
-    for vehicle_data in coordinator.vehicles_data:
-        if vehicle_data.vin == device_vin:
-            vehicle = vehicle_data
+    vehicle: StellantisVehicle | None = None
+    for vehicle_to_check in coordinator.data:
+        if vehicle_to_check.details.vin == device_vin:
+            vehicle = vehicle_to_check
             break
 
     if vehicle is None:
@@ -90,7 +91,7 @@ async def async_send_remote_requests(
 
     async with timeout(10):
         response_data = await coordinator.api.async_send_remote_action(
-            vehicle,
+            vehicle.details.id,
             callback_id,
             request_body,
         )
@@ -192,7 +193,11 @@ async def async_setup_hass_services(hass: HomeAssistant) -> None:
             config_entry_id
         ].coordinator
 
-        vehicle_status = coordinator.vehicles_status[device_vin]
+        vehicle_status = None
+        for vehicle in coordinator.data:
+            if vehicle.details.vin == device_vin:
+                vehicle_status = vehicle.status
+                break
         if vehicle_status is None:
             raise HomeAssistantError(f"Vehicle status not found: {device_vin}")
 

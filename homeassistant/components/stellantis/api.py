@@ -15,11 +15,12 @@ from .oauth import StellantisOAuth2Session
 
 
 @dataclass(frozen=True)
-class VehicleData:
-    """Vehicle Data."""
+class VehicleDetails:
+    """Details of the vehicle."""
 
     vin: str
     id: str
+    motorization: str
     brand: str | None
     label: str | None
 
@@ -32,9 +33,22 @@ class VehicleData:
         return cls(
             vehicle_raw_data["vin"],
             vehicle_raw_data["id"],
+            vehicle_raw_data["motorization"],
             branding.get("brand"),
             branding.get("label"),
         )
+
+
+class StellantisVehicle:
+    """Class that holds details and status of the vehicle."""
+
+    details: VehicleDetails
+    status: dict[str, Any]
+
+    def __init__(self, details: VehicleDetails) -> None:
+        """Initialize the vehicle."""
+        self.details = details
+        self.status = {}
 
 
 class StellantisApi:
@@ -44,7 +58,7 @@ class StellantisApi:
         """Initialize the API class."""
         self.session = session
 
-    async def async_get_vehicles(self) -> list[VehicleData] | None:
+    async def async_get_vehicles_details(self) -> list[VehicleDetails] | None:
         """Get vehicles."""
         params = {
             "extension": [
@@ -65,7 +79,7 @@ class StellantisApi:
 
             result = await response.json()
             vehicles = [
-                VehicleData.parse_from_api_data(vehicle_data)
+                VehicleDetails.parse_from_api_data(vehicle_data)
                 for vehicle_data in result["_embedded"]["vehicles"]
             ]
             while "next" in result["_links"]:
@@ -78,7 +92,7 @@ class StellantisApi:
 
                     result = await response.json()
                     vehicles += [
-                        VehicleData.parse_from_api_data(vehicle_data)
+                        VehicleDetails.parse_from_api_data(vehicle_data)
                         for vehicle_data in result["_embedded"]["vehicles"]
                     ]
 
@@ -90,29 +104,32 @@ class StellantisApi:
             return vehicles
 
     async def async_get_vehicle_status(
-        self, vehicle: VehicleData
+        self, vehicle: StellantisVehicle
     ) -> dict[str, Any] | None:
         """Get vehicle data."""
         async with timeout(10):
             response = await self.session.async_request_to_path(
                 "GET",
-                f"/user/vehicles/{vehicle.id}/status",
+                f"/user/vehicles/{vehicle.details.id}/status",
             )
 
         if response.status != HTTPStatus.OK:
-            LOGGER.error("Failed to get vehicle status for %s", vehicle.vin)
+            LOGGER.error(
+                "Failed to get vehicle status for vehicle with VIN %s",
+                vehicle.details.vin,
+            )
             return None
 
         return await response.json()
 
     async def async_send_remote_action(
-        self, vehicle: VehicleData, callback_id: str, request_body: dict[str, Any]
+        self, vehicle_id: str, callback_id: str, request_body: dict[str, Any]
     ) -> dict[str, Any]:
         """Send remote action."""
         async with timeout(10):
             response = await self.session.async_request_to_path(
                 "POST",
-                f"/user/vehicles/{vehicle.id}/callbacks/{callback_id}/remotes",
+                f"/user/vehicles/{vehicle_id}/callbacks/{callback_id}/remotes",
                 json={"label": "hass_remote_action", **request_body},
             )
         if response.status != HTTPStatus.ACCEPTED:

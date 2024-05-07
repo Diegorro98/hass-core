@@ -10,6 +10,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import HomeAssistantStellantisData
+from .api import StellantisVehicle
 from .const import (
     ATTR_EVENT_TYPE,
     ATTR_FAILURE_CAUSE,
@@ -19,7 +20,7 @@ from .const import (
     DOMAIN,
     LOGGER,
 )
-from .coordinator import StellantisUpdateCoordinator, VehicleData
+from .coordinator import StellantisUpdateCoordinator
 from .entity import StellantisBaseEntity
 from .webhook import StellantisCallbackEvent
 
@@ -42,7 +43,7 @@ async def async_setup_entry(
             vehicle_data,
             entry,
         )
-        for vehicle_data in data.coordinator.vehicles_data
+        for vehicle_data in data.coordinator.data
     )
 
 
@@ -53,7 +54,7 @@ class StellantisDoorsLock(StellantisBaseEntity, LockEntity):
         self,
         hass: HomeAssistant,
         coordinator: StellantisUpdateCoordinator,
-        vehicle: VehicleData,
+        vehicle: StellantisVehicle,
         entry: ConfigEntry,
     ) -> None:
         """Initialize the doors lock."""
@@ -72,7 +73,7 @@ class StellantisDoorsLock(StellantisBaseEntity, LockEntity):
         """Lock the doors."""
         async with timeout(10):
             response_data = await self.coordinator.api.async_send_remote_action(
-                self.vehicle,
+                self.vehicle.details.id,
                 self.entry.data[CONF_CALLBACK_ID],
                 {"door": {"state": "Locked"}},
             )
@@ -105,7 +106,7 @@ class StellantisDoorsLock(StellantisBaseEntity, LockEntity):
         """Unlock the doors."""
         async with timeout(10):
             response_data = await self.coordinator.api.async_send_remote_action(
-                self.vehicle,
+                self.vehicle.details.id,
                 self.entry.data[CONF_CALLBACK_ID],
                 {"door": {"state": "Unlocked"}},
             )
