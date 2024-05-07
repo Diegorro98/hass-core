@@ -18,6 +18,7 @@ from homeassistant.helpers.entity import (
 )
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .api import StellantisVehicle
 from .const import (
     ATTR_FAILURE_CAUSE,
     ATTR_REMOTE_ACTION_ID,
@@ -26,7 +27,7 @@ from .const import (
     DOMAIN,
     LOGGER,
 )
-from .coordinator import StellantisUpdateCoordinator, VehicleData
+from .coordinator import StellantisUpdateCoordinator
 from .webhook import StellantisCallbackEvent
 
 
@@ -38,29 +39,27 @@ class StellantisBaseEntity(CoordinatorEntity[StellantisUpdateCoordinator], Entit
     def __init__(
         self,
         coordinator: StellantisUpdateCoordinator,
-        vehicle: VehicleData,
+        vehicle: StellantisVehicle,
         description: EntityDescription,
     ) -> None:
         """Initialize entity."""
         super().__init__(coordinator)
         self.vehicle = vehicle
         self._attr_has_entity_name = True
-        self._attr_unique_id = f"{vehicle.vin}-{description.key}"
+        self._attr_unique_id = f"{vehicle.details.vin}-{description.key}"
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, self.vehicle.vin)},
-            manufacturer=self.vehicle.brand,
-            model=self.vehicle.label,
-            name=f"{self.vehicle.brand} {self.vehicle.label}",
-            serial_number=self.vehicle.vin,
+            identifiers={(DOMAIN, self.vehicle.details.vin)},
+            manufacturer=self.vehicle.details.brand,
+            model=f"{self.vehicle.details.label} {self.vehicle.details.motorization}",
+            name=f"{self.vehicle.details.brand} {self.vehicle.details.label}",
+            serial_number=self.vehicle.details.vin,
         )
         self.entity_description = description
 
     def get_from_vehicle_status(self, value_path: str) -> Any:
         """Return the vehicle status."""
         try:
-            if matches := jsonpath(
-                self.coordinator.vehicles_status[self.vehicle.vin], value_path
-            ):
+            if matches := jsonpath(self.vehicle.status, value_path):
                 return matches[0]
         except KeyError:
             pass
@@ -79,7 +78,7 @@ class StellantisBaseActionableEntity(StellantisBaseEntity):
         self,
         hass: HomeAssistant,
         coordinator: StellantisUpdateCoordinator,
-        vehicle: VehicleData,
+        vehicle: StellantisVehicle,
         description: EntityDescription,
         entry: ConfigEntry,
     ) -> None:
@@ -99,7 +98,7 @@ class StellantisBaseActionableEntity(StellantisBaseEntity):
         """Call a remote action and handle the response."""
         async with timeout(10):
             response_data = await self.coordinator.api.async_send_remote_action(
-                self.vehicle,
+                self.vehicle.details.id,
                 self.entry.data[CONF_CALLBACK_ID],
                 request_body,
             )
@@ -133,7 +132,7 @@ class StellantisBaseToggleEntity(StellantisBaseActionableEntity, ToggleEntity):
         self,
         hass: HomeAssistant,
         coordinator: StellantisUpdateCoordinator,
-        vehicle: VehicleData,
+        vehicle: StellantisVehicle,
         description: ToggleEntityDescription,
         entry: ConfigEntry,
         value_path: str | None,

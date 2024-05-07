@@ -321,33 +321,29 @@ async def async_setup_entry(
 
     data: HomeAssistantStellantisData = hass.data[DOMAIN][entry.entry_id]
 
-    for vehicle_data in data.coordinator.vehicles_data:
+    for vehicle in data.coordinator.data:
         sensors = SENSORS
         sensors += tuple(
             get_common_energy_sensors(
                 jsonpath(
-                    data.coordinator.vehicles_status,
-                    f"$.{vehicle_data.vin}.energies[*]",
+                    vehicle.status,
+                    "$.energies[*]",
                 )
             )
         )
         sensors += tuple(
-            get_engine_common_sensors(
-                jsonpath(
-                    data.coordinator.vehicles_status, f"$.{vehicle_data.vin}.engines[*]"
-                )
-            )
+            get_engine_common_sensors(jsonpath(vehicle.status, "$.engines[*]"))
         )
 
         if jsonpath(
-            data.coordinator.vehicles_status,
-            f"$.{vehicle_data.vin}.preconditioning.airConditioning",
+            vehicle.status,
+            "$.preconditioning.airConditioning",
         ):
             sensors += PRECONDITIONING_SENSORS
             async_add_entities(
                 StellantisPreconditioningProgramSensor(
                     data.coordinator,
-                    vehicle_data,
+                    vehicle,
                     StellantisPreconditioningSensorEntityDescription(
                         key=f"preconditioning_program_{slot}",
                         translation_key=f"preconditioning_program_{slot}",
@@ -359,8 +355,8 @@ async def async_setup_entry(
             )
 
         if matches := jsonpath(
-            data.coordinator.vehicles_status,
-            f"$.{vehicle_data.vin}.energies[?(@.type == 'Fuel')]",
+            vehicle.status,
+            "$.energies[?(@.type == 'Fuel')]",
         ):
             sensors += (
                 *FUEL_ENERGY_EXTENSION_SENSORS,
@@ -368,21 +364,21 @@ async def async_setup_entry(
             )
 
         if jsonpath(
-            data.coordinator.vehicles_status,
-            f"$.{vehicle_data.vin}.energies[?(@.type == 'Electric')]",
+            vehicle.status,
+            "$.energies[?(@.type == 'Electric')]",
         ):
             sensors += ELECTRIC_ENERGY_EXTENSION_SENSORS
 
         if jsonpath(
-            data.coordinator.vehicles_status,
-            f"$.{vehicle_data.vin}.engines[?(@.type == 'Thermic')]",
+            vehicle.status,
+            "$.engines[?(@.type == 'Thermic')]",
         ):
             sensors += THERMIC_ENGINE_EXTENSION_SENSORS
 
         async_add_entities(
             StellantisSensor(
                 data.coordinator,
-                vehicle_data,
+                vehicle,
                 description,
             )
             for description in sensors

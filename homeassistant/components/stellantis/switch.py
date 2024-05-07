@@ -11,8 +11,9 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import HomeAssistantStellantisData
+from .api import StellantisVehicle
 from .const import ATTR_ENABLED, DOMAIN
-from .coordinator import StellantisUpdateCoordinator, VehicleData
+from .coordinator import StellantisUpdateCoordinator
 from .entity import StellantisBaseToggleEntity
 from .helpers import preconditioning_program_setter_body
 
@@ -26,17 +27,17 @@ async def async_setup_entry(
 
     data: HomeAssistantStellantisData = hass.data[DOMAIN][entry.entry_id]
 
-    for vehicle_data in data.coordinator.vehicles_data:
+    for vehicle in data.coordinator.data:
         if jsonpath(
-            data.coordinator.vehicles_status,
-            f"$.{vehicle_data.vin}.preconditioning.airConditioning",
+            vehicle.status,
+            "$.preconditioning.airConditioning",
         ):
             async_add_entities(
                 [
                     StellantisPreconditioningSwitch(
                         hass,
                         data.coordinator,
-                        vehicle_data,
+                        vehicle,
                         entry,
                     ),
                 ]
@@ -44,7 +45,7 @@ async def async_setup_entry(
                     StellantisPreconditioningProgramSwitch(
                         hass,
                         data.coordinator,
-                        vehicle_data,
+                        vehicle,
                         entry,
                         slot,
                     )
@@ -53,21 +54,21 @@ async def async_setup_entry(
             )
 
         if jsonpath(
-            data.coordinator.vehicles_status,
-            f"$.{vehicle_data.vin}.energies[?(@.type == 'Electric')]",
+            vehicle.status,
+            "$.energies[?(@.type == 'Electric')]",
         ):
             async_add_entities(
                 (
                     StellantisDelayedChargeSwitch(
                         hass,
                         data.coordinator,
-                        vehicle_data,
+                        vehicle,
                         entry,
                     ),
                     StellantisPartialChargeSwitch(
                         hass,
                         data.coordinator,
-                        vehicle_data,
+                        vehicle,
                         entry,
                     ),
                 )
@@ -81,7 +82,7 @@ class StellantisPreconditioningSwitch(StellantisBaseToggleEntity, SwitchEntity):
         self,
         hass: HomeAssistant,
         coordinator: StellantisUpdateCoordinator,
-        vehicle: VehicleData,
+        vehicle: StellantisVehicle,
         entry: ConfigEntry,
     ) -> None:
         """Initialize the preconditioning switch."""
@@ -150,7 +151,7 @@ class StellantisPreconditioningProgramSwitch(StellantisBaseToggleEntity, SwitchE
         self,
         hass: HomeAssistant,
         coordinator: StellantisUpdateCoordinator,
-        vehicle: VehicleData,
+        vehicle: StellantisVehicle,
         entry: ConfigEntry,
         slot: int,
     ) -> None:
@@ -214,7 +215,7 @@ class StellantisDelayedChargeSwitch(StellantisBaseToggleEntity, SwitchEntity):
         self,
         hass: HomeAssistant,
         coordinator: StellantisUpdateCoordinator,
-        vehicle: VehicleData,
+        vehicle: StellantisVehicle,
         entry: ConfigEntry,
     ) -> None:
         """Initialize the delayed charge switch."""
@@ -256,7 +257,7 @@ class StellantisPartialChargeSwitch(StellantisBaseToggleEntity, SwitchEntity):
         self,
         hass: HomeAssistant,
         coordinator: StellantisUpdateCoordinator,
-        vehicle: VehicleData,
+        vehicle: StellantisVehicle,
         entry: ConfigEntry,
     ) -> None:
         """Initialize the partial charge switch."""

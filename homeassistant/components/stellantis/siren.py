@@ -10,8 +10,9 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import HomeAssistantStellantisData
+from .api import StellantisVehicle
 from .const import DOMAIN
-from .coordinator import StellantisUpdateCoordinator, VehicleData
+from .coordinator import StellantisUpdateCoordinator
 from .entity import StellantisBaseToggleEntity
 
 
@@ -33,7 +34,7 @@ async def async_setup_entry(
             vehicle_data,
             entry,
         )
-        for vehicle_data in data.coordinator.vehicles_data
+        for vehicle_data in data.coordinator.data
     )
 
 
@@ -44,7 +45,7 @@ class StellantisHorn(StellantisBaseToggleEntity, SirenEntity):
         self,
         hass: HomeAssistant,
         coordinator: StellantisUpdateCoordinator,
-        vehicle: VehicleData,
+        vehicle: StellantisVehicle,
         entry: ConfigEntry,
     ) -> None:
         """Initialize the vehicle horn."""

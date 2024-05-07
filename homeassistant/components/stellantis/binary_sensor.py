@@ -140,24 +140,22 @@ async def async_setup_entry(
 
     data: HomeAssistantStellantisData = hass.data[DOMAIN][entry.entry_id]
 
-    for vehicle_data in data.coordinator.vehicles_data:
+    for vehicle in data.coordinator.data:
         sensors = BINARY_SENSORS
 
         if jsonpath(
-            data.coordinator.vehicles_status,
-            f"$.{vehicle_data.vin}.energies[?(@.type == 'Electric')]",
+            vehicle.status,
+            "$.energies[?(@.type == 'Electric')]",
         ):
             sensors += ELECTRIC_ENERGY_BINARY_SENSORS
 
-        if matches := jsonpath(
-            data.coordinator.vehicles_status, f"${vehicle_data.vin}.doorState.opening"
-        ):
+        if matches := jsonpath(vehicle.status, "$.doorState.opening"):
             sensors += get_door_states_sensors(matches)
 
         async_add_entities(
             StellantisBinarySensor(
                 data.coordinator,
-                vehicle_data,
+                vehicle,
                 description,
             )
             for description in sensors

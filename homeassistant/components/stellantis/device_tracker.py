@@ -36,7 +36,7 @@ async def async_setup_entry(
                 icon="mdi:car-arrow-right",
             ),
         )
-        for vehicle_data in data.coordinator.vehicles_data
+        for vehicle_data in data.coordinator.data
     )
 
 
