@@ -1,8 +1,7 @@
 """Stellantis entity base classes."""
 
-from abc import abstractmethod
 from asyncio import timeout
-from typing import Any
+from typing import Any, Generic, TypeVar
 
 from jsonpath import jsonpath
 
@@ -71,8 +70,13 @@ class StellantisBaseEntity(CoordinatorEntity[StellantisUpdateCoordinator], Entit
         self._handle_coordinator_update()
 
 
-class StellantisBaseActionableEntity(StellantisBaseEntity):
+T = TypeVar("T")
+
+
+class StellantisBaseActionableEntity(StellantisBaseEntity, Generic[T]):
     """Common base for Stellantis entities that can call remote actions."""
+
+    _attr_remote_action_value: T | None = None
 
     def __init__(
         self,
@@ -87,13 +91,8 @@ class StellantisBaseActionableEntity(StellantisBaseEntity):
         self.hass = hass
         self.entry = entry
 
-    @abstractmethod
-    def on_remote_action_success(self, state_if_success: Any):
-        """Handle the success of a remote action."""
-        raise NotImplementedError
-
     async def async_call_remote_action(
-        self, request_body: dict[str, Any], state_if_success: Any, logger_action: str
+        self, request_body: dict[str, Any], state_if_success: T, logger_action: str
     ) -> None:
         """Call a remote action and handle the response."""
         async with timeout(10):
@@ -124,7 +123,8 @@ class StellantisBaseActionableEntity(StellantisBaseEntity):
                                         raise HomeAssistantError(
                                             f"Remote action failed. Cause: {event_status.get(ATTR_FAILURE_CAUSE, "Not specified")}"
                                         )
-                                self.on_remote_action_success(state_if_success)
+                                self._attr_remote_action_value = state_if_success
+                                self.async_write_ha_state()
                         break
         except TimeoutError:
             LOGGER.warning(
@@ -132,7 +132,7 @@ class StellantisBaseActionableEntity(StellantisBaseEntity):
             )
 
 
-class StellantisBaseToggleEntity(StellantisBaseActionableEntity, ToggleEntity):
+class StellantisBaseToggleEntity(StellantisBaseActionableEntity[bool], ToggleEntity):
     """Common base for Stellantis entities that can be toggled."""
 
     def __init__(
@@ -172,11 +172,6 @@ class StellantisBaseToggleEntity(StellantisBaseActionableEntity, ToggleEntity):
         await self.async_call_remote_action(
             self.request_body_off, False, self.logger_action_off
         )
-
-    def on_remote_action_success(self, state_if_success: Any):
-        """Handle the success of a remote action."""
-        self._attr_is_on = state_if_success
-        self.async_write_ha_state()
 
     @property
     def available(self) -> bool:

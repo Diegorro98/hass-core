@@ -67,9 +67,3 @@ class StellantisHorn(StellantisBaseToggleEntity, SirenEntity):
         self._attr_supported_features = (
             SirenEntityFeature.TURN_ON | SirenEntityFeature.TURN_OFF
         )
-
-    def on_remote_action_success(self, state_if_success) -> None:
-        """Handle the success of the remote action.
-
-        Because we cannot get the status of the horn, we don't assume the state.
-        """

@@ -1,7 +1,6 @@
 """Stellantis time platform."""
 
 from datetime import datetime, time
-from typing import Any
 
 from jsonpath import jsonpath
 
@@ -64,7 +63,7 @@ async def async_setup_entry(
 
 
 class StellantisPreconditioningProgramStartTime(
-    StellantisBaseActionableEntity, TimeEntity
+    StellantisBaseActionableEntity[time], TimeEntity
 ):
     """Representation of a Stellantis preconditioning start time of a program."""
 
@@ -142,13 +141,8 @@ class StellantisPreconditioningProgramStartTime(
             f"set preconditioning program {self.slot} start time",
         )
 
-    def on_remote_action_success(self, state_if_success: Any) -> None:
-        """Handle the success of a remote action."""
-        self._attr_native_value = state_if_success
-        self.async_write_ha_state()
 
-
-class StellantisChargingTime(StellantisBaseActionableEntity, TimeEntity):
+class StellantisChargingTime(StellantisBaseActionableEntity[time], TimeEntity):
     """Representation of a Stellantis charging time."""
 
     def __init__(
@@ -212,8 +206,3 @@ class StellantisChargingTime(StellantisBaseActionableEntity, TimeEntity):
             value,
             "set next charging time",
         )
-
-    def on_remote_action_success(self, state_if_success: Any) -> None:
-        """Handle the success of a remote action."""
-        self._attr_native_value = state_if_success
-        self.async_write_ha_state()
