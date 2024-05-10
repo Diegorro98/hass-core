@@ -12,7 +12,6 @@ ATTR_ALTITUDE = "altitude"
 ATTR_ENABLED = "enabled"
 ATTR_EVENT_STATUS = "eventStatus"
 ATTR_EVENT_TYPE = "type"
-ATTR_EVENT_TYPE_DONE = "Done"
 ATTR_FAILURE_CAUSE = "failureCause"
 ATTR_HEADING = "heading"
 ATTR_OCCURRENCE = "occurrence"
@@ -21,8 +20,6 @@ ATTR_PROGRAM_NUMBER = "program_number"
 ATTR_DAILY_RECURRENCE = "daily_recurrence"
 ATTR_REMOTE_ACTION_ID = "remoteActionId"
 ATTR_REMOTE_EVENT = "remoteEvent"
-ATTR_REMOTE_DONE_EVENT_STATUS = "RemoteDoneEventStatus"
-ATTR_REMOTE_PENDING_EVENT_STATUS = "RemotePendingEventStatus"
 ATTR_STATUS = "status"
 ATTR_START = "start"
 ATTR_SIGNAL_QUALITY = "signal_quality"
@@ -47,3 +44,18 @@ class Brand(StrEnum):
     OPEL = "Opel"
     PEUGEOT = "Peugeot"
     VAUXHALL = "Vauxhall"
+
+
+class EventStatusType(StrEnum):
+    """Event status types for remote notifications."""
+
+    DONE = "Done"
+    PENDING = "Pending"
+
+
+class RemoteDoneEventStatus(StrEnum):
+    """Event status for Done remote notifications."""
+
+    ALREADY_DONE = "AlreadyDone"
+    FAILED = "Failed"
+    SUCCESS = "Success"

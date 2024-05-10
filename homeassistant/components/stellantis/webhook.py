@@ -19,6 +19,8 @@ from .const import (
     ATTR_STATUS,
     DOMAIN,
     LOGGER,
+    EventStatusType,
+    RemoteDoneEventStatus,
 )
 
 WEBHOOK_SCHEMA = vol.Schema(
@@ -26,20 +28,25 @@ WEBHOOK_SCHEMA = vol.Schema(
         vol.Required(ATTR_REMOTE_EVENT): vol.Schema(
             {
                 vol.Required(ATTR_REMOTE_ACTION_ID): cv.string,
-                vol.Required(ATTR_EVENT_STATUS): vol.Schema(
-                    {
-                        vol.Required(ATTR_EVENT_TYPE): vol.Any("Pending", "Done"),
-                        vol.Required(ATTR_STATUS): vol.Any(
-                            "Success", "AlreadyDone", "Failed"
-                        ),
-                        # vol.Required(ATTR_STATUS): vol.Schema(
-                        #     {
-                        #         vol.Optional(ATTR_REMOTE_DONE_EVENT_STATUS): vol.Any("Success", "AlreadyDone", "Failed"),
-                        #         vol.Optional(ATTR_REMOTE_PENDING_EVENT_STATUS): cv.string,
-                        #     }
-                        # ),
-                        vol.Optional(ATTR_FAILURE_CAUSE): cv.string,
-                    }
+                vol.Required(ATTR_EVENT_STATUS): vol.Any(
+                    vol.Schema(
+                        {
+                            vol.Required(ATTR_EVENT_TYPE): EventStatusType.DONE.value,
+                            vol.Required(ATTR_STATUS): vol.Any(
+                                *map(str, RemoteDoneEventStatus)
+                            ),
+                            vol.Optional(ATTR_FAILURE_CAUSE): cv.string,
+                        },
+                        extra=vol.ALLOW_EXTRA,
+                    ),
+                    vol.Schema(
+                        {
+                            vol.Required(
+                                ATTR_EVENT_TYPE
+                            ): EventStatusType.PENDING.value,
+                            vol.Required(ATTR_STATUS): cv.string,
+                        }
+                    ),
                 ),
             },
             extra=vol.ALLOW_EXTRA,

@@ -18,6 +18,7 @@ from .api import StellantisVehicle
 from .const import (
     ATTR_DAILY_RECURRENCE,
     ATTR_ENABLED,
+    ATTR_EVENT_TYPE,
     ATTR_FAILURE_CAUSE,
     ATTR_OCCURRENCE,
     ATTR_POSITION,
@@ -32,6 +33,8 @@ from .const import (
     SERVICE_SEND_NAVIGATION_POSITIONS,
     SERVICE_SET_PRECONDITIONING_PROGRAM,
     SERVICE_WAKE_UP,
+    EventStatusType,
+    RemoteDoneEventStatus,
 )
 from .coordinator import StellantisUpdateCoordinator
 from .helpers import preconditioning_program_setter_body
@@ -102,20 +105,27 @@ async def async_send_remote_requests(
         )
         return
 
-    with StellantisCallbackEvent(
-        hass, response_data[ATTR_REMOTE_ACTION_ID]
-    ) as callback_event:
-        try:
-            async with timeout(10):
-                event_status = await callback_event
-                if event_status[ATTR_STATUS] == "Failed":
-                    raise HomeAssistantError(
-                        f"Received error notification: {event_status[ATTR_FAILURE_CAUSE]}"
-                    )
-        except TimeoutError:
-            LOGGER.warning(
-                f"Status notification for {service_name} service was not received in time"
-            )
+    try:
+        async with timeout(10):
+            while True:
+                with StellantisCallbackEvent(
+                    hass, response_data[ATTR_REMOTE_ACTION_ID]
+                ) as callback_event:
+                    event_status = await callback_event
+                    match event_status[ATTR_EVENT_TYPE]:
+                        case EventStatusType.PENDING:
+                            continue
+                        case EventStatusType.DONE:
+                            match event_status[ATTR_STATUS]:
+                                case RemoteDoneEventStatus.FAILED:
+                                    raise HomeAssistantError(
+                                        f"Remote action failed. Cause: {event_status[ATTR_FAILURE_CAUSE]}"
+                                    )
+                    break
+    except TimeoutError:
+        LOGGER.warning(
+            f"Status notification for {service_name} service was not received in time"
+        )
 
 
 def transform_to_stellantis_time_schema(time: timedelta) -> str:
