@@ -49,27 +49,41 @@ class StellantisTrackerEntity(StellantisBaseEntity, TrackerEntity):
     @property
     def longitude(self) -> float | None:
         """Return longitude value of the vehicle."""
-        return self.get_from_vehicle_status("$.lastPosition.geometry.coordinates[0]")
+        try:
+            return self.get_from_vehicle_status(
+                "$.lastPosition.geometry.coordinates[0]"
+            )
+        except KeyError:
+            return None
 
     @property
     def latitude(self) -> float | None:
         """Return latitude value of the vehicle."""
-        return self.get_from_vehicle_status("$.lastPosition.geometry.coordinates[1]")
+        try:
+            return self.get_from_vehicle_status(
+                "$.lastPosition.geometry.coordinates[1]"
+            )
+        except KeyError:
+            return None
 
     @property
     def extra_state_attributes(self) -> Mapping[str, Any] | None:
         """Return device specific attributes."""
         attrs = {}
-        with contextlib.suppress(KeyError, IndexError):
-            attrs[ATTR_ALTITUDE] = self.get_from_vehicle_status(
-                "$.lastPosition.geometry.coordinates[2]"
-            )
-        with contextlib.suppress(KeyError):
-            attrs[ATTR_HEADING] = self.get_from_vehicle_status(
-                "$.lastPosition.properties.heading"
-            )
-        with contextlib.suppress(KeyError):
-            attrs[ATTR_SIGNAL_QUALITY] = self.get_from_vehicle_status(
-                "$.lastPosition.properties.signalQuality"
-            )
+        for attr, path in (
+            (ATTR_ALTITUDE, "geometry.coordinates[2]"),
+            (ATTR_HEADING, "properties.heading"),
+            (ATTR_SIGNAL_QUALITY, "properties.signalQuality"),
+        ):
+            with contextlib.suppress(KeyError, IndexError):
+                attrs[attr] = self.get_from_vehicle_status("$.lastPosition." + path)
         return attrs
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        try:
+            self.get_from_vehicle_status("$.lastPosition")
+            return super().available
+        except KeyError:
+            return False

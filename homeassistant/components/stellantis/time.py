@@ -91,6 +91,13 @@ class StellantisPreconditioningProgramStartTime(
         self._attr_native_value = None
 
     @property
+    def status_value(self):
+        """Return the state reported from the API."""
+        return self.get_from_vehicle_status(
+            f"$.preconditioning.airConditioning.programs[?(@.slot == {self.slot})]"
+        )
+
+    @property
     def native_value(self) -> time | None:
         """Return the value reported by the time."""
         if self._attr_native_value is not None:
@@ -98,9 +105,7 @@ class StellantisPreconditioningProgramStartTime(
             self._attr_native_value = None
             return ret
 
-        program = self.get_from_vehicle_status(
-            f"$.preconditioning.airConditioning.programs[?(@.slot == {self.slot})]"
-        )
+        program = self.status_value
         if (
             not program
             or ATTR_START not in program
@@ -113,10 +118,11 @@ class StellantisPreconditioningProgramStartTime(
     @property
     def available(self) -> bool:
         """Return available if the program exists."""
-        program = self.get_from_vehicle_status(
-            f"$.preconditioning.airConditioning.programs[?(@.slot == {self.slot})]"
-        )
-        return program and super().available
+        try:
+            _ = self.status_value
+        except KeyError:
+            return False
+        return super().available
 
     async def async_set_value(self, value: time) -> None:
         """Set the start of the preconditioning program."""
@@ -166,6 +172,13 @@ class StellantisChargingTime(StellantisBaseActionableEntity, TimeEntity):
         self._attr_native_value = None
 
     @property
+    def status_value(self):
+        """Return the state reported from the API."""
+        return self.get_from_vehicle_status(
+            "$.energies[?(@.type == 'Electric')].extension.electric.charging.nextDelayedTime"
+        )
+
+    @property
     def native_value(self) -> time | None:
         """Return the value reported by the time."""
         if self._attr_native_value is not None:
@@ -173,9 +186,7 @@ class StellantisChargingTime(StellantisBaseActionableEntity, TimeEntity):
             self._attr_native_value = None
             return ret
 
-        raw_value = self.get_from_vehicle_status(
-            "$.energies[?(@.type == 'Electric')].extension.electric.charging.nextDelayedTime"
-        )
+        raw_value = self.status_value
         if not raw_value or (value := dt_util.parse_duration(raw_value)) is None:
             return None
 
@@ -184,7 +195,11 @@ class StellantisChargingTime(StellantisBaseActionableEntity, TimeEntity):
     @property
     def available(self) -> bool:
         """Return available if the program exists."""
-        return (self.native_value is not None) and super().available
+        try:
+            _ = self.status_value
+        except KeyError:
+            return False
+        return super().available
 
     async def async_set_value(self, value: time) -> None:
         """Set the start of the charging program."""

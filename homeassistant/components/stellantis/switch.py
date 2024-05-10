@@ -109,7 +109,7 @@ class StellantisPreconditioningSwitch(StellantisBaseToggleEntity, SwitchEntity):
             ret = self._attr_is_on
             self._attr_is_on = None
             return ret
-        return None if not self.native_value else self.native_value == "Enabled"
+        return None if not self.status_value else self.status_value == "Enabled"
 
     @property
     def available(self) -> bool:
@@ -128,7 +128,10 @@ class StellantisPreconditioningSwitch(StellantisBaseToggleEntity, SwitchEntity):
         )
         if not electric_level:
             return False
-        doors_lock_state = self.get_from_vehicle_status("$.doorsState.lockedStates")
+        try:
+            doors_lock_state = self.get_from_vehicle_status("$.doorsState.lockedStates")
+        except KeyError:
+            doors_lock_state = None
         # If the door lock state does not exist we consider that doors are locked because we can't know the true state
         doors_locked = not doors_lock_state or doors_lock_state not in (
             "Locked",
@@ -180,17 +183,17 @@ class StellantisPreconditioningProgramSwitch(StellantisBaseToggleEntity, SwitchE
 
         Because API requires the whole program to be sent, we need to copy the program and set the enabled value.
         """
-        if not self.native_value:
+        if not self.status_value:
             raise HomeAssistantError(
                 f"Preconditioning program {self.slot} does not exists, define it first using stellantis.set_preconditioning_program service"
             )
-        self.native_value[ATTR_ENABLED] = enabled
-        return preconditioning_program_setter_body(self.native_value)
+        self.status_value[ATTR_ENABLED] = enabled
+        return preconditioning_program_setter_body(self.status_value)
 
     @property
     def is_on(self) -> bool | None:
         """Return if the preconditioning program is enabled."""
-        return None if not self.native_value else self.native_value["enabled"]
+        return None if not self.status_value else self.status_value["enabled"]
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Send a remote action to enable preconditioning program."""
@@ -205,7 +208,11 @@ class StellantisPreconditioningProgramSwitch(StellantisBaseToggleEntity, SwitchE
     @property
     def available(self) -> bool:
         """Return available if the program exists."""
-        return self.native_value and self.coordinator.last_update_success
+        try:
+            _ = self.status_value
+        except KeyError:
+            return False
+        return self.coordinator.last_update_success
 
 
 class StellantisDelayedChargeSwitch(StellantisBaseToggleEntity, SwitchEntity):
@@ -242,12 +249,12 @@ class StellantisDelayedChargeSwitch(StellantisBaseToggleEntity, SwitchEntity):
             ret = self._attr_is_on
             self._attr_is_on = None
             return ret
-        return None if not self.native_value else self.native_value == "Stopped"
+        return None if not self.status_value else self.status_value == "Stopped"
 
     @property
     def available(self) -> bool:
         """Return true if the the vehicle has is able to control the charge."""
-        return super().available and self.native_value in ("Stopped", "InProgress")
+        return super().available and self.status_value in ("Stopped", "InProgress")
 
 
 class StellantisPartialChargeSwitch(StellantisBaseToggleEntity, SwitchEntity):
@@ -284,9 +291,9 @@ class StellantisPartialChargeSwitch(StellantisBaseToggleEntity, SwitchEntity):
             ret = self._attr_is_on
             self._attr_is_on = None
             return ret
-        return None if not self.native_value else self.native_value == "Partial"
+        return None if not self.status_value else self.status_value == "Partial"
 
     @property
     def available(self) -> bool:
         """Return true if the the vehicle has is able to control the charge."""
-        return super().available and self.native_value in ("Stopped", "InProgress")
+        return super().available and self.status_value in ("Stopped", "InProgress")

@@ -68,6 +68,13 @@ class StellantisChargingPowerLevelNumber(StellantisBaseActionableEntity, NumberE
         )
 
     @property
+    def status_value(self):
+        """Return the state reported from the API."""
+        return self.get_from_vehicle_status(
+            "$.energies[?(@.type == 'Electric')].extension.electric.charging.chargingPowerLevel"
+        )
+
+    @property
     def native_value(self) -> float | None:
         """Return the current value."""
         if self._attr_native_value is not None:
@@ -75,9 +82,7 @@ class StellantisChargingPowerLevelNumber(StellantisBaseActionableEntity, NumberE
             self._attr_native_value = None
             return ret
 
-        str_value = self.get_from_vehicle_status(
-            "$.energies[?(@.type == 'Electric')].extension.electric.charging.chargingPowerLevel"
-        )
+        str_value = self.status_value
         try:
             return float(str_value.replace("Level", "")) if str_value else None
         except ValueError:
@@ -87,7 +92,11 @@ class StellantisChargingPowerLevelNumber(StellantisBaseActionableEntity, NumberE
     @property
     def available(self) -> bool:
         """Return available if the program exists."""
-        return (self.native_value is not None) and super().available
+        try:
+            _ = self.status_value
+        except KeyError:
+            return False
+        return super().available
 
     async def async_set_native_value(self, value: float) -> None:
         """Set the charging power level."""

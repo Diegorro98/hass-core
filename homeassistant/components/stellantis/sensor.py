@@ -393,7 +393,10 @@ class StellantisSensor(StellantisBaseEntity, SensorEntity):
     @property
     def native_value(self) -> StateType | datetime:
         """Calculate the sensor value from the entity description."""
-        value = self.get_from_vehicle_status(self.entity_description.value_path)
+        try:
+            value = self.get_from_vehicle_status(self.entity_description.value_path)
+        except KeyError:
+            return None
         if value:
             if self.entity_description.key == "fuel_consumption":
                 # Fuel consumption is in centiliters, convert it to liters
@@ -422,12 +425,18 @@ class StellantisPreconditioningProgramSensor(StellantisBaseEntity, SensorEntity)
     entity_description: StellantisPreconditioningSensorEntityDescription
 
     @property
-    def native_value(self) -> StateType | datetime:
-        """Calculate timestamp of the next time the preconditioning program will get activated."""
-        program = self.get_from_vehicle_status(
+    def status_value(self):
+        """Return the state reported from the API."""
+        return self.get_from_vehicle_status(
             f"$.preconditioning.airConditioning.programs[?(@.slot == {self.entity_description.slot})]"
         )
-        if not program:
+
+    @property
+    def native_value(self) -> StateType | datetime:
+        """Calculate timestamp of the next time the preconditioning program will get activated."""
+        try:
+            program = self.status_value
+        except KeyError:
             return None
 
         try:
@@ -444,10 +453,9 @@ class StellantisPreconditioningProgramSensor(StellantisBaseEntity, SensorEntity)
     @property
     def extra_state_attributes(self) -> Mapping[str, Any] | None:
         """Return the state attributes."""
-        program = self.get_from_vehicle_status(
-            f"$.preconditioning.airConditioning.programs[?(@.slot == {self.entity_description.slot})]"
-        )
-        if not program:
+        try:
+            program = self.status_value
+        except KeyError:
             return None
 
         return {
@@ -459,10 +467,11 @@ class StellantisPreconditioningProgramSensor(StellantisBaseEntity, SensorEntity)
     @property
     def available(self) -> bool:
         """Return available if the program exists."""
-        program = self.get_from_vehicle_status(
-            f"$.preconditioning.airConditioning.programs[?(@.slot == {self.entity_description.slot})]"
-        )
-        return program and super().available
+        try:
+            _ = self.status_value
+        except KeyError:
+            return False
+        return super().available
 
 
 def get_next_timestamp(time_on_day: str) -> datetime | None:
