@@ -1,7 +1,5 @@
 """Stellantis number platform."""
 
-from typing import Any
-
 from jsonpath import jsonpath
 
 from homeassistant.components.number import NumberEntity, NumberEntityDescription
@@ -42,7 +40,9 @@ async def async_setup_entry(
             )
 
 
-class StellantisChargingPowerLevelNumber(StellantisBaseActionableEntity, NumberEntity):
+class StellantisChargingPowerLevelNumber(
+    StellantisBaseActionableEntity[float], NumberEntity
+):
     """Representation of Stellantis charging power level number."""
 
     def __init__(
@@ -77,9 +77,9 @@ class StellantisChargingPowerLevelNumber(StellantisBaseActionableEntity, NumberE
     @property
     def native_value(self) -> float | None:
         """Return the current value."""
-        if self._attr_native_value is not None:
-            ret = self._attr_native_value
-            self._attr_native_value = None
+        if self._attr_remote_action_value is not None:
+            ret = self._attr_remote_action_value
+            self._attr_remote_action_value = None
             return ret
 
         str_value = self.status_value
@@ -105,8 +105,3 @@ class StellantisChargingPowerLevelNumber(StellantisBaseActionableEntity, NumberE
             value,
             "set the charging power level",
         )
-
-    def on_remote_action_success(self, state_if_success: Any) -> None:
-        """Handle the success of a remote action."""
-        self._attr_native_value = state_if_success
-        self.async_write_ha_state()

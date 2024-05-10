@@ -105,9 +105,9 @@ class StellantisPreconditioningSwitch(StellantisBaseToggleEntity, SwitchEntity):
     @property
     def is_on(self) -> bool | None:
         """Return the state of the charge."""
-        if self._attr_is_on is not None:
-            ret = self._attr_is_on
-            self._attr_is_on = None
+        if self._attr_remote_action_value is not None:
+            ret = self._attr_remote_action_value
+            self._attr_remote_action_value = None
             return ret
         return None if not self.status_value else self.status_value == "Enabled"
 
@@ -245,9 +245,9 @@ class StellantisDelayedChargeSwitch(StellantisBaseToggleEntity, SwitchEntity):
     @property
     def is_on(self) -> bool | None:
         """Return the state of the charge."""
-        if self._attr_is_on is not None:
-            ret = self._attr_is_on
-            self._attr_is_on = None
+        if self._attr_remote_action_value is not None:
+            ret = self._attr_remote_action_value
+            self._attr_remote_action_value = None
             return ret
         return None if not self.status_value else self.status_value == "Stopped"
 
@@ -287,9 +287,9 @@ class StellantisPartialChargeSwitch(StellantisBaseToggleEntity, SwitchEntity):
     @property
     def is_on(self) -> bool | None:
         """Return the state of the charge."""
-        if self._attr_is_on is not None:
-            ret = self._attr_is_on
-            self._attr_is_on = None
+        if self._attr_remote_action_value is not None:
+            ret = self._attr_remote_action_value
+            self._attr_remote_action_value = None
             return ret
         return None if not self.status_value else self.status_value == "Partial"
 
