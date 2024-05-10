@@ -170,7 +170,10 @@ class StellantisBinarySensor(StellantisBaseEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool | None:
         """Calculate the sensor value from the entity description."""
-        value = self.get_from_vehicle_status(self.entity_description.value_path)
+        try:
+            value = self.get_from_vehicle_status(self.entity_description.value_path)
+        except KeyError:
+            return None
         if isinstance(value, str):
             return value == self.entity_description.true_value
         return value

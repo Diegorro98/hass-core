@@ -61,12 +61,9 @@ class StellantisBaseEntity(CoordinatorEntity[StellantisUpdateCoordinator], Entit
 
     def get_from_vehicle_status(self, value_path: str) -> Any:
         """Return the vehicle status."""
-        try:
-            if matches := jsonpath(self.vehicle.status, value_path):
-                return matches[0]
-        except KeyError:
-            pass
-        return None
+        if matches := jsonpath(self.vehicle.status, value_path):
+            return matches[0]
+        raise KeyError(value_path)
 
     async def async_added_to_hass(self) -> None:
         """When entity is added to hass."""
@@ -160,7 +157,7 @@ class StellantisBaseToggleEntity(StellantisBaseActionableEntity, ToggleEntity):
         self.logger_action_off = logger_action_off
 
     @property
-    def native_value(self):
+    def status_value(self):
         """Return the state reported from the API."""
         return self.get_from_vehicle_status(self.value_path)
 
@@ -184,8 +181,12 @@ class StellantisBaseToggleEntity(StellantisBaseActionableEntity, ToggleEntity):
     @property
     def available(self) -> bool:
         """Return true if the vehicle is turned off."""
-        return (
-            self.get_from_vehicle_status("$.ignition.type") == "Stop"
-            and (not self.value_path or self.native_value)
-            and super().available
-        )
+        if self.get_from_vehicle_status("$.ignition.type") == "Stop":
+            if not self.value_path:
+                return super().available
+            try:
+                _ = self.status_value
+            except KeyError:
+                return False
+            return super().available
+        return False

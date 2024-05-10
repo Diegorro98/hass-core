@@ -133,24 +133,34 @@ class StellantisDoorsLock(StellantisBaseEntity, LockEntity):
                 )
 
     @property
+    def status_value(self):
+        """Return the state reported from the API."""
+        return self.get_from_vehicle_status("$.doorsState.lockedStates")
+
+    @property
     def is_locked(self) -> bool | None:
         """Return the lock state of the doors."""
         if self._attr_is_locked is not None:
             ret = self._attr_is_locked
             self._attr_is_locked = None
             return ret
-        locked_states = self.get_from_vehicle_status("$.doorsState.lockedStates")
-        if locked_states:
-            if ("Locked", "SuperLocked") in locked_states:
-                return True
-            if "Unlocked" in locked_states:
-                return False
+
+        try:
+            locked_states = self.status_value
+            if locked_states:
+                if ("Locked", "SuperLocked") in locked_states:
+                    return True
+                if "Unlocked" in locked_states:
+                    return False
+        except KeyError:
+            pass
         return None
 
     @property
     def available(self) -> bool:
         """Return true if the vehicle is turned off."""
-        return (
-            self.get_from_vehicle_status("$.ignition.type") == "Stop"
-            and super().available
-        )
+        try:
+            _ = self.status_value
+        except KeyError:
+            return False
+        return super().available
