@@ -20,12 +20,15 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api import StellantisVehicle
 from .const import (
+    ATTR_EVENT_TYPE,
     ATTR_FAILURE_CAUSE,
     ATTR_REMOTE_ACTION_ID,
     ATTR_STATUS,
     CONF_CALLBACK_ID,
     DOMAIN,
     LOGGER,
+    EventStatusType,
+    RemoteDoneEventStatus,
 )
 from .coordinator import StellantisUpdateCoordinator
 from .webhook import StellantisCallbackEvent
@@ -108,21 +111,28 @@ class StellantisBaseActionableEntity(StellantisBaseEntity):
                 f"The remote action to {logger_action} will not be tracked as the remote action ID is missing from the API response"
             )
 
-        with StellantisCallbackEvent(
-            self.hass, response_data[ATTR_REMOTE_ACTION_ID]
-        ) as callback_event:
-            try:
-                async with timeout(10):
-                    event_status = await callback_event
-                    if event_status[ATTR_STATUS] == "Failed":
-                        raise HomeAssistantError(
-                            f"Remote action failed. Cause: {event_status[ATTR_FAILURE_CAUSE]}"
-                        )
-                    self.on_remote_action_success(state_if_success)
-            except TimeoutError:
-                LOGGER.warning(
-                    f"Confirmation of the remote action to {logger_action} was not received in time"
-                )
+        try:
+            async with timeout(10):
+                while True:
+                    with StellantisCallbackEvent(
+                        self.hass, response_data[ATTR_REMOTE_ACTION_ID]
+                    ) as callback_event:
+                        event_status = await callback_event
+                        match event_status[ATTR_EVENT_TYPE]:
+                            case EventStatusType.PENDING:
+                                continue
+                            case EventStatusType.DONE:
+                                match event_status[ATTR_STATUS]:
+                                    case RemoteDoneEventStatus.FAILED:
+                                        raise HomeAssistantError(
+                                            f"Remote action failed. Cause: {event_status.get(ATTR_FAILURE_CAUSE, "Not specified")}"
+                                        )
+                                self.on_remote_action_success(state_if_success)
+                        break
+        except TimeoutError:
+            LOGGER.warning(
+                f"Confirmation of the remote action to {logger_action} was not received in time"
+            )
 
 
 class StellantisBaseToggleEntity(StellantisBaseActionableEntity, ToggleEntity):
