@@ -116,6 +116,10 @@ class StellantisBaseActionableEntity(StellantisBaseEntity, Generic[T]):
                         event_status = await callback_event
                         match event_status[ATTR_EVENT_TYPE]:
                             case EventStatusType.PENDING:
+                                LOGGER.debug(
+                                    "Pending notification received from remote action, reason: %s",
+                                    event_status.get(ATTR_STATUS, "Not specified"),
+                                )
                                 continue
                             case EventStatusType.DONE:
                                 match event_status[ATTR_STATUS]:
