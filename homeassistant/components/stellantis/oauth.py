@@ -1,5 +1,6 @@
 """oAuth2 functions and classes for Stellantis API integration."""
 
+from http import HTTPStatus
 from typing import Any, cast
 
 from aiohttp import BasicAuth, client
@@ -12,6 +13,7 @@ from homeassistant.components.application_credentials import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.config_entry_oauth2_flow import OAuth2Session, _encode_jwt
 
@@ -22,7 +24,7 @@ class StellantisOauth2Implementation(AuthImplementation):
     """Local OAuth2 implementation for Stellantis."""
 
     def __init__(self, hass: HomeAssistant, domain: str, brand: Brand) -> None:
-        """Local Geocaching Stellantis Implementation."""
+        """Stellantis Oauth Implementation."""
         match brand:
             case Brand.CITROEN:
                 client_credential = ClientCredential(
@@ -111,8 +113,13 @@ class StellantisOauth2Implementation(AuthImplementation):
             headers={"Content-Type": "application/x-www-form-urlencoded"},
             auth=BasicAuth(self.client_id, self.client_secret),
         )
+        json = await resp.json()
+        if not resp.ok and resp.status < 500:
+            raise ConfigEntryAuthFailed(
+                json.get("error_description", json.get("moreInformation", "Unknown"))
+            )
         resp.raise_for_status()
-        return cast(dict, await resp.json())
+        return cast(dict, json)
 
     async def async_generate_authorize_url_with_country_code(
         self, flow_id: str, country_code: str
@@ -174,7 +181,7 @@ class StellantisOAuth2Session(OAuth2Session):
         """Make a request to Stellantis api."""
         headers = kwargs.pop("headers", {})
         params = kwargs.pop("params", {})
-        return await super().async_request(
+        resp = await super().async_request(
             method,
             url,
             **kwargs,
@@ -187,6 +194,12 @@ class StellantisOAuth2Session(OAuth2Session):
                 "x-introspect-realm": self.implementation.realm,
             },
         )
+        if resp.status == HTTPStatus.UNAUTHORIZED and self.valid_token:
+            json = await resp.json()
+            raise ConfigEntryAuthFailed(
+                json.get("error_description", json.get("moreInformation", "Unknown"))
+            )
+        return resp
 
     async def async_request_to_path(
         self, method: str, path: str, **kwargs: Any

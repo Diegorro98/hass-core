@@ -133,7 +133,11 @@ async def async_ensure_reusable_callback_created(
                 "No external URL available, services and controls will not work as they require an url for the callbacks: %s",
             )
             return
-    webhook_register(hass, entry.domain, entry.title, webhook_id, handle_webhook)
+    try:
+        webhook_register(hass, entry.domain, entry.title, webhook_id, handle_webhook)
+    except ValueError:
+        webhook_unregister(hass, webhook_id)
+        webhook_register(hass, entry.domain, entry.title, webhook_id, handle_webhook)
 
     if CONF_CALLBACK_ID in entry.data:
         callback_id = entry.data[CONF_CALLBACK_ID]
