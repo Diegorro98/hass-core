@@ -14,13 +14,21 @@
         "data": {
           "url": "[%key:common::config_flow::data::url%]"
         }
+      },
+      "reauth_confirm": {
+        "title": "Reauthentication required",
+        "description": "Home Assistant cannot connect to your {brand} account.\nPlease, select your country to continue with the re-authentication proccess.",
+        "data": {
+          "country": "[%key:component::stellantis::config::step::brand_country::data::country%]"
+        }
       }
     },
     "abort": {
       "invalid_brand_selected": "The brand selected is invalid. Please check that it has been correctly written and try again.",
       "no_brand_selected": "The brand is required. Please select a brand.",
       "no_country_selected": "The country is required. Please select a country.",
-      "invalid_url": "The url is invalid. Please check that it has been correctly pasted and try again."
+      "invalid_url": "The url is invalid. Please check that it has been correctly pasted and try again.",
+      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]"
     }
   },
   "entity": {
