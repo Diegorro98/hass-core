@@ -1,0 +1,225 @@
+{
+  "createdAt": "2019-08-24T14:15:22Z",
+  "updatedAt": "2019-08-24T14:15:22Z",
+  "ignition": {
+    "createdAt": "2019-08-24T14:15:22Z",
+    "type": "Stop"
+  },
+  "lastPosition": {
+    "type": "Feature",
+    "geometry": {
+      "coordinates": [5.970338, -62.536239],
+      "type": "Point"
+    },
+    "properties": {
+      "createdAt": "2019-08-24T14:15:22Z",
+      "heading": 360,
+      "signalQuality": 0,
+      "type": "Estimated",
+      "fixStatus": "2D"
+    }
+  },
+  "preconditioning": {
+    "airConditioning": {
+      "createdAt": "2019-08-24T14:15:22Z",
+      "updatedAt": "2019-08-24T14:15:22Z",
+      "status": "Disabled",
+      "startingCause": "Immediate",
+      "failureCause": "Defect",
+      "programs": [
+        {
+          "start": "PT14H30M",
+          "occurence": {
+            "day": ["Mon"]
+          },
+          "recurrence": "None",
+          "enabled": true,
+          "slot": 1
+        }
+      ]
+    }
+  },
+  "energies": [
+    {
+      "extension": {
+        "fuel": {
+          "consumptions": {
+            "total": 0,
+            "instant": 0
+          }
+        }
+      },
+      "createdAt": "2019-08-24T14:15:22Z",
+      "type": "Fuel",
+      "subType": "FossilEnergy",
+      "level": 100,
+      "autonomy": 0
+    },
+    {
+      "extension": {
+        "electric": {
+          "battery": {
+            "load": {
+              "createdAt": "2019-08-24T14:15:22Z",
+              "capacity": 10,
+              "residual": 0
+            },
+            "health": {
+              "createdAt": "2019-08-24T14:15:22Z",
+              "capacity": 100,
+              "resistance": 100
+            }
+          },
+          "charging": {
+            "plugged": true,
+            "status": "Disconnected",
+            "remainingTime": "PT6H30M",
+            "chargingRate": 500,
+            "chargingPowerLevel": "Level1",
+            "chargingMode": "No",
+            "nextDelayedTime": "PT14H30M",
+            "schedule": {
+              "programs": [
+                {
+                  "start": "PT14H30M",
+                  "occurence": {
+                    "day": ["Mon"]
+                  },
+                  "enabled": true,
+                  "end": "PT14H30M",
+                  "chargeUntilFull": true
+                }
+              ]
+            },
+            "type": "Partial"
+          }
+        }
+      },
+      "createdAt": "2019-08-24T14:15:22Z",
+      "type": "Electric",
+      "subType": "ElectricEnergy",
+      "level": 100,
+      "autonomy": 0
+    }
+  ],
+  "engines": [
+    {
+      "createdAt": "2019-08-24T14:15:22Z",
+      "type": "Thermic",
+      "speed": 0,
+      "extension": {
+        "thermic": {
+          "coolant": {
+            "level": 100,
+            "temp": 0
+          },
+          "oil": {
+            "level": 100,
+            "temp": 0
+          },
+          "air": {
+            "temp": 0
+          }
+        }
+      }
+    }
+  ],
+  "powertrain": {
+    "createdAt": "2019-08-24T14:15:22Z",
+    "status": "NotRunning"
+  },
+  "doorsState": {
+    "createdAt": "2019-08-24T14:15:22Z",
+    "lockedStates": ["Unlocked"],
+    "opening": [
+      {
+        "identifier": "Driver",
+        "state": "Open"
+      }
+    ]
+  },
+  "privacy": {
+    "createdAt": "2019-08-24T14:15:22Z",
+    "state": "None"
+  },
+  "battery": {
+    "createdAt": "2019-08-24T14:15:22Z",
+    "voltage": 0
+  },
+  "safety": {
+    "createdAt": "2019-08-24T14:15:22Z",
+    "beltStatus": [
+      {
+        "belt": "Normal",
+        "id": "Driver"
+      }
+    ],
+    "autoECallTriggering": "NotDetected"
+  },
+  "odometer": {
+    "createdAt": "2019-08-24T14:15:22Z",
+    "mileage": 12978.9
+  },
+  "kinetic": {
+    "createdAt": "2019-08-24T14:15:22Z",
+    "acceleration": 0,
+    "speed": 0,
+    "moving": true
+  },
+  "environment": {
+    "luminosity": {
+      "createdAt": "2019-08-24T14:15:22Z",
+      "day": true
+    },
+    "air": {
+      "createdAt": "2019-08-24T14:15:22Z",
+      "temp": 33.3
+    }
+  },
+  "drivingBehavior": {
+    "createdAt": "2019-08-24T14:15:22Z",
+    "mode": "Normal"
+  },
+  "lightingSystem": {
+    "createdAt": "2019-08-24T14:15:22Z",
+    "turn": [
+      {
+        "direction": "Left",
+        "position": "Front",
+        "status": "Off"
+      }
+    ],
+    "fog": [
+      {
+        "direction": "Left",
+        "position": "Front",
+        "status": "Off"
+      }
+    ]
+  },
+  "alarm": {
+    "trigger": {
+      "createdAt": "2019-08-24T14:15:22Z",
+      "type": "NoBreakIn",
+      "position": {
+        "type": "Feature",
+        "geometry": {
+          "coordinates": [5.970338, -62.536239],
+          "type": "Point"
+        },
+        "properties": {
+          "createdAt": "2019-08-24T14:15:22Z",
+          "heading": 360,
+          "signalQuality": 0,
+          "type": "Estimated",
+          "fixStatus": "2D"
+        }
+      },
+      "startAt": "2019-08-24T14:15:22Z"
+    },
+    "status": {
+      "createdAt": "2019-08-24T14:15:22Z",
+      "activation": "Active"
+    }
+  }
+}

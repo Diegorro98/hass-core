@@ -114,7 +114,7 @@ class StellantisOauth2Implementation(AuthImplementation):
             auth=BasicAuth(self.client_id, self.client_secret),
         )
         json = await resp.json()
-        if not resp.ok and resp.status < 500:
+        if resp.status >= 400 and resp.status < 500:
             raise ConfigEntryAuthFailed(
                 json.get("error_description", json.get("moreInformation", "Unknown"))
             )
