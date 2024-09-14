@@ -46,6 +46,11 @@
       "refrigeration-common-setting-wine_compartment3-setpoint_temperature": {
         "name": "Wine compartment 3 temperature"
       }
+    },
+    "time": {
+      "bsh-common-setting-alarm_clock": {
+        "name": "Alarm clock"
+      }
     }
   },
   "services": {
