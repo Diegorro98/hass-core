@@ -17,6 +17,37 @@
       "default": "[%key:common::config_flow::create_entry::authenticated%]"
     }
   },
+  "entity": {
+    "number": {
+      "refrigeration-fridge_freezer-setting-setpoint_temperature_refrigerator": {
+        "name": "Refrigerator temperature"
+      },
+      "refrigeration-fridge_freezer-setting-setpoint_temperature_freezer": {
+        "name": "Freezer temperature"
+      },
+      "refrigeration-common-setting-bottle_cooler-setpoint_temperature": {
+        "name": "Bottle cooler temperature"
+      },
+      "refrigeration-common-setting-chiller_left-setpoint_temperature": {
+        "name": "Chiller left temperature"
+      },
+      "refrigeration-common-setting-chiller_common-setpoint_temperature": {
+        "name": "Chiller temperature"
+      },
+      "refrigeration-common-setting-chiller_right-setpoint_temperature": {
+        "name": "Chiller right temperature"
+      },
+      "refrigeration-common-setting-wine_compartment-setpoint_temperature": {
+        "name": "Wine compartment temperature"
+      },
+      "refrigeration-common-setting-wine_compartment2-setpoint_temperature": {
+        "name": "Wine compartment 2 temperature"
+      },
+      "refrigeration-common-setting-wine_compartment3-setpoint_temperature": {
+        "name": "Wine compartment 3 temperature"
+      }
+    }
+  },
   "services": {
     "start_program": {
       "name": "Start program",
