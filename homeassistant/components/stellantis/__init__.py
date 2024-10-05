@@ -1,5 +1,6 @@
 """Stellantis integration."""
 
+import asyncio
 from asyncio import timeout
 from dataclasses import dataclass
 from http import HTTPStatus
@@ -17,7 +18,14 @@ from homeassistant.helpers.config_entry_oauth2_flow import OAuth2Session
 from homeassistant.helpers.network import NoURLAvailableError, get_url
 from homeassistant.helpers.typing import ConfigType
 
-from .const import CONF_BRAND, CONF_CALLBACK_ID, DOMAIN, LOGGER, Brand
+from .const import (
+    CONF_BRAND,
+    CONF_CALLBACK_ID,
+    CONF_CLOUDHOOK_URL,
+    DOMAIN,
+    LOGGER,
+    Brand,
+)
 from .coordinator import StellantisUpdateCoordinator
 from .oauth import StellantisOauth2Implementation, StellantisOAuth2Session
 from .services import async_setup_hass_services
@@ -37,6 +45,8 @@ PLATFORMS = [
 
 CONFIG_SCHEMA = cv.empty_config_schema(DOMAIN)
 PLATFORM_SCHEMA = cv.platform_only_config_schema(DOMAIN)
+
+_CLOUD_HOOK_LOCK = asyncio.Lock()
 
 
 @dataclass
@@ -121,9 +131,30 @@ async def async_ensure_reusable_callback_created(
 ) -> None:
     """Get or create a callback on Stellantis server."""
     webhook_id = entry.data[CONF_WEBHOOK_ID]
-    if cloud.async_active_subscription(hass) and cloud.async_is_connected(hass):
-        webhook_url = await cloud.async_get_or_create_cloudhook(hass, webhook_id)
+    webhook_register(hass, entry.domain, entry.title, webhook_id, handle_webhook)
+    webhook_url: str | None = None
+
+    async def async_create_cloud_hook_url() -> str:
+        async with _CLOUD_HOOK_LOCK:
+            cloudhook_url = await cloud.async_get_or_create_cloudhook(hass, webhook_id)
+            hass.config_entries.async_update_entry(
+                entry, data={**entry.data, CONF_CLOUDHOOK_URL: webhook_url}
+            )
+            return cloudhook_url
+
+    if cloud.async_is_logged_in(hass):
+        if (
+            CONF_CLOUDHOOK_URL not in entry.data
+            and cloud.async_active_subscription(hass)
+            and cloud.async_is_connected(hass)
+        ):
+            async with _CLOUD_HOOK_LOCK:
+                webhook_url = await async_create_cloud_hook_url()
     else:
+        if CONF_CLOUDHOOK_URL in entry.data:
+            data = dict(entry.data)
+            data.pop(CONF_CLOUDHOOK_URL)
+            hass.config_entries.async_update_entry(entry, data=data)
         try:
             webhook_url = (
                 f"{get_url(hass, allow_internal=False)}/api/webhook/{webhook_id}"
@@ -133,63 +164,74 @@ async def async_ensure_reusable_callback_created(
                 "No external URL available, services and controls will not work as they require an url for the callbacks: %s",
             )
             return
-    try:
-        webhook_register(hass, entry.domain, entry.title, webhook_id, handle_webhook)
-    except ValueError:
-        webhook_unregister(hass, webhook_id)
-        webhook_register(hass, entry.domain, entry.title, webhook_id, handle_webhook)
 
-    if CONF_CALLBACK_ID in entry.data:
-        callback_id = entry.data[CONF_CALLBACK_ID]
+    async def async_create_or_update_callback(webhook_url: str) -> None:
+        if CONF_CALLBACK_ID in entry.data:
+            callback_id = entry.data[CONF_CALLBACK_ID]
+            async with timeout(10):
+                response = await session.async_request_to_path(
+                    "GET",
+                    "/user/callbacks/" + callback_id,
+                )
+            if response.status == HTTPStatus.OK:
+                json = await response.json()
+                if (
+                    json["subscribe"]["callback"]["webhook"]["target"] != webhook_url
+                    or "Remote" not in json["subscribe"]["type"]
+                ):
+                    async with timeout(10):
+                        response = await session.async_request_to_path(
+                            "PUT",
+                            "/user/callbacks/" + callback_id,
+                            json=create_callback_data(webhook_url),
+                        )
+                return
+
+            if response.status != HTTPStatus.NOT_FOUND:
+                LOGGER.error(
+                    "Failed to get callback with id %s, some functionalities will be limited",
+                    callback_id,
+                )
+                LOGGER.debug(
+                    "Status: %i Response: %s", response.status, await response.json()
+                )
+                return
+
         async with timeout(10):
             response = await session.async_request_to_path(
-                "GET",
-                "/user/callbacks/" + callback_id,
+                "POST",
+                "/user/callbacks",
+                json=create_callback_data(webhook_url),
             )
-        if response.status == HTTPStatus.OK:
-            json = await response.json()
-            if (
-                json["subscribe"]["callback"]["webhook"]["target"] != webhook_url
-                or "Remote" not in json["subscribe"]["type"]
-            ):
-                async with timeout(10):
-                    response = await session.async_request_to_path(
-                        "PUT",
-                        "/user/callbacks/" + callback_id,
-                        json=create_callback_data(webhook_url),
-                    )
-            return
+            if response.status == HTTPStatus.ACCEPTED:
+                json = await response.json()
+                hass.config_entries.async_update_entry(
+                    entry,
+                    data={**entry.data, CONF_CALLBACK_ID: json["callbackId"]},
+                )
+                LOGGER.debug("Callback created with id %s", json["callbackId"])
+            else:
+                LOGGER.error(
+                    "Failed to create callback, some functionalities will be limited"
+                )
+                LOGGER.debug(
+                    "Status: %i Response: %s", response.status, await response.json()
+                )
 
-        if response.status != HTTPStatus.NOT_FOUND:
-            LOGGER.error(
-                "Failed to get callback with id %s, some functionalities will be limited",
-                callback_id,
-            )
-            LOGGER.debug(
-                "Status: %i Response: %s", response.status, await response.json()
-            )
-            return
+    if webhook_url:
+        await async_create_or_update_callback(webhook_url)
 
-    async with timeout(10):
-        response = await session.async_request_to_path(
-            "POST",
-            "/user/callbacks",
-            json=create_callback_data(webhook_url),
-        )
-        if response.status == HTTPStatus.ACCEPTED:
-            json = await response.json()
-            hass.config_entries.async_update_entry(
-                entry,
-                data={**entry.data, CONF_CALLBACK_ID: json["callbackId"]},
-            )
-            LOGGER.debug("Callback created with id %s", json["callbackId"])
-        else:
-            LOGGER.error(
-                "Failed to create callback, some functionalities will be limited"
-            )
-            LOGGER.debug(
-                "Status: %i Response: %s", response.status, await response.json()
-            )
+    async def async_manage_cloudhook(state: cloud.CloudConnectionState) -> None:
+        if (
+            state is cloud.CloudConnectionState.CLOUD_CONNECTED
+            and CONF_CLOUDHOOK_URL not in entry.data
+        ):
+            cloudhook_url = await async_create_cloud_hook_url()
+            await async_create_or_update_callback(cloudhook_url)
+
+    entry.async_on_unload(
+        cloud.async_listen_connection_change(hass, async_manage_cloudhook)
+    )
 
 
 def create_callback_data(webhook_url: str) -> dict:
