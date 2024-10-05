@@ -7,6 +7,7 @@ API_ENDPOINT = "https://api.groupe-psa.com/connectedcar/v4"
 
 CONF_BRAND = "brand"
 CONF_CALLBACK_ID = "callback_id"
+CONF_CLOUDHOOK_URL = "cloudhook_url"
 
 ATTR_ALTITUDE = "altitude"
 ATTR_ENABLED = "enabled"
