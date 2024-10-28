@@ -7,13 +7,13 @@ from jsonpath import jsonpath
 from homeassistant.components.time import TimeEntity, TimeEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
 from . import HomeAssistantStellantisData
 from .api import StellantisVehicle
-from .const import ATTR_START, DOMAIN
+from .const import ATTR_START, DOMAIN, SVE_TRANSLATION_PLACEHOLDER_SLOT
 from .coordinator import StellantisUpdateCoordinator
 from .entity import StellantisBaseActionableEntity
 from .helpers import preconditioning_program_setter_body
@@ -130,8 +130,12 @@ class StellantisPreconditioningProgramStartTime(
         )
 
         if not program:
-            raise HomeAssistantError(
-                f"Preconditioning program {self.slot} does not exists, define it first using stellantis.set_preconditioning_program service"
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="preconditioning_program_not_defined",
+                translation_placeholders={
+                    SVE_TRANSLATION_PLACEHOLDER_SLOT: str(self.slot)
+                },
             )
 
         program[ATTR_START] = f"PT{value.hour}H{value.minute}M"

@@ -8,9 +8,9 @@ from typing import Any, Self
 from aiohttp import ClientError
 from aiohttp.client_exceptions import ClientResponseError
 
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import ServiceValidationError
 
-from .const import LOGGER
+from .const import DOMAIN, LOGGER
 from .oauth import StellantisOAuth2Session
 
 
@@ -138,10 +138,9 @@ class StellantisApi:
                 json={"label": "hass_remote_action", **request_body},
             )
         if response.status != HTTPStatus.ACCEPTED:
-            LOGGER.debug(
-                f"More info about the exception that is after this log:\n\tHTTP response code: {response.status}\n\tHTTP Response: {await response.text()}"
-            )
-            raise HomeAssistantError(
-                f"Remote action not accepted (HTTP response code {response.status})"
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="remote_request_not_accepted",
+                translation_placeholders=await response.json(),
             )
         return await response.json()

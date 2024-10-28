@@ -380,6 +380,38 @@
       }
     }
   },
+  "exceptions": {
+    "preconditioning_program_not_defined": {
+      "message": "Preconditioning program {slot} is not defined, define it first using \"stellantis.set_preconditioning_program\" service"
+    },
+    "remote_request_callback_not_found": {
+      "message": "Callback has not been setup for config entry with ID \"{config_entry_id}\", probably because external URL is not configured"
+    },
+    "remote_request_config_entry_not_found": {
+      "message": "Config entry with ID \"{config_entry_id}\" not found"
+    },
+    "remote_request_device_not_found": {
+      "message": "Device with ID \"{device_id}\" not found"
+    },
+    "remote_request_vehicle_not_found": {
+      "message": "Vehicle with VIN \"{vin}\" not found"
+    },
+    "remote_request_vehicle_status_not_found": {
+      "message": "Vehicle status not found for \"{vehicle_name}\" (VIN: {vin})"
+    },
+    "remote_request_preconditioning_programs_not_found": {
+      "message": "Preconditioning programs not found for \"{vehicle_name}\" (VIN \"{vin}\"). Maybe this vehicle does not support preconditioning programs."
+    },
+    "remote_request_new_preconditioning_program_missing_fields": {
+      "message": "To define a new program, all fields are required"
+    },
+    "remote_request_failed": {
+      "message": "Remote action failed. Cause: {failure_cause}"
+    },
+    "remote_request_not_accepted": {
+      "message": "Remote action not accepted (error code {code}): {message}"
+    }
+  },
   "selector": {
     "weekdays": {
       "options": {

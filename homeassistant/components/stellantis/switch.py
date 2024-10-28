@@ -7,12 +7,12 @@ from jsonpath import jsonpath
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import HomeAssistantStellantisData
 from .api import StellantisVehicle
-from .const import ATTR_ENABLED, DOMAIN
+from .const import ATTR_ENABLED, DOMAIN, SVE_TRANSLATION_PLACEHOLDER_SLOT
 from .coordinator import StellantisUpdateCoordinator
 from .entity import StellantisBaseToggleEntity
 from .helpers import preconditioning_program_setter_body
@@ -184,8 +184,12 @@ class StellantisPreconditioningProgramSwitch(StellantisBaseToggleEntity, SwitchE
         Because API requires the whole program to be sent, we need to copy the program and set the enabled value.
         """
         if not self.status_value:
-            raise HomeAssistantError(
-                f"Preconditioning program {self.slot} does not exists, define it first using stellantis.set_preconditioning_program service"
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="preconditioning_program_not_defined",
+                translation_placeholders={
+                    SVE_TRANSLATION_PLACEHOLDER_SLOT: str(self.slot)
+                },
             )
         self.status_value[ATTR_ENABLED] = enabled
         return preconditioning_program_setter_body(self.status_value)

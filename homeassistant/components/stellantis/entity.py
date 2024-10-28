@@ -7,7 +7,7 @@ from jsonpath import jsonpath
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import (
     Entity,
@@ -124,8 +124,14 @@ class StellantisBaseActionableEntity(StellantisBaseEntity, Generic[T]):
                             case EventStatusType.DONE:
                                 match event_status[ATTR_STATUS]:
                                     case RemoteDoneEventStatus.FAILED:
-                                        raise HomeAssistantError(
-                                            f"Remote action failed. Cause: {event_status.get(ATTR_FAILURE_CAUSE, "Not specified")}"
+                                        raise ServiceValidationError(
+                                            translation_domain=DOMAIN,
+                                            translation_key="remote_request_failed",
+                                            translation_placeholders={
+                                                "failure_cause": event_status.get(
+                                                    ATTR_FAILURE_CAUSE, "Not specified"
+                                                )
+                                            },
                                         )
                                 self._attr_remote_action_value = state_if_success
                                 self.async_write_ha_state()

@@ -34,6 +34,8 @@ SERVICE_SEND_NAVIGATION_POSITIONS = "send_navigation_positions"
 SERVICE_SET_PRECONDITIONING_PROGRAM = "set_preconditioning_program"
 SERVICE_WAKE_UP = "wake_up"
 
+SVE_TRANSLATION_PLACEHOLDER_SLOT = "slot"
+
 LOGGER = logging.getLogger(__package__)
 
 

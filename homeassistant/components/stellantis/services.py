@@ -10,7 +10,7 @@ import voluptuous as vol
 
 from homeassistant.const import ATTR_DEVICE_ID, ATTR_LATITUDE, ATTR_LONGITUDE
 from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import device_registry as dr
 import homeassistant.helpers.config_validation as cv
 
@@ -40,6 +40,10 @@ from .coordinator import StellantisUpdateCoordinator
 from .helpers import preconditioning_program_setter_body
 from .webhook import StellantisCallbackEvent
 
+SVE_TRANSLATION_PLACEHOLDER_CONFIG_ENTRY_ID = "config_entry_id"
+SVE_TRANSLATION_PLACEHOLDER_DEVICE_ID = "device_id"
+SVE_TRANSLATION_PLACEHOLDER_VIN = "vin"
+
 SCHEDULE_SCHEMA: dict[vol.Marker, Any] = {
     vol.Optional(ATTR_ENABLED): cv.boolean,
     vol.Optional(ATTR_START): cv.time_period_str,
@@ -61,24 +65,37 @@ async def async_send_remote_requests(
     service_name: str,
 ) -> None:
     """Send a remote request to the API and wait for the confirmation."""
-    device_id = call.data.get(ATTR_DEVICE_ID)
-    if device_id is None:
-        raise HomeAssistantError("Device ID not provided")
+    device_id = call.data[ATTR_DEVICE_ID]
     device_registry = dr.async_get(hass)
     device = device_registry.async_get(device_id)
     if device is None:
-        raise HomeAssistantError(f"Device not found: {device_id}")
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="remote_request_device_not_found",
+            translation_placeholders={SVE_TRANSLATION_PLACEHOLDER_DEVICE_ID: device_id},
+        )
     device_vin = device.identifiers.copy().pop()[1]
 
     config_entry_id = device.config_entries.copy().pop()
     config_entry = hass.config_entries.async_get_entry(config_entry_id)
     if config_entry is None:
-        raise HomeAssistantError("Config entry not found")
-    if CONF_CALLBACK_ID not in config_entry.data:
-        raise HomeAssistantError(
-            "Callback has not been setup, probably because external URL is not configured"
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="config_entry_not_found",
+            translation_placeholders={
+                SVE_TRANSLATION_PLACEHOLDER_CONFIG_ENTRY_ID: config_entry_id
+            },
         )
-    callback_id = config_entry.data[CONF_CALLBACK_ID]
+    callback_id = config_entry.data.get(CONF_CALLBACK_ID)
+    if not callback_id:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="remote_request_callback_not_found",
+            translation_placeholders={
+                SVE_TRANSLATION_PLACEHOLDER_CONFIG_ENTRY_ID: config_entry_id
+            },
+        )
+
     coordinator: StellantisUpdateCoordinator = hass.data[DOMAIN][
         config_entry_id
     ].coordinator
@@ -90,7 +107,11 @@ async def async_send_remote_requests(
             break
 
     if vehicle is None:
-        raise HomeAssistantError(f"Vehicle not found: {device_vin}")
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="remote_request_vehicle_not_found",
+            translation_placeholders={SVE_TRANSLATION_PLACEHOLDER_VIN: device_vin},
+        )
 
     async with timeout(10):
         response_data = await coordinator.api.async_send_remote_action(
@@ -122,8 +143,14 @@ async def async_send_remote_requests(
                         case EventStatusType.DONE:
                             match event_status[ATTR_STATUS]:
                                 case RemoteDoneEventStatus.FAILED:
-                                    raise HomeAssistantError(
-                                        f"Remote action failed. Cause: {event_status[ATTR_FAILURE_CAUSE]}"
+                                    raise ServiceValidationError(
+                                        translation_domain=DOMAIN,
+                                        translation_key="remote_request_failed",
+                                        translation_placeholders={
+                                            "failure_cause": event_status.get(
+                                                ATTR_FAILURE_CAUSE, "Not specified"
+                                            )
+                                        },
                                     )
                     break
     except TimeoutError:
@@ -190,19 +217,29 @@ async def async_setup_hass_services(hass: HomeAssistant) -> None:
 
     async def async_set_preconditioning_program_service(call: ServiceCall) -> None:
         """Handle the service call."""
-        device_id = call.data.get(ATTR_DEVICE_ID)
-        if device_id is None:
-            raise HomeAssistantError("Device ID not provided")
+        device_id = call.data[ATTR_DEVICE_ID]
         device_registry = dr.async_get(hass)
         device = device_registry.async_get(device_id)
         if device is None:
-            raise HomeAssistantError(f"Device not found: {device_id}")
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="remote_request_device_not_found",
+                translation_placeholders={
+                    SVE_TRANSLATION_PLACEHOLDER_DEVICE_ID: device_id
+                },
+            )
         device_vin = device.identifiers.copy().pop()[1]
 
         config_entry_id = device.config_entries.copy().pop()
         config_entry = hass.config_entries.async_get_entry(config_entry_id)
         if config_entry is None:
-            raise HomeAssistantError("Config entry not found")
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="config_entry_not_found",
+                translation_placeholders={
+                    SVE_TRANSLATION_PLACEHOLDER_CONFIG_ENTRY_ID: config_entry_id
+                },
+            )
         coordinator: StellantisUpdateCoordinator = hass.data[DOMAIN][
             config_entry_id
         ].coordinator
@@ -213,14 +250,25 @@ async def async_setup_hass_services(hass: HomeAssistant) -> None:
                 vehicle_status = vehicle.status
                 break
         if vehicle_status is None:
-            raise HomeAssistantError(f"Vehicle status not found: {device_vin}")
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="remote_request_vehicle_status_not_found",
+                translation_placeholders={SVE_TRANSLATION_PLACEHOLDER_VIN: device_vin},
+            )
 
         programs: list[dict[str, Any]] = jsonpath(
             vehicle_status,
             "$.preconditioning.airConditioning.programs[*]",
         )
         if not programs:
-            raise HomeAssistantError("Preconditioning programs not found")
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="remote_request_preconditioning_programs_not_found",
+                translation_placeholders={
+                    "vehicle_name": device.name or "Unknown",
+                    SVE_TRANSLATION_PLACEHOLDER_VIN: device_vin,
+                },
+            )
 
         program_to_set = None
         for program in programs:
@@ -237,8 +285,9 @@ async def async_setup_hass_services(hass: HomeAssistant) -> None:
                     ATTR_DAILY_RECURRENCE,
                 )
             ):
-                raise HomeAssistantError(
-                    "To create a new program, all fields are required"
+                raise ServiceValidationError(
+                    translation_domain=DOMAIN,
+                    translation_key="remote_request_new_preconditioning_program_missing_fields",
                 )
             program_to_set = {"slot": call.data[ATTR_PROGRAM_NUMBER]}
 
