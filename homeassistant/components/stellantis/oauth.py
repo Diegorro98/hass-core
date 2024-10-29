@@ -1,6 +1,7 @@
 """oAuth2 functions and classes for Stellantis API integration."""
 
 from http import HTTPStatus
+import logging
 from typing import Any, cast
 
 from aiohttp import BasicAuth, client
@@ -18,6 +19,8 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.config_entry_oauth2_flow import OAuth2Session, _encode_jwt
 
 from .const import API_ENDPOINT, Brand
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class StellantisOauth2Implementation(AuthImplementation):
@@ -173,6 +176,7 @@ class StellantisOAuth2Session(OAuth2Session):
         implementation: StellantisOauth2Implementation,
     ) -> None:
         """Initialize Stellantis OAuth2 session."""
+        self.auth_fails: int = 0
         super().__init__(hass, config_entry, implementation)
 
     async def async_request(
@@ -196,9 +200,17 @@ class StellantisOAuth2Session(OAuth2Session):
         )
         if resp.status == HTTPStatus.UNAUTHORIZED and self.valid_token:
             json = await resp.json()
-            raise ConfigEntryAuthFailed(
+            msg = (
                 json.get("error_description", json.get("moreInformation", "Unknown"))
+                + f" (HTTP code :{resp.status})"
             )
+            if self.auth_fails < 4:
+                _LOGGER.warning(
+                    "Attempt number %d to refresh token. %s", self.auth_fails + 1, msg
+                )
+            else:
+                raise ConfigEntryAuthFailed(msg)
+        self.auth_fails = 0
         return resp
 
     async def async_request_to_path(
