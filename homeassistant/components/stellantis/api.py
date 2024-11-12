@@ -112,11 +112,24 @@ class StellantisApi:
         self, vehicle: StellantisVehicle
     ) -> dict[str, Any] | None:
         """Get vehicle data."""
-        async with timeout(10):
-            response = await self.session.async_request_to_path(
-                "GET",
-                f"/user/vehicles/{vehicle.details.id}/status",
-            )
+        for attempt in range(4):
+            try:
+                async with timeout(10):
+                    response = await self.session.async_request_to_path(
+                        "GET",
+                        f"/user/vehicles/{vehicle.details.id}/status",
+                    )
+                    break
+            except (TimeoutError, ClientError) as error:
+                if attempt < 3:
+                    LOGGER.warning(
+                        "Attempt %d: Failed to get vehicle status for vehicle with VIN %s: %s",
+                        attempt + 1,
+                        vehicle.details.vin,
+                        error,
+                    )
+                else:
+                    raise
 
         if response.status != HTTPStatus.OK:
             LOGGER.error(
