@@ -3,7 +3,7 @@
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import DOMAIN
+from .const import DOMAIN
 from .coordinator import SmartyCoordinator
 
 
@@ -18,4 +18,6 @@ class SmartyEntity(CoordinatorEntity[SmartyCoordinator]):
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, coordinator.config_entry.entry_id)},
             manufacturer="Salda",
+            sw_version=self.coordinator.software_version,
+            hw_version=self.coordinator.configuration_version,
         )

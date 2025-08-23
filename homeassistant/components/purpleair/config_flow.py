@@ -17,7 +17,7 @@ from homeassistant.config_entries import (
     ConfigEntry,
     ConfigFlow,
     ConfigFlowResult,
-    OptionsFlow,
+    OptionsFlowWithReload,
 )
 from homeassistant.const import (
     CONF_API_KEY,
@@ -209,7 +209,7 @@ class PurpleAirConfigFlow(ConfigFlow, domain=DOMAIN):
         config_entry: ConfigEntry,
     ) -> PurpleAirOptionsFlowHandler:
         """Define the config flow to handle options."""
-        return PurpleAirOptionsFlowHandler(config_entry)
+        return PurpleAirOptionsFlowHandler()
 
     async def async_step_by_coordinates(
         self, user_input: dict[str, Any] | None = None
@@ -312,13 +312,12 @@ class PurpleAirConfigFlow(ConfigFlow, domain=DOMAIN):
         return await self.async_step_by_coordinates()
 
 
-class PurpleAirOptionsFlowHandler(OptionsFlow):
+class PurpleAirOptionsFlowHandler(OptionsFlowWithReload):
     """Handle a PurpleAir options flow."""
 
-    def __init__(self, config_entry: ConfigEntry) -> None:
+    def __init__(self) -> None:
         """Initialize."""
         self._flow_data: dict[str, Any] = {}
-        self.config_entry = config_entry
 
     @property
     def settings_schema(self) -> vol.Schema:

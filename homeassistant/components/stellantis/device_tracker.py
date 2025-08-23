@@ -11,7 +11,7 @@ from homeassistant.components.device_tracker.config_entry import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import HomeAssistantStellantisData
 from .const import ATTR_ALTITUDE, ATTR_HEADING, ATTR_SIGNAL_QUALITY, DOMAIN
@@ -21,7 +21,7 @@ from .entity import StellantisBaseEntity
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up the Stellantis device tracker."""
     data: HomeAssistantStellantisData = hass.data[DOMAIN][entry.entry_id]

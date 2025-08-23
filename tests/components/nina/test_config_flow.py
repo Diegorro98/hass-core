@@ -8,7 +8,6 @@ from typing import Any
 from unittest.mock import patch
 
 from pynina import ApiError
-import pytest
 
 from homeassistant.components.nina.const import (
     CONF_AREA_FILTER,
@@ -279,10 +278,6 @@ async def test_options_flow_connection_error(hass: HomeAssistant) -> None:
         assert result["errors"] == {"base": "cannot_connect"}
 
 
-@pytest.mark.parametrize(  # Remove when translations fixed
-    "ignore_translations",
-    ["component.nina.options.error.unknown"],
-)
 async def test_options_flow_unexpected_exception(hass: HomeAssistant) -> None:
     """Test config flow options but with an unexpected exception."""
     config_entry = MockConfigEntry(
@@ -328,9 +323,6 @@ async def test_options_flow_entity_removal(
             "pynina.baseApi.BaseAPI._makeRequest",
             wraps=mocked_request_function,
         ),
-        patch(
-            "homeassistant.components.nina._async_update_listener"
-        ) as mock_update_listener,
     ):
         await hass.config_entries.async_setup(config_entry.entry_id)
         await hass.async_block_till_done()
@@ -357,4 +349,3 @@ async def test_options_flow_entity_removal(
         )
 
         assert len(entries) == 2
-        assert len(mock_update_listener.mock_calls) == 1

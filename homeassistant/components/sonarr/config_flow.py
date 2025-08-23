@@ -17,7 +17,7 @@ from homeassistant.config_entries import (
     ConfigEntry,
     ConfigFlow,
     ConfigFlowResult,
-    OptionsFlow,
+    OptionsFlowWithReload,
 )
 from homeassistant.const import CONF_API_KEY, CONF_URL, CONF_VERIFY_SSL
 from homeassistant.core import HomeAssistant, callback
@@ -63,7 +63,7 @@ class SonarrConfigFlow(ConfigFlow, domain=DOMAIN):
     @callback
     def async_get_options_flow(config_entry: ConfigEntry) -> SonarrOptionsFlowHandler:
         """Get the options flow for this handler."""
-        return SonarrOptionsFlowHandler(config_entry)
+        return SonarrOptionsFlowHandler()
 
     async def async_step_reauth(
         self, entry_data: Mapping[str, Any]
@@ -93,6 +93,13 @@ class SonarrConfigFlow(ConfigFlow, domain=DOMAIN):
         errors = {}
 
         if user_input is not None:
+            # aiopyarr defaults to the service port if one isn't given
+            # this is counter to standard practice where http = 80
+            # and https = 443.
+            if CONF_URL in user_input:
+                url = yarl.URL(user_input[CONF_URL])
+                user_input[CONF_URL] = f"{url.scheme}://{url.host}:{url.port}{url.path}"
+
             if self.source == SOURCE_REAUTH:
                 user_input = {**self._get_reauth_entry().data, **user_input}
 
@@ -145,12 +152,8 @@ class SonarrConfigFlow(ConfigFlow, domain=DOMAIN):
         return data_schema
 
 
-class SonarrOptionsFlowHandler(OptionsFlow):
+class SonarrOptionsFlowHandler(OptionsFlowWithReload):
     """Handle Sonarr client options."""
-
-    def __init__(self, config_entry: ConfigEntry) -> None:
-        """Initialize options flow."""
-        self.config_entry = config_entry
 
     async def async_step_init(
         self, user_input: dict[str, int] | None = None

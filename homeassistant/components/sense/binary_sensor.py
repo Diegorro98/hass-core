@@ -10,12 +10,12 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import SenseConfigEntry
-from .const import ATTRIBUTION, DOMAIN, MDI_ICONS
+from .const import DOMAIN
 from .coordinator import SenseRealtimeCoordinator
+from .entity import SenseDeviceEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -23,14 +23,14 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: SenseConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up the Sense binary sensor."""
     sense_monitor_id = config_entry.runtime_data.data.sense_monitor_id
     realtime_coordinator = config_entry.runtime_data.rt
 
     devices = [
-        SenseBinarySensor(device, sense_monitor_id, realtime_coordinator)
+        SenseBinarySensor(device, realtime_coordinator, sense_monitor_id)
         for device in config_entry.runtime_data.data.devices
     ]
 
@@ -39,33 +39,20 @@ async def async_setup_entry(
     async_add_entities(devices)
 
 
-def sense_to_mdi(sense_icon: str) -> str:
-    """Convert sense icon to mdi icon."""
-    return f"mdi:{MDI_ICONS.get(sense_icon, "power-plug")}"
-
-
-class SenseBinarySensor(
-    CoordinatorEntity[SenseRealtimeCoordinator], BinarySensorEntity
-):
+class SenseBinarySensor(SenseDeviceEntity, BinarySensorEntity):
     """Implementation of a Sense energy device binary sensor."""
 
-    _attr_attribution = ATTRIBUTION
-    _attr_should_poll = False
     _attr_device_class = BinarySensorDeviceClass.POWER
 
     def __init__(
         self,
         device: SenseDevice,
-        sense_monitor_id: str,
         coordinator: SenseRealtimeCoordinator,
+        sense_monitor_id: str,
     ) -> None:
         """Initialize the Sense binary sensor."""
-        super().__init__(coordinator)
-        self._attr_name = device.name
+        super().__init__(device, coordinator, sense_monitor_id, device.id)
         self._id = device.id
-        self._attr_unique_id = f"{sense_monitor_id}-{self._id}"
-        self._attr_icon = sense_to_mdi(device.icon)
-        self._device = device
 
     @property
     def old_unique_id(self) -> str:

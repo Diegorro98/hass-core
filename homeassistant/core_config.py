@@ -60,7 +60,6 @@ from .core import DOMAIN as HOMEASSISTANT_DOMAIN, HomeAssistant
 from .generated.currencies import HISTORIC_CURRENCIES
 from .helpers import config_validation as cv, issue_registry as ir
 from .helpers.entity_values import EntityValues
-from .helpers.frame import report
 from .helpers.storage import Store
 from .helpers.typing import UNDEFINED, UndefinedType
 from .util import dt as dt_util, location
@@ -68,11 +67,11 @@ from .util.hass_dict import HassKey
 from .util.package import is_docker_env
 from .util.unit_system import (
     _CONF_UNIT_SYSTEM_IMPERIAL,
+    _CONF_UNIT_SYSTEM_METRIC,
     _CONF_UNIT_SYSTEM_US_CUSTOMARY,
     METRIC_SYSTEM,
     UnitSystem,
     get_unit_system,
-    validate_unit_system,
 )
 
 # Typing imports that create a circular dependency
@@ -188,6 +187,26 @@ _CUSTOMIZE_CONFIG_SCHEMA = vol.Schema(
 )
 
 
+def _raise_issue_if_imperial_unit_system(
+    hass: HomeAssistant, config: dict[str, Any]
+) -> dict[str, Any]:
+    if config.get(CONF_UNIT_SYSTEM) == _CONF_UNIT_SYSTEM_IMPERIAL:
+        ir.async_create_issue(
+            hass,
+            HOMEASSISTANT_DOMAIN,
+            "imperial_unit_system",
+            is_fixable=False,
+            learn_more_url="homeassistant://config/general",
+            severity=ir.IssueSeverity.WARNING,
+            translation_key="imperial_unit_system",
+        )
+        config[CONF_UNIT_SYSTEM] = _CONF_UNIT_SYSTEM_US_CUSTOMARY
+    else:
+        ir.async_delete_issue(hass, HOMEASSISTANT_DOMAIN, "imperial_unit_system")
+
+    return config
+
+
 def _raise_issue_if_historic_currency(hass: HomeAssistant, currency: str) -> None:
     if currency not in HISTORIC_CURRENCIES:
         ir.async_delete_issue(hass, HOMEASSISTANT_DOMAIN, "historic_currency")
@@ -249,7 +268,11 @@ CORE_CONFIG_SCHEMA = vol.All(
             CONF_ELEVATION: vol.Coerce(int),
             CONF_RADIUS: cv.positive_int,
             vol.Remove(CONF_TEMPERATURE_UNIT): cv.temperature_unit,
-            CONF_UNIT_SYSTEM: validate_unit_system,
+            CONF_UNIT_SYSTEM: vol.Any(
+                _CONF_UNIT_SYSTEM_METRIC,
+                _CONF_UNIT_SYSTEM_US_CUSTOMARY,
+                _CONF_UNIT_SYSTEM_IMPERIAL,
+            ),
             CONF_TIME_ZONE: cv.time_zone,
             vol.Optional(CONF_INTERNAL_URL): cv.url,
             vol.Optional(CONF_EXTERNAL_URL): cv.url,
@@ -333,6 +356,9 @@ async def async_process_ha_core_config(hass: HomeAssistant, config: dict) -> Non
     # so we need to run it in an executor job.
     config = await hass.async_add_executor_job(CORE_CONFIG_SCHEMA, config)
 
+    # Check if we need to raise an issue for imperial unit system
+    config = _raise_issue_if_imperial_unit_system(hass, config)
+
     # Only load auth during startup.
     if not hasattr(hass, "auth"):
         if (auth_conf := config.get(CONF_AUTH_PROVIDERS)) is None:
@@ -354,33 +380,33 @@ async def async_process_ha_core_config(hass: HomeAssistant, config: dict) -> Non
     if any(
         k in config
         for k in (
+            CONF_COUNTRY,
+            CONF_CURRENCY,
+            CONF_ELEVATION,
+            CONF_EXTERNAL_URL,
+            CONF_INTERNAL_URL,
+            CONF_LANGUAGE,
             CONF_LATITUDE,
             CONF_LONGITUDE,
             CONF_NAME,
-            CONF_ELEVATION,
+            CONF_RADIUS,
             CONF_TIME_ZONE,
             CONF_UNIT_SYSTEM,
-            CONF_EXTERNAL_URL,
-            CONF_INTERNAL_URL,
-            CONF_CURRENCY,
-            CONF_COUNTRY,
-            CONF_LANGUAGE,
-            CONF_RADIUS,
         )
     ):
         hac.config_source = ConfigSource.YAML
 
     for key, attr in (
+        (CONF_COUNTRY, "country"),
+        (CONF_CURRENCY, "currency"),
+        (CONF_ELEVATION, "elevation"),
+        (CONF_EXTERNAL_URL, "external_url"),
+        (CONF_INTERNAL_URL, "internal_url"),
+        (CONF_LANGUAGE, "language"),
         (CONF_LATITUDE, "latitude"),
         (CONF_LONGITUDE, "longitude"),
-        (CONF_NAME, "location_name"),
-        (CONF_ELEVATION, "elevation"),
-        (CONF_INTERNAL_URL, "internal_url"),
-        (CONF_EXTERNAL_URL, "external_url"),
         (CONF_MEDIA_DIRS, "media_dirs"),
-        (CONF_CURRENCY, "currency"),
-        (CONF_COUNTRY, "country"),
-        (CONF_LANGUAGE, "language"),
+        (CONF_NAME, "location_name"),
         (CONF_RADIUS, "radius"),
     ):
         if key in config:
@@ -482,25 +508,25 @@ class _ComponentSet(set[str]):
         self._top_level_components = top_level_components
         self._all_components = all_components
 
-    def add(self, component: str) -> None:
+    def add(self, value: str) -> None:
         """Add a component to the store."""
-        if "." not in component:
-            self._top_level_components.add(component)
-            self._all_components.add(component)
+        if "." not in value:
+            self._top_level_components.add(value)
+            self._all_components.add(value)
         else:
-            platform, _, domain = component.partition(".")
+            platform, _, domain = value.partition(".")
             if domain in BASE_PLATFORMS:
                 self._all_components.add(platform)
-        return super().add(component)
+        return super().add(value)
 
-    def remove(self, component: str) -> None:
+    def remove(self, value: str) -> None:
         """Remove a component from the store."""
-        if "." in component:
+        if "." in value:
             raise ValueError("_ComponentSet does not support removing sub-components")
-        self._top_level_components.remove(component)
-        return super().remove(component)
+        self._top_level_components.remove(value)
+        return super().remove(value)
 
-    def discard(self, component: str) -> None:
+    def discard(self, value: str) -> None:
         """Remove a component from the store."""
         raise NotImplementedError("_ComponentSet does not support discard, use remove")
 
@@ -512,8 +538,7 @@ class Config:
 
     def __init__(self, hass: HomeAssistant, config_dir: str) -> None:
         """Initialize a new config object."""
-        # pylint: disable-next=import-outside-toplevel
-        from .components.zone import DEFAULT_RADIUS
+        from .components.zone import DEFAULT_RADIUS  # noqa: PLC0415
 
         self.hass = hass
 
@@ -554,9 +579,7 @@ class Config:
         self.all_components: set[str] = set()
 
         # Set of loaded components
-        self.components: _ComponentSet = _ComponentSet(
-            self.top_level_components, self.all_components
-        )
+        self.components = _ComponentSet(self.top_level_components, self.all_components)
 
         # API (HTTP) server configuration
         self.api: ApiConfig | None = None
@@ -647,36 +670,36 @@ class Config:
         return False
 
     def as_dict(self) -> dict[str, Any]:
-        """Create a dictionary representation of the configuration.
+        """Return a dictionary representation of the configuration.
 
         Async friendly.
         """
         allowlist_external_dirs = list(self.allowlist_external_dirs)
         return {
-            "latitude": self.latitude,
-            "longitude": self.longitude,
-            "elevation": self.elevation,
-            "unit_system": self.units.as_dict(),
-            "location_name": self.location_name,
-            "time_zone": self.time_zone,
-            "components": list(self.components),
-            "config_dir": self.config_dir,
-            # legacy, backwards compat
-            "whitelist_external_dirs": allowlist_external_dirs,
             "allowlist_external_dirs": allowlist_external_dirs,
             "allowlist_external_urls": list(self.allowlist_external_urls),
-            "version": __version__,
+            "components": list(self.components),
+            "config_dir": self.config_dir,
             "config_source": self.config_source,
-            "recovery_mode": self.recovery_mode,
-            "state": self.hass.state.value,
+            "country": self.country,
+            "currency": self.currency,
+            "debug": self.debug,
+            "elevation": self.elevation,
             "external_url": self.external_url,
             "internal_url": self.internal_url,
-            "currency": self.currency,
-            "country": self.country,
             "language": self.language,
-            "safe_mode": self.safe_mode,
-            "debug": self.debug,
+            "latitude": self.latitude,
+            "location_name": self.location_name,
+            "longitude": self.longitude,
             "radius": self.radius,
+            "recovery_mode": self.recovery_mode,
+            "safe_mode": self.safe_mode,
+            "state": self.hass.state.value,
+            "time_zone": self.time_zone,
+            "unit_system": self.units.as_dict(),
+            "version": __version__,
+            # legacy, backwards compat
+            "whitelist_external_dirs": allowlist_external_dirs,
         }
 
     async def async_set_time_zone(self, time_zone_str: str) -> None:
@@ -687,72 +710,52 @@ class Config:
         else:
             raise ValueError(f"Received invalid time zone {time_zone_str}")
 
-    def set_time_zone(self, time_zone_str: str) -> None:
-        """Set the time zone.
-
-        This is a legacy method that should not be used in new code.
-        Use async_set_time_zone instead.
-
-        It will be removed in Home Assistant 2025.6.
-        """
-        report(
-            "set the time zone using set_time_zone instead of async_set_time_zone"
-            " which will stop working in Home Assistant 2025.6",
-            error_if_core=True,
-            error_if_integration=True,
-        )
-        if time_zone := dt_util.get_time_zone(time_zone_str):
-            self.time_zone = time_zone_str
-            dt_util.set_default_time_zone(time_zone)
-        else:
-            raise ValueError(f"Received invalid time zone {time_zone_str}")
-
     async def _async_update(
         self,
         *,
-        source: ConfigSource,
-        latitude: float | None = None,
-        longitude: float | None = None,
+        country: str | UndefinedType | None = UNDEFINED,
+        currency: str | None = None,
         elevation: int | None = None,
-        unit_system: str | None = None,
-        location_name: str | None = None,
-        time_zone: str | None = None,
         external_url: str | UndefinedType | None = UNDEFINED,
         internal_url: str | UndefinedType | None = UNDEFINED,
-        currency: str | None = None,
-        country: str | UndefinedType | None = UNDEFINED,
         language: str | None = None,
+        latitude: float | None = None,
+        location_name: str | None = None,
+        longitude: float | None = None,
         radius: int | None = None,
+        source: ConfigSource,
+        time_zone: str | None = None,
+        unit_system: str | None = None,
     ) -> None:
         """Update the configuration from a dictionary."""
         self.config_source = source
-        if latitude is not None:
-            self.latitude = latitude
-        if longitude is not None:
-            self.longitude = longitude
+        if country is not UNDEFINED:
+            self.country = country
+        if currency is not None:
+            self.currency = currency
         if elevation is not None:
             self.elevation = elevation
+        if external_url is not UNDEFINED:
+            self.external_url = external_url
+        if internal_url is not UNDEFINED:
+            self.internal_url = internal_url
+        if language is not None:
+            self.language = language
+        if latitude is not None:
+            self.latitude = latitude
+        if location_name is not None:
+            self.location_name = location_name
+        if longitude is not None:
+            self.longitude = longitude
+        if radius is not None:
+            self.radius = radius
+        if time_zone is not None:
+            await self.async_set_time_zone(time_zone)
         if unit_system is not None:
             try:
                 self.units = get_unit_system(unit_system)
             except ValueError:
                 self.units = METRIC_SYSTEM
-        if location_name is not None:
-            self.location_name = location_name
-        if time_zone is not None:
-            await self.async_set_time_zone(time_zone)
-        if external_url is not UNDEFINED:
-            self.external_url = external_url
-        if internal_url is not UNDEFINED:
-            self.internal_url = internal_url
-        if currency is not None:
-            self.currency = currency
-        if country is not UNDEFINED:
-            self.country = country
-        if language is not None:
-            self.language = language
-        if radius is not None:
-            self.radius = radius
 
     async def async_update(self, **kwargs: Any) -> None:
         """Update the configuration from a dictionary."""
@@ -841,8 +844,7 @@ class Config:
         ) -> dict[str, Any]:
             """Migrate to the new version."""
 
-            # pylint: disable-next=import-outside-toplevel
-            from .components.zone import DEFAULT_RADIUS
+            from .components.zone import DEFAULT_RADIUS  # noqa: PLC0415
 
             data = old_data
             if old_major_version == 1 and old_minor_version < 2:
@@ -859,20 +861,21 @@ class Config:
                 try:
                     owner = await self.hass.auth.async_get_owner()
                     if owner is not None:
-                        # pylint: disable-next=import-outside-toplevel
-                        from .components.frontend import storage as frontend_store
+                        from .components.frontend import (  # noqa: PLC0415
+                            storage as frontend_store,
+                        )
 
-                        _, owner_data = await frontend_store.async_user_store(
+                        owner_store = await frontend_store.async_user_store(
                             self.hass, owner.id
                         )
 
                         if (
-                            "language" in owner_data
-                            and "language" in owner_data["language"]
+                            "language" in owner_store.data
+                            and "language" in owner_store.data["language"]
                         ):
                             with suppress(vol.InInvalid):
                                 data["language"] = cv.language(
-                                    owner_data["language"]["language"]
+                                    owner_store.data["language"]["language"]
                                 )
                 # pylint: disable-next=broad-except
                 except Exception:
