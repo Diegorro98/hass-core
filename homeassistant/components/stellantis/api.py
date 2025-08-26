@@ -1,159 +1,34 @@
-"""API for Stellantis."""
+"""API for Home Connect bound to HASS OAuth."""
 
-from asyncio import timeout
-from dataclasses import dataclass
-from http import HTTPStatus
-from typing import Any, Self
+from typing import cast
 
-from aiohttp import ClientError
-from aiohttp.client_exceptions import ClientResponseError
+from stellantis.client import AbstractAuth
+from stellantis.const import API_ENDPOINT
 
-from homeassistant.exceptions import ServiceValidationError
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.httpx_client import get_async_client
 
-from .const import DOMAIN, LOGGER
 from .oauth import StellantisOAuth2Session
 
 
-@dataclass(frozen=True)
-class VehicleDetails:
-    """Details of the vehicle."""
+class AsyncConfigEntryAuth(AbstractAuth):
+    """Provide Stellantis authentication tied to an OAuth2 based config entry."""
 
-    vin: str
-    id: str
-    motorization: str
-    brand: str | None
-    label: str | None
-
-    @classmethod
-    def parse_from_api_data(cls, vehicle_raw_data: dict[str, Any]) -> Self:
-        """Parse vehicle data from the API."""
-        branding: dict[str, str] = vehicle_raw_data["_embedded"]["extension"][
-            "branding"
-        ]
-        return cls(
-            vehicle_raw_data["vin"],
-            vehicle_raw_data["id"],
-            vehicle_raw_data["motorization"],
-            branding.get("brand"),
-            branding.get("label"),
+    def __init__(
+        self, hass: HomeAssistant, oauth_session: StellantisOAuth2Session
+    ) -> None:
+        """Initialize Stellantis Auth."""
+        self.hass = hass
+        super().__init__(
+            get_async_client(hass),
+            API_ENDPOINT,
+            oauth_session.implementation.client_id,
+            oauth_session.implementation.realm,
         )
+        self.session = oauth_session
 
+    async def async_get_access_token(self) -> str:
+        """Return a valid access token."""
+        await self.session.async_ensure_token_valid()
 
-class StellantisVehicle:
-    """Class that holds details and status of the vehicle."""
-
-    details: VehicleDetails
-    status: dict[str, Any]
-
-    def __init__(self, details: VehicleDetails) -> None:
-        """Initialize the vehicle."""
-        self.details = details
-        self.status = {}
-
-
-class StellantisApi:
-    """API class for Stellantis."""
-
-    def __init__(self, session: StellantisOAuth2Session) -> None:
-        """Initialize the API class."""
-        self.session = session
-
-    async def async_get_vehicles_details(self) -> list[VehicleDetails] | None:
-        """Get vehicles."""
-        params = {
-            "extension": [
-                # "onboardCapabilities", Causes HTTP 500 error
-                "branding",
-                "pictures",
-            ],
-        }
-        try:
-            async with timeout(10):
-                response = await self.session.async_request_to_path(
-                    "GET",
-                    "/user/vehicles",
-                    params=params,
-                )
-
-            response.raise_for_status()
-
-            result = await response.json()
-            vehicles = [
-                VehicleDetails.parse_from_api_data(vehicle_data)
-                for vehicle_data in result["_embedded"]["vehicles"]
-            ]
-            while "next" in result["_links"]:
-                next_page = result["_links"]["next"]["href"]
-                async with timeout(10):
-                    response = await self.session.async_request(
-                        "POST", next_page, params=params
-                    )
-                    response.raise_for_status()
-
-                    result = await response.json()
-                    vehicles += [
-                        VehicleDetails.parse_from_api_data(vehicle_data)
-                        for vehicle_data in result["_embedded"]["vehicles"]
-                    ]
-
-        except ClientResponseError as error:
-            LOGGER.exception(
-                "Failed to get vehicles: %s (HTTP error code %s)",
-                HTTPStatus(error.status).phrase,
-                error.status,
-            )
-        except (TimeoutError, ClientError, KeyError) as error:
-            LOGGER.exception("Failed to get vehicles: %s", error)
-        else:
-            return vehicles
-        return None
-
-    async def async_get_vehicle_status(
-        self, vehicle: StellantisVehicle
-    ) -> dict[str, Any] | None:
-        """Get vehicle data."""
-        for attempt in range(4):
-            try:
-                async with timeout(10):
-                    response = await self.session.async_request_to_path(
-                        "GET",
-                        f"/user/vehicles/{vehicle.details.id}/status",
-                    )
-                    break
-            except (TimeoutError, ClientError) as error:
-                if attempt < 3:
-                    LOGGER.warning(
-                        "Attempt %d: Failed to get vehicle status for vehicle with VIN %s: %s",
-                        attempt + 1,
-                        vehicle.details.vin,
-                        error,
-                    )
-                else:
-                    raise
-
-        if response.status != HTTPStatus.OK:
-            LOGGER.error(
-                "Failed to get vehicle status for vehicle with VIN %s",
-                vehicle.details.vin,
-            )
-            return None
-
-        return await response.json()
-
-    async def async_send_remote_action(
-        self, vehicle_id: str, callback_id: str, request_body: dict[str, Any]
-    ) -> dict[str, Any]:
-        """Send remote action."""
-        async with timeout(10):
-            response = await self.session.async_request_to_path(
-                "POST",
-                f"/user/vehicles/{vehicle_id}/callbacks/{callback_id}/remotes",
-                json={"label": "hass_remote_action", **request_body},
-            )
-        if response.status != HTTPStatus.ACCEPTED:
-            raise ServiceValidationError(
-                translation_domain=DOMAIN,
-                translation_key="remote_request_not_accepted",
-                translation_placeholders=await response.json(),
-            )
-        return await response.json()
+        return cast(str, self.session.token["access_token"])

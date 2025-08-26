@@ -1117,7 +1117,6 @@ jellyfin-apiclient-python==1.11.0
 
 # homeassistant.components.command_line
 # homeassistant.components.rest
-# homeassistant.components.stellantis
 jsonpath==0.82.2
 
 # homeassistant.components.justnimbus
@@ -2351,6 +2350,9 @@ statsd==3.2.1
 
 # homeassistant.components.steam_online
 steamodd==4.21
+
+# homeassistant.components.stellantis
+stellantis==0.0.0
 
 # homeassistant.components.stookwijzer
 stookwijzer==1.6.1

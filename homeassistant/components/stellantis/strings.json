@@ -16,11 +16,8 @@
         }
       },
       "reauth_confirm": {
-        "title": "Reauthentication required",
-        "description": "Home Assistant cannot connect to your {brand} account.\nPlease, select your country to continue with the re-authentication proccess.",
-        "data": {
-          "country": "[%key:component::stellantis::config::step::brand_country::data::country%]"
-        }
+        "title": "[%key:common::config_flow::title::reauth%]",
+        "description": "The Stellantis integration needs to re-authenticate your {brand} account."
       }
     },
     "abort": {
@@ -240,22 +237,6 @@
           "running": "Running",
           "stopping": "Stopping",
           "stopped": "Stopped"
-        }
-      },
-      "doors_lock_state": {
-        "name": "Doors lock state",
-        "state": {
-          "unlocked": "Unlocked",
-          "locked": "Locked",
-          "super_locked": "Super locked",
-          "driver_door_unlocked": "Driver door unlocked",
-          "cabin_doors_unlocked": "Cabin doors unlocked",
-          "cargo_doors_locked": "Cargo doors locked",
-          "cargo_doors_unlocked": "Cargo doors unlocked",
-          "rear_doors_unlocked": "Rear doors unlocked",
-          "rear_doors_locked": "Rear doors locked",
-          "trunk_locked": "Trunk locked",
-          "trunk_un_locked": "Trunk unlocked"
         }
       },
       "privacy": {

@@ -1,52 +1,76 @@
 """Data update coordinator for Stellantis API."""
 
 from datetime import timedelta
+from typing import cast
+
+from stellantis.client import Client as StellantisClient
+from stellantis.model import Status, Vehicle
+from stellantis.model.error import StellantisApiError, StellantisError
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import StellantisApi, StellantisVehicle
-from .const import DOMAIN, LOGGER
-from .oauth import StellantisOauth2Implementation, StellantisOAuth2Session
+from .const import CONF_BRAND, DOMAIN, LOGGER
+
+type StellantisConfigEntry = ConfigEntry[list[StellantisVehicleCoordinator]]
 
 
-class StellantisUpdateCoordinator(DataUpdateCoordinator[list[StellantisVehicle]]):
+class StellantisVehicleCoordinator(DataUpdateCoordinator[Status]):
     """Data update coordinator for Stellantis API."""
 
     def __init__(
         self,
         hass: HomeAssistant,
-        implementation: StellantisOauth2Implementation,
-        session: StellantisOAuth2Session,
-        entry: ConfigEntry,
+        entry: StellantisConfigEntry,
+        client: StellantisClient,
+        vehicle: Vehicle,
     ) -> None:
         """Initialize the coordinator."""
         super().__init__(
             hass,
             LOGGER,
+            config_entry=entry,
             name=f"{DOMAIN}-{entry.title.replace(': ', '_')}",
             update_interval=timedelta(seconds=60),
         )
-        self.implementation = implementation
-        self.api = StellantisApi(session)
+        self.client = client
+        self.vehicle = vehicle
 
-    async def async_config_entry_first_refresh(self) -> None:
-        """Fetch initial data."""
-        vehicle_details = await self.api.async_get_vehicles_details()
-        if vehicle_details is None:
-            return
-        self.data = [
-            StellantisVehicle(vehicle_details) for vehicle_details in vehicle_details
-        ]
-        await super().async_config_entry_first_refresh()
+        brand = None
+        label = None
+        if (
+            self.vehicle.embedded
+            and self.vehicle.embedded.extension
+            and self.vehicle.embedded.extension.branding
+        ):
+            brand = self.vehicle.embedded.extension.branding.brand
+            label = self.vehicle.embedded.extension.branding.label
+        if brand is None:
+            brand = cast(str, entry.data[CONF_BRAND])
 
-    async def _async_update_data(self) -> list[StellantisVehicle]:
+        assert self.vehicle.id is not None
+        assert self.vehicle.vin
+        dr.async_get(self.hass).async_get_or_create(
+            config_entry_id=entry.entry_id,
+            identifiers={(DOMAIN, self.vehicle.id), (DOMAIN, self.vehicle.vin)},
+            manufacturer=brand,
+            model=label,
+            hw_version=self.vehicle.motorization,
+            name=f"{brand} {label or ''}",
+            serial_number=self.vehicle.vin,
+        )
+
+    async def _async_update_data(self) -> Status:
         """Fetch data from Stellantis API."""
-
-        for vehicle in self.data:
-            vehicle_status = await self.api.async_get_vehicle_status(vehicle)
-            if vehicle_status is not None:
-                vehicle.status = vehicle_status
-
+        assert self.vehicle.id is not None
+        try:
+            self.data = await self.client.get_vehicle_status(self.vehicle.id)
+        except StellantisError as err:
+            if isinstance(err, StellantisApiError):
+                if err.code in (401, 403):
+                    raise ConfigEntryAuthFailed from err
+            raise UpdateFailed from err
         return self.data

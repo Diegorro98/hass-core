@@ -1,107 +1,97 @@
 """Stellantis number platform."""
 
-from jsonpath import jsonpath
+from dataclasses import dataclass
+
+from stellantis.model import (
+    ChargingPowerLevel,
+    Remote,
+    RemoteCharging,
+    RemoteChargingPreferences,
+)
 
 from homeassistant.components.number import NumberEntity, NumberEntityDescription
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from . import HomeAssistantStellantisData
-from .api import StellantisVehicle
-from .const import DOMAIN, LOGGER
-from .coordinator import StellantisUpdateCoordinator
-from .entity import StellantisBaseActionableEntity
+from .coordinator import StellantisConfigEntry
+from .entity import StellantisActionableEntity, StellantisEntityDescription
+
+
+@dataclass(frozen=True, kw_only=True)
+class StellantisNumberEntityDescription(
+    StellantisEntityDescription, NumberEntityDescription
+):
+    """Describes a Stellantis number entity."""
+
+
+POWER_LEVEL_ENTITY_DESCRIPTION = StellantisNumberEntityDescription(
+    key="charging_power_level",
+    translation_key="charging_power_level",
+    value_fn=lambda _: None,
+    native_min_value=1,
+    native_max_value=5,
+    native_step=1,
+)
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: StellantisConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up the Stellantis switches."""
-
-    data: HomeAssistantStellantisData = hass.data[DOMAIN][entry.entry_id]
-
-    for vehicle in data.coordinator.data:
-        if jsonpath(
-            vehicle.status,
-            "$.energies[?(@.type == 'Electric')]",
-        ):
-            async_add_entities(
-                (
-                    StellantisChargingPowerLevelNumber(
-                        hass,
-                        data.coordinator,
-                        vehicle,
-                        entry,
-                    ),
-                )
-            )
+    async_add_entities(
+        StellantisChargingPowerLevelNumber(
+            hass, vehicle_coordinator, POWER_LEVEL_ENTITY_DESCRIPTION, entry
+        )
+        for vehicle_coordinator in entry.runtime_data
+    )
 
 
 class StellantisChargingPowerLevelNumber(
-    StellantisBaseActionableEntity[float], NumberEntity
+    StellantisActionableEntity[float], NumberEntity
 ):
     """Representation of Stellantis charging power level number."""
 
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        coordinator: StellantisUpdateCoordinator,
-        vehicle: StellantisVehicle,
-        entry: ConfigEntry,
-    ) -> None:
-        """Initialize the charging power level number entity."""
-        super().__init__(
-            hass,
-            coordinator,
-            vehicle,
-            NumberEntityDescription(
-                key="charging_power_level",
-                translation_key="charging_power_level",
-                native_min_value=1,
-                native_max_value=5,
-                native_step=1,
-            ),
-            entry,
-        )
+    entity_description: StellantisNumberEntityDescription
 
-    @property
-    def status_value(self):
-        """Return the state reported from the API."""
-        return self.get_from_vehicle_status(
-            "$.energies[?(@.type == 'Electric')].extension.electric.charging.chargingPowerLevel"
-        )
+    def _handle_update_from_successful_remote_action(self, state: float) -> None:
+        """Handle successful remote action updates."""
+        self._attr_native_value = state
+        super()._handle_update_from_successful_remote_action(state)
 
-    @property
-    def native_value(self) -> float | None:
-        """Return the current value."""
-        if self._attr_remote_action_value is not None:
-            ret = self._attr_remote_action_value
-            self._attr_remote_action_value = None
-            return ret
-
-        str_value = self.status_value
-        try:
-            return float(str_value.replace("Level", "")) if str_value else None
-        except ValueError:
-            LOGGER.debug("Error obtaining charging level from value: %s", str_value)
-            return None
-
-    @property
-    def available(self) -> bool:
-        """Return available if the program exists."""
-        try:
-            _ = self.status_value
-        except KeyError:
-            return False
-        return super().available
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        if (
+            (
+                energy := next(
+                    (
+                        energy
+                        for energy in (self.vehicle_status.energies or [])
+                        if energy.type == "Electric"
+                    ),
+                    None,
+                )
+            )
+            and (extension := energy.extension)
+            and (electric := extension.electric)
+            and (charging := electric.charging)
+            and (charging_power_level := charging.charging_power_level)
+        ):
+            self._attr_native_value = float(
+                charging_power_level.value.replace("Level", "")
+            )
+        self._attr_native_value = None
 
     async def async_set_native_value(self, value: float) -> None:
         """Set the charging power level."""
         await self.async_call_remote_action(
-            {"charging": {"preferences": {"level": f"Level{int(value)}"}}},
+            Remote(
+                charging=RemoteCharging(
+                    preferences=RemoteChargingPreferences(
+                        level=ChargingPowerLevel(f"Level{int(value)}")
+                    )
+                )
+            ),
             value,
-            "set the charging power level",
         )

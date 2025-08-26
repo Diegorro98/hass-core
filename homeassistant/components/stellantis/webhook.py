@@ -2,84 +2,72 @@
 
 from asyncio import Future
 from http import HTTPStatus
+from json.decoder import JSONDecodeError
 from typing import Any
 
 from aiohttp.web import Request, Response
-import voluptuous as vol
+from mashumaro.exceptions import (
+    BadDialect,
+    BadHookSignature,
+    ExtraKeysError,
+    InvalidFieldValue,
+    MissingDiscriminatorError,
+    MissingField,
+    SuitableVariantNotFoundError,
+    ThirdPartyModuleNotFoundError,
+    UnresolvedTypeReferenceError,
+    UnserializableDataError,
+    UnserializableField,
+    UnsupportedDeserializationEngine,
+    UnsupportedSerializationEngine,
+)
+from stellantis.model import Message, RemoteEventStatus, RemoteEventType
 
 from homeassistant.core import HomeAssistant
-import homeassistant.helpers.config_validation as cv
 
-from .const import (
-    ATTR_EVENT_STATUS,
-    ATTR_EVENT_TYPE,
-    ATTR_FAILURE_CAUSE,
-    ATTR_REMOTE_ACTION_ID,
-    ATTR_REMOTE_EVENT,
-    ATTR_STATUS,
-    DOMAIN,
-    LOGGER,
-    EventStatusType,
-    RemoteDoneEventStatus,
-)
-
-WEBHOOK_SCHEMA = vol.Schema(
-    {
-        vol.Required(ATTR_REMOTE_EVENT): vol.Schema(
-            {
-                vol.Required(ATTR_REMOTE_ACTION_ID): cv.string,
-                vol.Required(ATTR_EVENT_STATUS): vol.Any(
-                    vol.Schema(
-                        {
-                            vol.Required(ATTR_EVENT_TYPE): EventStatusType.DONE.value,
-                            vol.Required(ATTR_STATUS): vol.Any(
-                                *map(str, RemoteDoneEventStatus)
-                            ),
-                            vol.Optional(ATTR_FAILURE_CAUSE): cv.string,
-                        },
-                        extra=vol.ALLOW_EXTRA,
-                    ),
-                    vol.Schema(
-                        {
-                            vol.Required(
-                                ATTR_EVENT_TYPE
-                            ): EventStatusType.PENDING.value,
-                            vol.Required(ATTR_STATUS): cv.string,
-                        }
-                    ),
-                ),
-            },
-            extra=vol.ALLOW_EXTRA,
-        ),
-    },
-    extra=vol.ALLOW_EXTRA,
-)
+from .const import DOMAIN, LOGGER
 
 
 async def handle_webhook(
     hass: HomeAssistant, webhook_id: str, request: Request
 ) -> Response:
     """Handle webhook callback."""
-    data = await request.json()
     try:
-        data = WEBHOOK_SCHEMA(data)
-    except vol.Invalid as ex:
-        err = vol.humanize.humanize_error(data, ex)
-        LOGGER.error("Received invalid webhook payload: %s", err)
+        data = Message.from_dict(await request.json())
+    except (
+        JSONDecodeError,
+        MissingField,
+        ExtraKeysError,
+        UnserializableDataError,
+        UnserializableField,
+        UnsupportedSerializationEngine,
+        UnsupportedDeserializationEngine,
+        InvalidFieldValue,
+        MissingDiscriminatorError,
+        SuitableVariantNotFoundError,
+        BadHookSignature,
+        ThirdPartyModuleNotFoundError,
+        UnresolvedTypeReferenceError,
+        BadDialect,
+    ):
+        LOGGER.exception("Received invalid webhook payload")
         return Response(status=HTTPStatus.BAD_REQUEST)
 
-    event_status = data[ATTR_REMOTE_EVENT][ATTR_EVENT_STATUS]
-    if event_status[ATTR_EVENT_TYPE] == "Done":
-        handlers: dict[str, Any] = hass.data.setdefault(DOMAIN, {})
-        remote_action_id = data[ATTR_REMOTE_EVENT][ATTR_REMOTE_ACTION_ID]
+    if not (remote_event := data.remote_event) or not (
+        event_status := remote_event.event_status
+    ):
+        return Response(status=HTTPStatus.BAD_REQUEST)
+    if event_status.type == RemoteEventType.DONE:
+        handlers: dict[str, StellantisCallbackEvent] = hass.data.setdefault(DOMAIN, {})
+        remote_action_id = data.remote_event.remote_action_id
         if remote_action_id in handlers:
-            callback_event: StellantisCallbackEvent = handlers[remote_action_id]
+            callback_event = handlers[remote_action_id]
             callback_event.set_result(event_status)
     LOGGER.debug("Received webhook payload: %s", data)
     return Response(status=HTTPStatus.OK)
 
 
-class StellantisCallbackEvent(Future):
+class StellantisCallbackEvent(Future[RemoteEventStatus]):
     """Future for callback events."""
 
     def __init__(self, hass: HomeAssistant, remote_action_id: str) -> None:

@@ -1,135 +1,127 @@
 """Stellantis time platform."""
 
+import copy
+from dataclasses import dataclass
 from datetime import datetime, time
 
-from jsonpath import jsonpath
+from stellantis.model import EnergyType, Remote, RemoteCharging, Schedule
 
 from homeassistant.components.time import TimeEntity, TimeEntityDescription
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.helpers.typing import UNDEFINED
 from homeassistant.util import dt as dt_util
 
-from . import HomeAssistantStellantisData
-from .api import StellantisVehicle
-from .const import ATTR_START, DOMAIN, SVE_TRANSLATION_PLACEHOLDER_SLOT
-from .coordinator import StellantisUpdateCoordinator
-from .entity import StellantisBaseActionableEntity
+from .const import DOMAIN, SVE_TRANSLATION_PLACEHOLDER_SLOT
+from .coordinator import StellantisConfigEntry
+from .entity import (
+    StellantisActionableEntity,
+    StellantisEntityDescription,
+    StellantisPreconditioningEntity,
+)
 from .helpers import preconditioning_program_setter_body
+
+
+@dataclass(frozen=True, kw_only=True)
+class StellantisTimeEntityDescription(
+    StellantisEntityDescription, TimeEntityDescription
+):
+    """Describes a Stellantis time entity."""
+
+
+CHARGING_TIME_ENTITY_DESCRIPTION = StellantisTimeEntityDescription(
+    key="charging_time",
+    translation_key="charging_time",
+    value_fn=lambda status: charging.next_delayed_time
+    if (
+        energy := next(
+            (
+                energy
+                for energy in status.energies or []
+                if energy.type == EnergyType.ELECTRIC
+            ),
+            None,
+        )
+    )
+    and (extension := energy.extension)
+    and (electric := extension.electric)
+    and (charging := electric.charging)
+    else None,
+)
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: StellantisConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up the Stellantis switches."""
-
-    data: HomeAssistantStellantisData = hass.data[DOMAIN][entry.entry_id]
-
-    for vehicle in data.coordinator.data:
-        if jsonpath(
-            vehicle.status,
-            "$.preconditioning.airConditioning",
+    entities: list[TimeEntity] = []
+    for vehicle_coordinator in entry.runtime_data:
+        if (
+            vehicle_coordinator.data.preconditioning
+            and vehicle_coordinator.data.preconditioning.air_conditioning
         ):
-            async_add_entities(
-                [
-                    StellantisPreconditioningProgramStartTime(
-                        hass,
-                        data.coordinator,
-                        vehicle,
-                        entry,
-                        slot,
-                    )
-                    for slot in range(1, 5)
-                ]
+            entities.extend(
+                StellantisPreconditioningProgramStartTime(
+                    hass,
+                    vehicle_coordinator,
+                    StellantisEntityDescription(
+                        key=f"preconditioning_program_{slot}_start_time",
+                        translation_key=f"preconditioning_program_{slot}_start_time",
+                        value_fn=lambda _: None,
+                    ),
+                    entry,
+                    slot,
+                )
+                for slot in range(1, 5)
             )
 
-        if jsonpath(
-            vehicle.status,
-            "$.energies[?(@.type == 'Electric')]",
+        if next(
+            (
+                energy
+                for energy in vehicle_coordinator.data.energies or []
+                if energy.type == EnergyType.ELECTRIC
+            ),
+            None,
         ):
-            async_add_entities(
-                (
-                    StellantisChargingTime(
-                        hass,
-                        data.coordinator,
-                        vehicle,
-                        entry,
-                    ),
+            entities.append(
+                StellantisChargingTime(
+                    hass,
+                    vehicle_coordinator,
+                    CHARGING_TIME_ENTITY_DESCRIPTION,
+                    entry,
                 )
             )
+    async_add_entities(entities)
 
 
 class StellantisPreconditioningProgramStartTime(
-    StellantisBaseActionableEntity[time], TimeEntity
+    StellantisPreconditioningEntity[time], TimeEntity
 ):
     """Representation of a Stellantis preconditioning start time of a program."""
 
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        coordinator: StellantisUpdateCoordinator,
-        vehicle: StellantisVehicle,
-        entry: ConfigEntry,
-        slot: int,
-    ) -> None:
-        """Initialize the Stellantis preconditioning start time."""
-        super().__init__(
-            hass,
-            coordinator,
-            vehicle,
-            TimeEntityDescription(
-                key=f"preconditioning_program_{slot}_start_time",
-                translation_key=f"preconditioning_program_{slot}_start_time",
-            ),
-            entry,
+    entity_description: StellantisTimeEntityDescription
+
+    def _handle_update_from_successful_remote_action(self, state: time) -> None:
+        """Handle successful remote action updates."""
+        if self.program != UNDEFINED:
+            self._attr_native_value = state
+            super()._handle_update_from_successful_remote_action(state)
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        self._attr_native_value = (
+            (datetime(1, 1, 1) + start_time).time()
+            if self.program != UNDEFINED
+            and (start_time := dt_util.parse_duration(self.program.start))
+            else None
         )
-        self.slot = slot
-        self._attr_native_value = None
-
-    @property
-    def status_value(self):
-        """Return the state reported from the API."""
-        return self.get_from_vehicle_status(
-            f"$.preconditioning.airConditioning.programs[?(@.slot == {self.slot})]"
-        )
-
-    @property
-    def native_value(self) -> time | None:
-        """Return the value reported by the time."""
-        if self._attr_native_value is not None:
-            ret = self._attr_native_value
-            self._attr_native_value = None
-            return ret
-
-        program = self.status_value
-        if (
-            not program
-            or ATTR_START not in program
-            or (start_time := dt_util.parse_duration(program[ATTR_START])) is None
-        ):
-            return None
-
-        return (datetime(1, 1, 1) + start_time).time()
-
-    @property
-    def available(self) -> bool:
-        """Return available if the program exists."""
-        try:
-            _ = self.status_value
-        except KeyError:
-            return False
-        return super().available
 
     async def async_set_value(self, value: time) -> None:
         """Set the start of the preconditioning program."""
-        program = self.get_from_vehicle_status(
-            f"$.preconditioning.airConditioning.programs[?(@.slot == {self.slot})]"
-        )
-
-        if not program:
+        if self.program == UNDEFINED:
             raise ServiceValidationError(
                 translation_domain=DOMAIN,
                 translation_key="preconditioning_program_not_defined",
@@ -138,75 +130,42 @@ class StellantisPreconditioningProgramStartTime(
                 },
             )
 
-        program[ATTR_START] = f"PT{value.hour}H{value.minute}M"
+        program = copy.deepcopy(self.program)
+        program.start = f"PT{value.hour}H{value.minute}M"
         await self.async_call_remote_action(
-            preconditioning_program_setter_body(program),
-            value,
-            f"set preconditioning program {self.slot} start time",
+            preconditioning_program_setter_body(program), value
         )
 
 
-class StellantisChargingTime(StellantisBaseActionableEntity[time], TimeEntity):
+class StellantisChargingTime(StellantisActionableEntity[time], TimeEntity):
     """Representation of a Stellantis charging time."""
 
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        coordinator: StellantisUpdateCoordinator,
-        vehicle: StellantisVehicle,
-        entry: ConfigEntry,
-    ) -> None:
-        """Initialize the Stellantis charging time."""
-        super().__init__(
-            hass,
-            coordinator,
-            vehicle,
-            TimeEntityDescription(
-                key="charging_time",
-                translation_key="charging_time",
-            ),
-            entry,
+    entity_description: StellantisTimeEntityDescription
+
+    @callback
+    def _handle_update_from_successful_remote_action(self, state: time) -> None:
+        """Handle successful remote action updates."""
+        self._attr_native_value = state
+        super()._handle_update_from_successful_remote_action(state)
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        self._attr_native_value = (
+            (datetime(1, 1, 1) + value).time()
+            if isinstance(self.status_value, str)
+            and (value := dt_util.parse_duration(self.status_value))
+            else None
         )
-        self._attr_native_value = None
-
-    @property
-    def status_value(self):
-        """Return the state reported from the API."""
-        return self.get_from_vehicle_status(
-            "$.energies[?(@.type == 'Electric')].extension.electric.charging.nextDelayedTime"
-        )
-
-    @property
-    def native_value(self) -> time | None:
-        """Return the value reported by the time."""
-        if self._attr_native_value is not None:
-            ret = self._attr_native_value
-            self._attr_native_value = None
-            return ret
-
-        raw_value = self.status_value
-        if not raw_value or (value := dt_util.parse_duration(raw_value)) is None:
-            return None
-
-        return (datetime(1, 1, 1) + value).time()
-
-    @property
-    def available(self) -> bool:
-        """Return available if the program exists."""
-        try:
-            _ = self.status_value
-        except KeyError:
-            return False
-        return super().available
 
     async def async_set_value(self, value: time) -> None:
         """Set the start of the charging program."""
         await self.async_call_remote_action(
-            {
-                "charging": {
-                    "schedule": {"nextDelayedTime": f"PT{value.hour}H{value.minute}M"}
-                }
-            },
+            Remote(
+                charging=RemoteCharging(
+                    schedule=Schedule(
+                        next_delayed_time=f"PT{value.hour}H{value.minute}M"
+                    )
+                )
+            ),
             value,
-            "set next charging time",
         )

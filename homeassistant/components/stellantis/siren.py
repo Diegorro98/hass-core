@@ -1,69 +1,52 @@
 """Stellantis switch platform."""
 
+from dataclasses import dataclass
+
+from stellantis.model import Remote, RemoteHorn, RemoteHornState
+
 from homeassistant.components.siren import (
     SirenEntity,
     SirenEntityDescription,
     SirenEntityFeature,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from . import HomeAssistantStellantisData
-from .api import StellantisVehicle
-from .const import DOMAIN
-from .coordinator import StellantisUpdateCoordinator
-from .entity import StellantisBaseToggleEntity
+from .coordinator import StellantisConfigEntry
+from .entity import StellantisToggleEntity, StellantisToggleEntityDescription
+
+
+@dataclass(frozen=True, kw_only=True)
+class StellantisSirenEntityDescription(
+    SirenEntityDescription, StellantisToggleEntityDescription
+):
+    """Siren entity description."""
+
+
+HORN_ENTITY_DESCRIPTION = StellantisSirenEntityDescription(
+    key="horn",
+    translation_key="horn",
+    remote_request_on=Remote(horn=RemoteHorn(state=RemoteHornState.ACTIVATED)),
+    remote_request_off=Remote(horn=RemoteHorn(state=RemoteHornState.UNACTIVATED)),
+    value_fn=lambda _: None,
+)
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: StellantisConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up the Stellantis switches."""
 
-    data: HomeAssistantStellantisData = hass.data[DOMAIN][entry.entry_id]
-
-    # In the future, when "onboardCapabilities" extension header works, we will know
-    # whether to add the horn if the vehicle has the capability to honk the horn
     async_add_entities(
-        StellantisHorn(
-            hass,
-            data.coordinator,
-            vehicle_data,
-            entry,
-        )
-        for vehicle_data in data.coordinator.data
+        StellantisHorn(hass, vehicle_coordinator, HORN_ENTITY_DESCRIPTION, entry)
+        for vehicle_coordinator in entry.runtime_data
     )
 
 
-class StellantisHorn(StellantisBaseToggleEntity, SirenEntity):
+class StellantisHorn(StellantisToggleEntity, SirenEntity):
     """Representation of Stellantis vehicle horn."""
 
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        coordinator: StellantisUpdateCoordinator,
-        vehicle: StellantisVehicle,
-        entry: ConfigEntry,
-    ) -> None:
-        """Initialize the vehicle horn."""
-        super().__init__(
-            hass,
-            coordinator,
-            vehicle,
-            SirenEntityDescription(
-                key="horn",
-                translation_key="horn",
-            ),
-            entry,
-            None,
-            {"horn": {"state": "Activated"}},
-            {"horn": {"state": "Unactivated"}},
-            "activate the horn",
-            "deactivate the horn",
-        )
-        self._attr_supported_features = (
-            SirenEntityFeature.TURN_ON | SirenEntityFeature.TURN_OFF
-        )
+    entity_description: StellantisSirenEntityDescription
+    attr_supported_features = SirenEntityFeature.TURN_ON | SirenEntityFeature.TURN_OFF

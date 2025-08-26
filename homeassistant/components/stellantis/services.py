@@ -2,30 +2,38 @@
 
 from asyncio import timeout
 from datetime import timedelta
-from typing import Any
+from typing import Any, cast
 
-from jsonpath import jsonpath
-from stringcase import sentencecase
+from stellantis.model import (
+    ActionType,
+    AirConditioningProgram,
+    Point,
+    PreconditioningProgram,
+    ProgramRecurrence,
+    Remote,
+    RemoteEventType,
+    RemoteNavigation,
+    RemotePreconditioning,
+    RemotePreconditioningAirConditioning,
+    RemoteWakeUp,
+    WeekDays,
+    WeekOccurrence,
+)
 import voluptuous as vol
 
 from homeassistant.const import ATTR_DEVICE_ID, ATTR_LATITUDE, ATTR_LONGITUDE
 from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.exceptions import ServiceValidationError
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import device_registry as dr
 import homeassistant.helpers.config_validation as cv
 
-from .api import StellantisVehicle
 from .const import (
     ATTR_DAILY_RECURRENCE,
     ATTR_ENABLED,
-    ATTR_EVENT_TYPE,
-    ATTR_FAILURE_CAUSE,
     ATTR_OCCURRENCE,
     ATTR_POSITION,
     ATTR_PROGRAM_NUMBER,
-    ATTR_REMOTE_ACTION_ID,
     ATTR_START,
-    ATTR_STATUS,
     CONF_CALLBACK_ID,
     DOMAIN,
     LOGGER,
@@ -33,10 +41,9 @@ from .const import (
     SERVICE_SEND_NAVIGATION_POSITIONS,
     SERVICE_SET_PRECONDITIONING_PROGRAM,
     SERVICE_WAKE_UP,
-    EventStatusType,
     RemoteDoneEventStatus,
 )
-from .coordinator import StellantisUpdateCoordinator
+from .coordinator import StellantisConfigEntry, StellantisVehicleCoordinator
 from .helpers import preconditioning_program_setter_body
 from .webhook import StellantisCallbackEvent
 
@@ -61,7 +68,7 @@ POSITION_SCHEMA = vol.Schema(
 async def async_send_remote_requests(
     hass: HomeAssistant,
     call: ServiceCall,
-    request_body: dict[str, Any],
+    remote: Remote,
     service_name: str,
 ) -> None:
     """Send a remote request to the API and wait for the confirmation."""
@@ -76,15 +83,18 @@ async def async_send_remote_requests(
         )
     device_vin = device.identifiers.copy().pop()[1]
 
-    config_entry_id = device.config_entries.copy().pop()
-    config_entry = hass.config_entries.async_get_entry(config_entry_id)
+    config_entry: StellantisConfigEntry | None = None
+    for entry_id in device.config_entries:
+        _config_entry = hass.config_entries.async_get_entry(entry_id)
+        assert _config_entry
+        if _config_entry.domain == DOMAIN:
+            config_entry = cast(StellantisConfigEntry, _config_entry)
+            break
     if config_entry is None:
         raise ServiceValidationError(
             translation_domain=DOMAIN,
             translation_key="config_entry_not_found",
-            translation_placeholders={
-                SVE_TRANSLATION_PLACEHOLDER_CONFIG_ENTRY_ID: config_entry_id
-            },
+            translation_placeholders={"device_id": device_id},
         )
     callback_id = config_entry.data.get(CONF_CALLBACK_ID)
     if not callback_id:
@@ -92,21 +102,17 @@ async def async_send_remote_requests(
             translation_domain=DOMAIN,
             translation_key="remote_request_callback_not_found",
             translation_placeholders={
-                SVE_TRANSLATION_PLACEHOLDER_CONFIG_ENTRY_ID: config_entry_id
+                SVE_TRANSLATION_PLACEHOLDER_CONFIG_ENTRY_ID: config_entry.entry_id
             },
         )
 
-    coordinator: StellantisUpdateCoordinator = hass.data[DOMAIN][
-        config_entry_id
-    ].coordinator
-
-    vehicle: StellantisVehicle | None = None
-    for vehicle_to_check in coordinator.data:
-        if vehicle_to_check.details.vin == device_vin:
-            vehicle = vehicle_to_check
+    vehicle_coordinator: StellantisVehicleCoordinator | None = None
+    for _vehicle_coordinator in config_entry.runtime_data:
+        if _vehicle_coordinator.vehicle.vin == device_vin:
+            vehicle_coordinator = _vehicle_coordinator
             break
 
-    if vehicle is None:
+    if vehicle_coordinator is None:
         raise ServiceValidationError(
             translation_domain=DOMAIN,
             translation_key="remote_request_vehicle_not_found",
@@ -114,15 +120,16 @@ async def async_send_remote_requests(
         )
 
     async with timeout(10):
-        response_data = await coordinator.api.async_send_remote_action(
-            vehicle.details.id,
+        assert vehicle_coordinator.vehicle.id
+        response_data = await vehicle_coordinator.client.send_remote_to_vhl(
+            vehicle_coordinator.vehicle.id,
             callback_id,
-            request_body,
+            remote,
         )
 
-    if ATTR_REMOTE_ACTION_ID not in response_data:
+    if not response_data.remote_action_id:
         LOGGER.warning(
-            f"The {service_name} service result will not be tracked as the remote action ID is missing from the API response"
+            f"The 'stellantis.{service_name}' service result will not be tracked as the remote action ID is missing from the API response"
         )
         return
 
@@ -130,32 +137,31 @@ async def async_send_remote_requests(
         async with timeout(10):
             while True:
                 with StellantisCallbackEvent(
-                    hass, response_data[ATTR_REMOTE_ACTION_ID]
+                    hass, response_data.remote_action_id
                 ) as callback_event:
                     event_status = await callback_event
-                    match event_status[ATTR_EVENT_TYPE]:
-                        case EventStatusType.PENDING:
+                    match event_status.type:
+                        case RemoteEventType.PENDING:
                             LOGGER.debug(
                                 "Pending notification received from remote action, reason: %s",
-                                event_status.get(ATTR_STATUS, "Not specified"),
+                                event_status.status or "Not specified",
                             )
                             continue
-                        case EventStatusType.DONE:
-                            match event_status[ATTR_STATUS]:
+                        case RemoteEventType.DONE:
+                            match event_status.status:
                                 case RemoteDoneEventStatus.FAILED:
-                                    raise ServiceValidationError(
+                                    raise HomeAssistantError(
                                         translation_domain=DOMAIN,
                                         translation_key="remote_request_failed",
                                         translation_placeholders={
-                                            "failure_cause": event_status.get(
-                                                ATTR_FAILURE_CAUSE, "Not specified"
-                                            )
+                                            "failure_cause": event_status.failure_cause
+                                            or "Not specified"
                                         },
                                     )
                     break
     except TimeoutError:
         LOGGER.warning(
-            f"Status notification for {service_name} service was not received in time"
+            f"Status notification for 'stellantis.{service_name}' service was not received in time"
         )
 
 
@@ -172,46 +178,43 @@ async def async_setup_hass_services(hass: HomeAssistant) -> None:
         await async_send_remote_requests(
             hass,
             call,
-            {
-                "preconditioning": {
-                    "airConditioning": {
-                        "programs": [
-                            {
-                                "slot": call.data[ATTR_PROGRAM_NUMBER],
-                                "actionsType": "Delete",
-                            }
+            Remote(
+                preconditioning=RemotePreconditioning(
+                    air_conditioning=RemotePreconditioningAirConditioning(
+                        programs=[
+                            AirConditioningProgram(
+                                start="PT0H0M",
+                                slot=call.data[ATTR_PROGRAM_NUMBER],
+                                actions_type=ActionType.DELETE,
+                            )
                         ]
-                    }
-                }
-            },
+                    )
+                )
+            ),
             SERVICE_DELETE_PRECONDITIONING_PROGRAM,
         )
 
     async def async_set_navigation_positions_service(call: ServiceCall) -> None:
         """Handle the service call."""
         positions = [
-            {
-                "coordinates": [
-                    call.data[ATTR_POSITION][ATTR_LATITUDE],
-                    call.data[ATTR_POSITION][ATTR_LONGITUDE],
-                ],
-                "type": "Point",
-            }
-        ] + [
-            {
-                "coordinates": [
-                    call.data[f"{ATTR_POSITION}_{x}"][ATTR_LATITUDE],
-                    call.data[f"{ATTR_POSITION}_{x}"][ATTR_LONGITUDE],
-                ],
-                "type": "Point",
-            }
-            for x in range(1, 10)
-            if f"{ATTR_POSITION}_{x}" in call.data
+            Point(
+                coordinates=[
+                    (position := call.data[ATTR_POSITION])[ATTR_LATITUDE],
+                    position[ATTR_LONGITUDE],
+                ]
+            )
         ]
+        positions.extend(
+            Point(
+                coordinates=[position[ATTR_LATITUDE], position[ATTR_LONGITUDE]],
+            )
+            for key, position in dict(sorted(call.data.items())).items()
+            if key.startswith(f"{ATTR_POSITION}_")
+        )
         await async_send_remote_requests(
             hass,
             call,
-            {"navigation": {"positions": positions}},
+            Remote(navigation=RemoteNavigation(positions=positions)),
             SERVICE_SEND_NAVIGATION_POSITIONS,
         )
 
@@ -230,37 +233,42 @@ async def async_setup_hass_services(hass: HomeAssistant) -> None:
             )
         device_vin = device.identifiers.copy().pop()[1]
 
-        config_entry_id = device.config_entries.copy().pop()
-        config_entry = hass.config_entries.async_get_entry(config_entry_id)
+        config_entry: StellantisConfigEntry | None = None
+        for entry_id in device.config_entries:
+            _config_entry = hass.config_entries.async_get_entry(entry_id)
+            assert _config_entry
+            if _config_entry.domain == DOMAIN:
+                config_entry = cast(StellantisConfigEntry, _config_entry)
+                break
         if config_entry is None:
             raise ServiceValidationError(
                 translation_domain=DOMAIN,
                 translation_key="config_entry_not_found",
-                translation_placeholders={
-                    SVE_TRANSLATION_PLACEHOLDER_CONFIG_ENTRY_ID: config_entry_id
-                },
+                translation_placeholders={"device_id": device_id},
             )
-        coordinator: StellantisUpdateCoordinator = hass.data[DOMAIN][
-            config_entry_id
-        ].coordinator
 
-        vehicle_status = None
-        for vehicle in coordinator.data:
-            if vehicle.details.vin == device_vin:
-                vehicle_status = vehicle.status
+        vehicle_coordinator: StellantisVehicleCoordinator | None = None
+        for _vehicle_coordinator in config_entry.runtime_data:
+            if _vehicle_coordinator.vehicle.vin == device_vin:
+                vehicle_coordinator = _vehicle_coordinator
                 break
-        if vehicle_status is None:
+
+        if vehicle_coordinator is None:
             raise ServiceValidationError(
                 translation_domain=DOMAIN,
-                translation_key="remote_request_vehicle_status_not_found",
+                translation_key="remote_request_vehicle_not_found",
                 translation_placeholders={SVE_TRANSLATION_PLACEHOLDER_VIN: device_vin},
             )
 
-        programs: list[dict[str, Any]] = jsonpath(
-            vehicle_status,
-            "$.preconditioning.airConditioning.programs[*]",
-        )
-        if not programs:
+        if (
+            not vehicle_coordinator.data.preconditioning
+            or not vehicle_coordinator.data.preconditioning.air_conditioning
+            or (
+                programs
+                := vehicle_coordinator.data.preconditioning.air_conditioning.programs
+            )
+            is None
+        ):
             raise ServiceValidationError(
                 translation_domain=DOMAIN,
                 translation_key="remote_request_preconditioning_programs_not_found",
@@ -272,7 +280,7 @@ async def async_setup_hass_services(hass: HomeAssistant) -> None:
 
         program_to_set = None
         for program in programs:
-            if program["slot"] == call.data[ATTR_PROGRAM_NUMBER]:
+            if program.slot == call.data[ATTR_PROGRAM_NUMBER]:
                 program_to_set = program
                 break
         if program_to_set is None:
@@ -289,22 +297,31 @@ async def async_setup_hass_services(hass: HomeAssistant) -> None:
                     translation_domain=DOMAIN,
                     translation_key="remote_request_new_preconditioning_program_missing_fields",
                 )
-            program_to_set = {"slot": call.data[ATTR_PROGRAM_NUMBER]}
+            program_to_set = PreconditioningProgram(
+                start=transform_to_stellantis_time_schema(call.data[ATTR_START]),
+                enabled=call.data[ATTR_ENABLED],
+            )
 
-        if ATTR_START in call.data:
-            program_to_set[ATTR_START] = transform_to_stellantis_time_schema(
-                call.data[ATTR_START]
-            )
+        else:
+            if ATTR_START in call.data:
+                program_to_set.start = transform_to_stellantis_time_schema(
+                    call.data[ATTR_START]
+                )
+            if ATTR_ENABLED in call.data:
+                program_to_set.enabled = call.data[ATTR_ENABLED]
         if ATTR_OCCURRENCE in call.data:
-            program_to_set["occurence"] = {  # codespell:ignore occurence
-                "day": [sentencecase(weekday) for weekday in call.data[ATTR_OCCURRENCE]]
-            }
-        if ATTR_DAILY_RECURRENCE in call.data:
-            program_to_set["recurrence"] = (
-                "Daily" if call.data[ATTR_DAILY_RECURRENCE] else "None"
+            program_to_set.occurence = WeekOccurrence(  # codespell:ignore occurence
+                day=[
+                    WeekDays(day.capitalize())
+                    for day in cast(list[str], call.data[ATTR_OCCURRENCE])
+                ]
             )
-        if ATTR_ENABLED in call.data:
-            program_to_set[ATTR_ENABLED] = call.data[ATTR_ENABLED]
+        if ATTR_DAILY_RECURRENCE in call.data:
+            program_to_set.recurrence = (
+                ProgramRecurrence.DAILY
+                if call.data[ATTR_DAILY_RECURRENCE]
+                else ProgramRecurrence.NONE
+            )
 
         await async_send_remote_requests(
             hass,
@@ -316,7 +333,7 @@ async def async_setup_hass_services(hass: HomeAssistant) -> None:
     async def async_wake_up_vehicle_service(call: ServiceCall) -> None:
         """Handle the service call."""
         await async_send_remote_requests(
-            hass, call, {"wakeUp": {"action": "WakeUp"}}, SERVICE_WAKE_UP
+            hass, call, Remote(wake_up=RemoteWakeUp()), SERVICE_WAKE_UP
         )
 
     hass.services.async_register(

@@ -1,24 +1,21 @@
 """oAuth2 functions and classes for Stellantis API integration."""
 
-from http import HTTPStatus
+from json import JSONDecodeError
 import logging
-from typing import Any, cast
+from typing import cast
 
-from aiohttp import BasicAuth, client
-from yarl import URL
+from aiohttp import BasicAuth, ClientError
 
 from homeassistant.components.application_credentials import (
     AuthImplementation,
     AuthorizationServer,
     ClientCredential,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.config_entry_oauth2_flow import OAuth2Session, _encode_jwt
+from homeassistant.helpers.config_entry_oauth2_flow import OAuth2Session
 
-from .const import API_ENDPOINT, Brand
+from .const import Brand
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -26,7 +23,9 @@ _LOGGER = logging.getLogger(__name__)
 class StellantisOauth2Implementation(AuthImplementation):
     """Local OAuth2 implementation for Stellantis."""
 
-    def __init__(self, hass: HomeAssistant, domain: str, brand: Brand) -> None:
+    def __init__(
+        self, hass: HomeAssistant, domain: str, brand: Brand, country_code: str
+    ) -> None:
         """Stellantis Oauth Implementation."""
         match brand:
             case Brand.CITROEN:
@@ -86,16 +85,20 @@ class StellantisOauth2Implementation(AuthImplementation):
             ),
         )
         self.revoke_url = f"https://idpcvs.{brand_tld}/am/oauth2/token/revoke"
+        self.country_code = country_code
 
     @property
     def extra_authorize_data(self) -> dict:
         """Extra data that needs to be appended to the authorize url."""
-        return {"scope": "openid profile"}
+        return {
+            "scope": "openid profile",
+            "locale": f"{self.hass.config.language}-{self.country_code.upper()}",
+        }
 
     @property
     def redirect_uri(self) -> str:
         """Return the redirect uri."""
-        return f"{self.redirect_scheme}://oauth2redirect/"
+        return f"{self.redirect_scheme}://oauth2redirect/{self.country_code}"
 
     async def _async_refresh_token(self, token: dict) -> dict:
         """Refresh tokens."""
@@ -110,45 +113,29 @@ class StellantisOauth2Implementation(AuthImplementation):
     async def _token_request(self, data: dict) -> dict:
         """Make a token request."""
         session = async_get_clientsession(self.hass)
+
+        _LOGGER.debug("Sending token request to %s", self.token_url)
         resp = await session.post(
             self.token_url,
             params=data,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
             auth=BasicAuth(self.client_id, self.client_secret),
         )
-        json = await resp.json()
-        if resp.status >= 400 and resp.status < 500:
-            raise ConfigEntryAuthFailed(
-                json.get("error_description", json.get("moreInformation", "Unknown"))
+        if resp.status >= 400:
+            try:
+                error_response = await resp.json()
+            except (ClientError, JSONDecodeError):
+                error_response = {}
+            error_code = error_response.get("error", "unknown")
+            error_description = error_response.get("error_description", "unknown error")
+            _LOGGER.error(
+                "Token request for %s failed (%s): %s",
+                self.domain,
+                error_code,
+                error_description,
             )
         resp.raise_for_status()
-        return cast(dict, json)
-
-    async def async_generate_authorize_url_with_country_code(
-        self, flow_id: str, country_code: str
-    ) -> str:
-        """Generate a url for the user to authorize."""
-        redirect_uri = self.redirect_uri
-        return str(
-            URL(self.authorize_url)
-            .with_query(
-                {
-                    "response_type": "code",
-                    "client_id": self.client_id,
-                    "scope": "openid profile",
-                    "redirect_uri": redirect_uri + country_code,
-                    "state": _encode_jwt(
-                        self.hass,
-                        {
-                            "flow_id": flow_id,
-                            "redirect_uri": redirect_uri + country_code,
-                        },
-                    ),
-                    "locale": f"{self.hass.config.language}-{country_code.upper()}",
-                }
-            )
-            .update_query(self.extra_authorize_data)
-        )
+        return cast(dict, await resp.json())
 
     async def async_revoke_token(self, token: dict) -> None:
         """Revoke a token."""
@@ -169,64 +156,14 @@ class StellantisOAuth2Session(OAuth2Session):
 
     implementation: StellantisOauth2Implementation
 
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        config_entry: ConfigEntry,
-        implementation: StellantisOauth2Implementation,
-    ) -> None:
-        """Initialize Stellantis OAuth2 session."""
-        self.auth_fails: int = 0
-        super().__init__(hass, config_entry, implementation)
-
-    async def async_request(
-        self, method: str, url: str, **kwargs: Any
-    ) -> client.ClientResponse:
-        """Make a request to Stellantis api."""
-        headers = kwargs.pop("headers", {})
-        params = kwargs.pop("params", {})
-        resp = await super().async_request(
-            method,
-            url,
-            **kwargs,
-            params={
-                **params,
-                "client_id": self.implementation.client_id,
-            },
-            headers={
-                **headers,
-                "x-introspect-realm": self.implementation.realm,
-            },
-        )
-        if resp.status == HTTPStatus.UNAUTHORIZED and self.valid_token:
-            json = await resp.json()
-            msg = (
-                json.get("error_description", json.get("moreInformation", "Unknown"))
-                + f" (HTTP code :{resp.status})"
-            )
-            if self.auth_fails < 4:
-                _LOGGER.warning(
-                    "Attempt number %d to refresh token. %s", self.auth_fails + 1, msg
-                )
-            else:
-                raise ConfigEntryAuthFailed(msg)
-        self.auth_fails = 0
-        return resp
-
-    async def async_request_to_path(
-        self, method: str, path: str, **kwargs: Any
-    ) -> client.ClientResponse:
-        """Make a request to Stellantis api endpoint and the given path."""
-        return await self.async_request(
-            method,
-            API_ENDPOINT + path,
-            **kwargs,
-        )
-
     async def async_revoke_token(self) -> None:
         """Revoke the token."""
-        await self.implementation.async_revoke_token(self.token)
+        async with self._token_lock:
+            if self.valid_token:
+                return
 
-        self.hass.config_entries.async_update_entry(
-            self.config_entry, data={**self.config_entry.data, "token": None}
-        )
+            await self.implementation.async_revoke_token(self.token)
+
+            self.hass.config_entries.async_update_entry(
+                self.config_entry, data={**self.config_entry.data, "token": None}
+            )

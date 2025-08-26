@@ -1,12 +1,11 @@
 """Stellantis sensor platform."""
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
-from jsonpath import jsonpath
-from stringcase import snakecase
+from stellantis.model import EnergySubType, EnergyType, EngineType, Status, WeekDays
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -14,10 +13,8 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     PERCENTAGE,
-    WEEKDAYS,
     UnitOfEnergy,
     UnitOfLength,
     UnitOfSpeed,
@@ -27,26 +24,24 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
-from homeassistant.helpers.typing import StateType
-from homeassistant.util import dt as dt_util
+from homeassistant.helpers.typing import UNDEFINED, StateType, UndefinedType
+from homeassistant.util import dt as dt_util, slugify
 
-from . import HomeAssistantStellantisData
-from .const import DOMAIN
-from .entity import StellantisBaseEntity
+from .coordinator import StellantisConfigEntry
+from .entity import (
+    StellantisBaseEntity,
+    StellantisEntityDescription,
+    StellantisPreconditioningEntity,
+)
 
-
-@dataclass(frozen=True, kw_only=True)
-class StellantisSensorEntityDescription(SensorEntityDescription):
-    """Describes Stellantis sensor entity."""
-
-    value_path: str
+WEEK_DAYS_LIST = list(WeekDays.__members__.values())
 
 
 @dataclass(frozen=True, kw_only=True)
-class StellantisPreconditioningSensorEntityDescription(SensorEntityDescription):
+class StellantisSensorEntityDescription(
+    StellantisEntityDescription, SensorEntityDescription
+):
     """Describes Stellantis sensor entity."""
-
-    slot: int
 
 
 FUEL_ENERGY_EXTENSION_SENSORS: tuple[StellantisSensorEntityDescription, ...] = (
@@ -57,7 +52,21 @@ FUEL_ENERGY_EXTENSION_SENSORS: tuple[StellantisSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.VOLUME,
         native_unit_of_measurement=UnitOfVolume.LITERS,
         suggested_display_precision=4,
-        value_path="$.energies.[?(@.type == 'Fuel')].extension.fuel.consumptions.total",
+        value_fn=lambda status: consumptions.total
+        if (
+            energy := next(
+                (
+                    energy
+                    for energy in (status.energies or [])
+                    if energy.type == EnergyType.FUEL
+                ),
+                None,
+            )
+        )
+        and (extension := energy.extension)
+        and (fuel := extension.fuel)
+        and (consumptions := fuel.consumptions)
+        else UNDEFINED,
     ),
 )
 
@@ -67,58 +76,188 @@ ELECTRIC_ENERGY_EXTENSION_SENSORS: tuple[StellantisSensorEntityDescription, ...]
         key="battery_total_capacity",
         translation_key="battery_total_capacity",
         native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
-        value_path="$.energies[?(@.type == 'Electric')].extension.electric.battery.load.capacity",
+        value_fn=lambda status: load.capacity
+        if (
+            energy := next(
+                (
+                    energy
+                    for energy in (status.energies or [])
+                    if energy.type == EnergyType.ELECTRIC
+                ),
+                None,
+            )
+        )
+        and (extension := energy.extension)
+        and (electric := extension.electric)
+        and (battery := electric.battery)
+        and (load := battery.load)
+        else UNDEFINED,
     ),
     StellantisSensorEntityDescription(
         key="residual_electric_energy",
         translation_key="residual_electric_energy",
         native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
-        value_path="$.energies[?(@.type == 'Electric')].extension.electric.battery.load.residual",
+        value_fn=lambda status: load.residual
+        if (
+            energy := next(
+                (
+                    energy
+                    for energy in (status.energies or [])
+                    if energy.type == EnergyType.ELECTRIC
+                ),
+                None,
+            )
+        )
+        and (extension := energy.extension)
+        and (electric := extension.electric)
+        and (battery := electric.battery)
+        and (load := battery.load)
+        else UNDEFINED,
     ),
     StellantisSensorEntityDescription(
         key="battery_capacity",
         translation_key="battery_capacity",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=PERCENTAGE,
-        value_path="$.energies[?(@.type == 'Electric')].extension.electric.battery.health.capacity",
+        value_fn=lambda status: health.capacity
+        if (
+            energy := next(
+                (
+                    energy
+                    for energy in (status.energies or [])
+                    if energy.type == EnergyType.ELECTRIC
+                ),
+                None,
+            )
+        )
+        and (extension := energy.extension)
+        and (electric := extension.electric)
+        and (battery := electric.battery)
+        and (health := battery.health)
+        else UNDEFINED,
     ),
     StellantisSensorEntityDescription(
         key="battery_resistance",
         translation_key="battery_resistance",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=PERCENTAGE,
-        value_path="$.energies[?(@.type == 'Electric')].extension.electric.battery.health.resistance",
+        value_fn=lambda status: health.resistance
+        if (
+            energy := next(
+                (
+                    energy
+                    for energy in (status.energies or [])
+                    if energy.type == EnergyType.ELECTRIC
+                ),
+                None,
+            )
+        )
+        and (extension := energy.extension)
+        and (electric := extension.electric)
+        and (battery := electric.battery)
+        and (health := battery.health)
+        else UNDEFINED,
     ),
     StellantisSensorEntityDescription(
         key="charging_status",
         translation_key="charging_status",
         device_class=SensorDeviceClass.ENUM,
-        value_path="$.energies[?(@.type == 'Electric')].extension.electric.charging.status",
+        value_fn=lambda status: charging.status
+        if (
+            energy := next(
+                (
+                    energy
+                    for energy in (status.energies or [])
+                    if energy.type == EnergyType.ELECTRIC
+                ),
+                None,
+            )
+        )
+        and (extension := energy.extension)
+        and (electric := extension.electric)
+        and (charging := electric.charging)
+        else UNDEFINED,
     ),
     StellantisSensorEntityDescription(
         key="charging_remaining_time",
         translation_key="charging_remaining_time",
         device_class=SensorDeviceClass.DURATION,
         native_unit_of_measurement=UnitOfTime.SECONDS,
-        value_path="$.energies[?(@.type == 'Electric')].extension.electric.charging.remainingTime",
+        value_fn=lambda status: charging.remaining_time
+        if (
+            energy := next(
+                (
+                    energy
+                    for energy in (status.energies or [])
+                    if energy.type == EnergyType.ELECTRIC
+                ),
+                None,
+            )
+        )
+        and (extension := energy.extension)
+        and (electric := extension.electric)
+        and (charging := electric.charging)
+        else UNDEFINED,
     ),
     StellantisSensorEntityDescription(
         key="charging_rate",
         translation_key="charging_rate",
         native_unit_of_measurement=UnitOfSpeed.KILOMETERS_PER_HOUR,
-        value_path="$.energies[?(@.type == 'Electric')].extension.electric.charging.chargingRate",
+        value_fn=lambda status: charging.charging_rate
+        if (
+            energy := next(
+                (
+                    energy
+                    for energy in (status.energies or [])
+                    if energy.type == EnergyType.ELECTRIC
+                ),
+                None,
+            )
+        )
+        and (extension := energy.extension)
+        and (electric := extension.electric)
+        and (charging := electric.charging)
+        else UNDEFINED,
     ),
     StellantisSensorEntityDescription(
         key="charging_mode",
         translation_key="charging_mode",
         device_class=SensorDeviceClass.ENUM,
-        value_path="$.energies[?(@.type == 'Electric')].extension.electric.charging.chargingMode",
+        value_fn=lambda status: charging.charging_mode
+        if (
+            energy := next(
+                (
+                    energy
+                    for energy in (status.energies or [])
+                    if energy.type == EnergyType.ELECTRIC
+                ),
+                None,
+            )
+        )
+        and (extension := energy.extension)
+        and (electric := extension.electric)
+        and (charging := electric.charging)
+        else UNDEFINED,
     ),
     StellantisSensorEntityDescription(
         key="next_charge",
         translation_key="next_charge",
         device_class=SensorDeviceClass.TIMESTAMP,
-        value_path="$.energies[?(@.type == 'Electric')].extension.electric.charging.nextDelayedTime",
+        value_fn=lambda status: charging.next_delayed_time
+        if (
+            energy := next(
+                (
+                    energy
+                    for energy in (status.energies or [])
+                    if energy.type == EnergyType.ELECTRIC
+                ),
+                None,
+            )
+        )
+        and (extension := energy.extension)
+        and (electric := extension.electric)
+        and (charging := electric.charging)
+        else UNDEFINED,
     ),
 )
 
@@ -129,7 +268,21 @@ THERMIC_ENGINE_EXTENSION_SENSORS: tuple[StellantisSensorEntityDescription, ...] 
         translation_key="thermic_engine_coolant_level",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=PERCENTAGE,
-        value_path="$.engines[?(@.type == 'Thermic')].extension.thermic.coolant.level",
+        value_fn=lambda status: coolant.level
+        if (
+            engine := next(
+                (
+                    engine
+                    for engine in (status.engines or [])
+                    if engine.type == EngineType.THERMIC
+                ),
+                None,
+            )
+        )
+        and (extension := engine.extension)
+        and (thermic := extension.thermic)
+        and (coolant := thermic.coolant)
+        else UNDEFINED,
     ),
     StellantisSensorEntityDescription(
         key="thermic_engine_coolant_temperature",
@@ -138,14 +291,42 @@ THERMIC_ENGINE_EXTENSION_SENSORS: tuple[StellantisSensorEntityDescription, ...] 
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         suggested_display_precision=1,
-        value_path="$.engines[?(@.type == 'Thermic')].extension.thermic.coolant.temp",
+        value_fn=lambda status: coolant.temp
+        if (
+            engine := next(
+                (
+                    engine
+                    for engine in (status.engines or [])
+                    if engine.type == EngineType.THERMIC
+                ),
+                None,
+            )
+        )
+        and (extension := engine.extension)
+        and (thermic := extension.thermic)
+        and (coolant := thermic.coolant)
+        else UNDEFINED,
     ),
     StellantisSensorEntityDescription(
         key="thermic_engine_oil_level",
         translation_key="thermic_engine_oil_level",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=PERCENTAGE,
-        value_path="$.engines[?(@.type == 'Thermic')].extension.thermic.oil.level",
+        value_fn=lambda status: oil.level
+        if (
+            engine := next(
+                (
+                    engine
+                    for engine in (status.engines or [])
+                    if engine.type == EngineType.THERMIC
+                ),
+                None,
+            )
+        )
+        and (extension := engine.extension)
+        and (thermic := extension.thermic)
+        and (oil := thermic.oil)
+        else UNDEFINED,
     ),
     StellantisSensorEntityDescription(
         key="thermic_engine_oil_temperature",
@@ -154,7 +335,21 @@ THERMIC_ENGINE_EXTENSION_SENSORS: tuple[StellantisSensorEntityDescription, ...] 
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         suggested_display_precision=1,
-        value_path="$.engines[?(@.type == 'Thermic')].extension.thermic.oil.temp",
+        value_fn=lambda status: oil.temp
+        if (
+            engine := next(
+                (
+                    engine
+                    for engine in (status.engines or [])
+                    if engine.type == EngineType.THERMIC
+                ),
+                None,
+            )
+        )
+        and (extension := engine.extension)
+        and (thermic := extension.thermic)
+        and (oil := thermic.oil)
+        else UNDEFINED,
     ),
     StellantisSensorEntityDescription(
         key="thermic_engine_air_temperature",
@@ -163,7 +358,21 @@ THERMIC_ENGINE_EXTENSION_SENSORS: tuple[StellantisSensorEntityDescription, ...] 
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         suggested_display_precision=1,
-        value_path="$.engines[?(@.type == 'Thermic')].extension.thermic.air.temp",
+        value_fn=lambda status: air.temp
+        if (
+            engine := next(
+                (
+                    engine
+                    for engine in (status.engines or [])
+                    if engine.type == EngineType.THERMIC
+                ),
+                None,
+            )
+        )
+        and (extension := engine.extension)
+        and (thermic := extension.thermic)
+        and (air := thermic.air)
+        else UNDEFINED,
     ),
 )
 
@@ -173,25 +382,21 @@ SENSORS: tuple[StellantisSensorEntityDescription, ...] = (
         key="ignition",
         translation_key="ignition",
         device_class=SensorDeviceClass.ENUM,
-        value_path="$.ignition.type",
+        value_fn=lambda status: status.ignition.type if status.ignition else UNDEFINED,
     ),
     StellantisSensorEntityDescription(
         key="powertrain_status",
         translation_key="powertrain_status",
         device_class=SensorDeviceClass.ENUM,
-        value_path="$.powertrain.status",
-    ),
-    StellantisSensorEntityDescription(
-        key="doors_lock_state",
-        translation_key="doors_lock_state",
-        device_class=SensorDeviceClass.ENUM,
-        value_path="$.doorsState.lockedStates",
+        value_fn=lambda status: status.powertrain.status
+        if status.powertrain
+        else UNDEFINED,
     ),
     StellantisSensorEntityDescription(
         key="privacy",
         translation_key="privacy",
         device_class=SensorDeviceClass.ENUM,
-        value_path="$.privacy.state",
+        value_fn=lambda status: status.privacy.state if status.privacy else UNDEFINED,
     ),
     StellantisSensorEntityDescription(
         key="auxiliary_battery_health",
@@ -199,13 +404,15 @@ SENSORS: tuple[StellantisSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=PERCENTAGE,
         suggested_display_precision=1,
-        value_path="$.battery.voltage",
+        value_fn=lambda status: status.battery.voltage if status.battery else UNDEFINED,
     ),
     StellantisSensorEntityDescription(
         key="auto_e_call_triggering",
         translation_key="auto_e_call_triggering",
         device_class=SensorDeviceClass.ENUM,
-        value_path="$.safety.autoECallTriggering",
+        value_fn=lambda status: status.safety.auto_e_call_triggering
+        if status.safety
+        else UNDEFINED,
     ),
     StellantisSensorEntityDescription(
         key="mileage",
@@ -214,14 +421,18 @@ SENSORS: tuple[StellantisSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.DISTANCE,
         native_unit_of_measurement=UnitOfLength.KILOMETERS,
         suggested_display_precision=1,
-        value_path="$.odometer.mileage",
+        value_fn=lambda status: status.odometer.mileage
+        if status.odometer
+        else UNDEFINED,
     ),
     StellantisSensorEntityDescription(
         key="acceleration",
         translation_key="acceleration",
         native_unit_of_measurement="m/s²",
         suggested_display_precision=1,
-        value_path="$.kinetic.acceleration",
+        value_fn=lambda status: status.kinetic.acceleration
+        if status.kinetic
+        else UNDEFINED,
     ),
     StellantisSensorEntityDescription(
         key="speed",
@@ -229,7 +440,7 @@ SENSORS: tuple[StellantisSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.SPEED,
         native_unit_of_measurement=UnitOfSpeed.KILOMETERS_PER_HOUR,
         suggested_display_precision=1,
-        value_path="$.kinetic.speed",
+        value_fn=lambda status: status.kinetic.speed if status.kinetic else UNDEFINED,
     ),
     StellantisSensorEntityDescription(
         key="environment_air_temperature",
@@ -237,13 +448,17 @@ SENSORS: tuple[StellantisSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.TEMPERATURE,
         suggested_display_precision=1,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        value_path="$.environment.air.temp",
+        value_fn=lambda status: air.temp
+        if (environment := status.environment) and (air := environment.air)
+        else UNDEFINED,
     ),
     StellantisSensorEntityDescription(
         key="driving_mode",
         translation_key="driving_mode",
         device_class=SensorDeviceClass.ENUM,
-        value_path="$.drivingBehavior.mode",
+        value_fn=lambda status: status.driving_behavior.mode
+        if status.driving_behavior
+        else UNDEFINED,
     ),
 )
 
@@ -253,136 +468,186 @@ PRECONDITIONING_SENSORS = (
         key="preconditioning_status",
         translation_key="preconditioning_status",
         device_class=SensorDeviceClass.ENUM,
-        value_path="$.preconditioning.airConditioning.status",
+        value_fn=lambda status: air_conditioning.status
+        if (preconditioning := status.preconditioning)
+        and (air_conditioning := preconditioning.air_conditioning)
+        else UNDEFINED,
     ),
 )
 
 
-def get_common_energy_sensors(
-    energies: list[dict[str, Any]],
-):
-    """Get common sensors common to all energies."""
-    for energy in energies:
-        energy_type = energy["type"]
-        yield StellantisSensorEntityDescription(
-            key=f"{snakecase(energy_type)}_energy_level",
-            translation_key=f"{snakecase(energy_type)}_energy_level",
+def _make_energy_level_fn(
+    energy_type: EnergyType,
+) -> Callable[[Status], StateType | UndefinedType]:
+    def energy_level_fn(status: Status) -> StateType | UndefinedType:
+        for energy in status.energies or []:
+            if energy.type == energy_type:
+                return energy.level
+        return UNDEFINED
+
+    return energy_level_fn
+
+
+def _make_energy_autonomy_fn(
+    energy_type: EnergyType,
+) -> Callable[[Status], StateType | UndefinedType]:
+    def energy_autonomy_fn(status: Status) -> StateType | UndefinedType:
+        for energy in status.energies or []:
+            if energy.type == energy_type:
+                return energy.autonomy
+        return UNDEFINED
+
+    return energy_autonomy_fn
+
+
+COMMON_ENERGY_SENSORS = {
+    energy_type: (
+        StellantisSensorEntityDescription(
+            key=f"{slugify(energy_type)}_energy_level",
+            translation_key=f"{slugify(energy_type)}_energy_level",
             device_class=SensorDeviceClass.BATTERY,
             native_unit_of_measurement=PERCENTAGE,
             suggested_display_precision=1,
-            value_path=f"$.energies[?(@.type == '{energy_type}')].level",
-        )
-        yield StellantisSensorEntityDescription(
-            key=f"{snakecase(energy_type)}_energy_autonomy",
-            translation_key=f"{snakecase(energy_type)}_energy_autonomy",
+            value_fn=_make_energy_level_fn(energy_type),
+        ),
+        StellantisSensorEntityDescription(
+            key=f"{slugify(energy_type)}_energy_autonomy",
+            translation_key=f"{slugify(energy_type)}_energy_autonomy",
             device_class=SensorDeviceClass.DISTANCE,
             native_unit_of_measurement=UnitOfLength.KILOMETERS,
-            value_path=f"$.energies[?(@.type == '{energy_type}')].autonomy",
-        )
+            suggested_display_precision=1,
+            value_fn=_make_energy_autonomy_fn(energy_type),
+        ),
+    )
+    for energy_type in EnergyType.__members__.values()
+}
 
 
-def get_fuel_energy_sensor(
-    energy_sub_type: str,
-) -> StellantisSensorEntityDescription:
-    """Get the fuel instant consumption sensor with its correct native unit of measurement."""
-    return StellantisSensorEntityDescription(
+def _make_fuel_instant_consumption_fn(
+    energy_sub_type: EnergySubType | None,
+) -> Callable[[Status], StateType | UndefinedType]:
+    def fuel_instant_consumption_fn(status: Status) -> StateType | UndefinedType:
+        for energy in status.energies or []:
+            if (
+                energy.sub_type == energy_sub_type
+                and (extension := energy.extension)
+                and (fuel := extension.fuel)
+                and (consumptions := fuel.consumptions)
+            ):
+                return consumptions.instant
+        return UNDEFINED
+
+    return fuel_instant_consumption_fn
+
+
+FUEL_ENERGY_SENSORS_MAP = {
+    energy_sub_type: StellantisSensorEntityDescription(
         key="fuel_instant_consumption",
         translation_key="fuel_instant_consumption",
         state_class=SensorStateClass.MEASUREMENT,
-        native_unit_of_measurement="L/100km"
-        if energy_sub_type == "FossilEnergy"
-        else "Kg/100Km"
-        if energy_sub_type == "Hydrogen"
-        else None,
+        native_unit_of_measurement=native_unit_of_measurement,
         suggested_display_precision=1,
-        value_path="$.energies.[?(@.type == 'Fuel')].extension.fuel.consumptions.instant",
+        value_fn=_make_fuel_instant_consumption_fn(energy_sub_type),
     )
+    for energy_sub_type, native_unit_of_measurement in (
+        (EnergySubType.FOSSIL_ENERGY, "L/100km"),
+        (EnergySubType.HYDROGEN, "Kg/100Km"),
+        (None, None),
+    )
+}
 
 
-def get_engine_common_sensors(
-    engines: list[dict[str, Any]],
-):
-    """Get common sensors common to all engines."""
-    for engine in engines:
-        engine_type = engine["type"]
-        yield StellantisSensorEntityDescription(
-            key=f"{snakecase(engine['type'])}_engine_speed",
-            translation_key=f"{snakecase(engine['type'])}_engine_speed",
-            value_path=f"$.engines[?(@.type == '{engine_type}')].speed",
-        )
+def _make_engine_speed_fn(
+    engine_type: EngineType,
+) -> Callable[[Status], StateType | UndefinedType]:
+    def engine_speed_fn(status: Status) -> StateType | UndefinedType:
+        for engine in status.engines or []:
+            if engine.type == engine_type:
+                return engine.speed
+        return UNDEFINED
+
+    return engine_speed_fn
+
+
+ENGINE_SENSORS_MAP = {
+    engine_type: StellantisSensorEntityDescription(
+        key=f"{slugify(engine_type)}_engine_speed",
+        translation_key=f"{slugify(engine_type)}_engine_speed",
+        value_fn=_make_engine_speed_fn(engine_type),
+    )
+    for engine_type in EngineType.__members__.values()
+}
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: StellantisConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up the Stellantis sensors."""
+    entities: list[StellantisBaseEntity] = []
+    for vehicle_coordinator in entry.runtime_data:
+        sensors: list[StellantisSensorEntityDescription] = []
 
-    data: HomeAssistantStellantisData = hass.data[DOMAIN][entry.entry_id]
-
-    for vehicle in data.coordinator.data:
-        sensors = SENSORS
-        sensors += tuple(
-            get_common_energy_sensors(
-                jsonpath(
-                    vehicle.status,
-                    "$.energies[*]",
-                )
-            )
-        )
-        sensors += tuple(
-            get_engine_common_sensors(jsonpath(vehicle.status, "$.engines[*]"))
-        )
-
-        if jsonpath(
-            vehicle.status,
-            "$.preconditioning.airConditioning",
+        if (
+            vehicle_coordinator.data.preconditioning
+            and vehicle_coordinator.data.preconditioning.air_conditioning
         ):
             sensors += PRECONDITIONING_SENSORS
-            async_add_entities(
+
+            slots = 4  # By default, we assume 4 slots
+            if (
+                (embedded := vehicle_coordinator.vehicle.embedded)
+                and embedded.extension
+                and embedded.extension.onboard_capabilities
+                and (remote := embedded.extension.onboard_capabilities.remote)
+                and remote.preconditioning.supported
+                and (programs := remote.preconditioning.parameters.programs)
+            ):
+                slots = programs.size
+            entities.extend(
                 StellantisPreconditioningProgramSensor(
-                    data.coordinator,
-                    vehicle,
-                    StellantisPreconditioningSensorEntityDescription(
+                    hass,
+                    vehicle_coordinator,
+                    StellantisSensorEntityDescription(
                         key=f"preconditioning_program_{slot}",
                         translation_key=f"preconditioning_program_{slot}",
                         device_class=SensorDeviceClass.TIMESTAMP,
-                        slot=slot,
+                        value_fn=lambda _: None,
                     ),
+                    entry,
+                    slot,
                 )
-                for slot in range(1, 5)
+                for slot in range(1, slots + 1)
             )
 
-        if matches := jsonpath(
-            vehicle.status,
-            "$.energies[?(@.type == 'Fuel')]",
-        ):
-            sensors += (
-                *FUEL_ENERGY_EXTENSION_SENSORS,
-                get_fuel_energy_sensor(matches[0]["subType"]),
-            )
+        for energy in vehicle_coordinator.data.energies or []:
+            if energy.type:
+                sensors.extend(COMMON_ENERGY_SENSORS[energy.type])
+            match energy.type:
+                case EnergyType.FUEL:
+                    sensors += [
+                        *FUEL_ENERGY_EXTENSION_SENSORS,
+                        FUEL_ENERGY_SENSORS_MAP[energy.sub_type],
+                    ]
+                case EnergyType.ELECTRIC:
+                    sensors += ELECTRIC_ENERGY_EXTENSION_SENSORS
 
-        if jsonpath(
-            vehicle.status,
-            "$.energies[?(@.type == 'Electric')]",
-        ):
-            sensors += ELECTRIC_ENERGY_EXTENSION_SENSORS
+        for engines in vehicle_coordinator.data.engines or []:
+            if engines.type:
+                sensors.append(ENGINE_SENSORS_MAP[engines.type])
+                if engines.type == EngineType.THERMIC:
+                    sensors += THERMIC_ENGINE_EXTENSION_SENSORS
 
-        if jsonpath(
-            vehicle.status,
-            "$.engines[?(@.type == 'Thermic')]",
-        ):
-            sensors += THERMIC_ENGINE_EXTENSION_SENSORS
-
-        async_add_entities(
+        entities.extend(
             StellantisSensor(
-                data.coordinator,
-                vehicle,
+                vehicle_coordinator,
                 description,
             )
-            for description in sensors
+            for description in list(SENSORS) + sensors
         )
+
+    async_add_entities(entities)
 
 
 class StellantisSensor(StellantisBaseEntity, SensorEntity):
@@ -391,27 +656,30 @@ class StellantisSensor(StellantisBaseEntity, SensorEntity):
     entity_description: StellantisSensorEntityDescription
 
     @property
-    def native_value(self) -> StateType | datetime:
+    def native_value(self) -> StateType | datetime | None:
         """Calculate the sensor value from the entity description."""
-        try:
-            value = self.get_from_vehicle_status(self.entity_description.value_path)
-        except KeyError:
-            return None
-        if value:
+        if self.status_value and self.status_value != UNDEFINED:
             if self.entity_description.key == "fuel_consumption":
+                assert isinstance(self.status_value, float)
                 # Fuel consumption is in centiliters, convert it to liters
-                return value / 100
-            if self.entity_description.device_class == SensorDeviceClass.TIMESTAMP:
-                if (next_timestamp := get_next_timestamp(value)) is not None:
-                    return next_timestamp
-            if self.entity_description.device_class == SensorDeviceClass.DURATION:
-                if (duration := dt_util.parse_duration(value)) is not None:
-                    return duration.total_seconds()
-            if self.entity_description.device_class == SensorDeviceClass.ENUM:
-                # In order to use translation keys, we need to snake case the value
-                # because Stellantis API returns values in pascal case
-                return snakecase(value)
-        return value
+                return self.status_value / 100
+            match self.entity_description.device_class:
+                case SensorDeviceClass.TIMESTAMP:
+                    assert isinstance(self.status_value, str)
+                    if (
+                        next_timestamp := _get_next_timestamp(self.status_value)
+                    ) is not None:
+                        return next_timestamp
+                case SensorDeviceClass.DURATION:
+                    assert isinstance(self.status_value, str)
+                    if (
+                        duration := dt_util.parse_duration(self.status_value)
+                    ) is not None:
+                        return duration.total_seconds()
+                case SensorDeviceClass.ENUM:
+                    assert isinstance(self.status_value, str)
+                    return slugify(self.status_value)
+        return None
 
     @property
     def available(self) -> bool:
@@ -419,62 +687,48 @@ class StellantisSensor(StellantisBaseEntity, SensorEntity):
         return self.native_value is not None and super().available
 
 
-class StellantisPreconditioningProgramSensor(StellantisBaseEntity, SensorEntity):
+class StellantisPreconditioningProgramSensor(
+    StellantisPreconditioningEntity[None], SensorEntity
+):
     """Representation of a Stellantis preconditioning sensor."""
 
-    entity_description: StellantisPreconditioningSensorEntityDescription
+    entity_description: StellantisSensorEntityDescription
+
+    def _handle_update_from_successful_remote_action(self, state: None) -> None:
+        pass
 
     @property
-    def status_value(self):
-        """Return the state reported from the API."""
-        return self.get_from_vehicle_status(
-            f"$.preconditioning.airConditioning.programs[?(@.slot == {self.entity_description.slot})]"
-        )
-
-    @property
-    def native_value(self) -> StateType | datetime:
+    def native_value(self) -> datetime | None:
         """Calculate timestamp of the next time the preconditioning program will get activated."""
-        try:
-            program = self.status_value
-        except KeyError:
-            return None
-
-        try:
-            if not program["enabled"]:
-                return None
-
-            return get_next_timestamp_on_weekdays(
-                program["start"],
-                program["occurence"]["day"],  # codespell:ignore occurence
+        return (
+            _get_next_timestamp_on_weekdays(
+                self.program.start,
+                self.program.occurence.day  # codespell:ignore occurence
+                if self.program.occurence  # codespell:ignore occurence
+                else None,
             )
-        except KeyError:
-            return None
+            if self.program != UNDEFINED
+            else None
+        )
 
     @property
     def extra_state_attributes(self) -> Mapping[str, Any] | None:
         """Return the state attributes."""
-        try:
-            program = self.status_value
-        except KeyError:
-            return None
 
         return {
-            "start": program["start"],
-            "recurrence": program["recurrence"],
-            "occurrence": program["occurence"],  # codespell:ignore occurence
+            "start": self.program.start
+            if self.program and self.program != UNDEFINED
+            else None,
+            "recurrence": self.program.recurrence
+            if self.program and self.program != UNDEFINED
+            else None,
+            "occurrence": self.program.occurence  # codespell:ignore occurence
+            if self.program and self.program != UNDEFINED
+            else None,
         }
 
-    @property
-    def available(self) -> bool:
-        """Return available if the program exists."""
-        try:
-            _ = self.status_value
-        except KeyError:
-            return False
-        return super().available
 
-
-def get_next_timestamp(time_on_day: str) -> datetime | None:
+def _get_next_timestamp(time_on_day: str) -> datetime | None:
     """Get the next time on the day that have not passed yet.
 
     If the current time has already passed today, it will return the time for tomorrow.
@@ -489,14 +743,14 @@ def get_next_timestamp(time_on_day: str) -> datetime | None:
     return next_time
 
 
-def get_next_timestamp_on_weekdays(
-    time_on_day: str, weekdays: list[str]
+def _get_next_timestamp_on_weekdays(
+    time_on_day: str, weekdays: list[WeekDays] | None
 ) -> datetime | None:
     """Get the nearest timestamp for the given weekdays and time that is in the future."""
     if not weekdays:
         return None
 
-    weekdays_numbers = [WEEKDAYS.index(day.lower()) for day in weekdays]
+    weekdays_numbers = [WEEK_DAYS_LIST.index(day) for day in weekdays]
     now = dt_util.now()
     current_day = now.weekday()
 

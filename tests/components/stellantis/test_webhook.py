@@ -1,10 +1,8 @@
 """Test Stellantis webhook."""
 
-from homeassistant.components.stellantis.const import (
-    ATTR_EVENT_STATUS,
-    ATTR_REMOTE_ACTION_ID,
-    ATTR_REMOTE_EVENT,
-)
+import pytest
+from stellantis.model import Message, RemoteEvent
+
 from homeassistant.components.stellantis.webhook import StellantisCallbackEvent
 from homeassistant.components.webhook import DOMAIN as WEBHOOK_DOMAIN
 from homeassistant.const import CONF_WEBHOOK_ID
@@ -17,6 +15,7 @@ from tests.common import MockConfigEntry
 from tests.typing import ClientSessionGenerator
 
 
+@pytest.mark.usefixtures("setup_integration")
 async def test_stellantis_webhook(
     hass: HomeAssistant,
     config_entry: MockConfigEntry,
@@ -32,14 +31,14 @@ async def test_stellantis_webhook(
     ):
         resp = await client.post(
             "/api/webhook/" + config_entry.data[CONF_WEBHOOK_ID],
-            json={
-                ATTR_REMOTE_EVENT: {
-                    ATTR_REMOTE_ACTION_ID: remote_action_id,
-                    ATTR_EVENT_STATUS: RESULT_SUCCESS,
-                }
-            },
+            json=Message(
+                remote_event=RemoteEvent(
+                    remote_action_id=remote_action_id, event_status=RESULT_SUCCESS
+                )
+            ).to_dict(),
         )
+        await hass.async_block_till_done()
 
-    assert resp.status == 200
-    assert callback_event.done()
-    assert callback_event.result() == RESULT_SUCCESS
+        assert resp.status == 200
+        assert callback_event.done()
+        assert callback_event.result() == RESULT_SUCCESS

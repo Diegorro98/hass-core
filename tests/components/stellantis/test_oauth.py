@@ -2,33 +2,42 @@
 
 from http import HTTPStatus
 import time
-from typing import cast
+from unittest.mock import MagicMock, patch
 
 import pytest
+from stellantis.model import Vehicle
+from stellantis.model.error import StellantisApiError
 
-from homeassistant.components.stellantis import HomeAssistantStellantisData
-from homeassistant.components.stellantis.api import VehicleDetails
-from homeassistant.components.stellantis.const import API_ENDPOINT
+from homeassistant.components.homeassistant import (
+    DOMAIN as HA_DOMAIN,
+    SERVICE_UPDATE_ENTITY,
+)
+from homeassistant.config_entries import ConfigEntryState
+from homeassistant.const import ATTR_ENTITY_ID, Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryAuthFailed
-
-from .conftest import FIXTURE_CLIENT_ID
+from homeassistant.setup import async_setup_component
 
 from tests.common import MockConfigEntry
 from tests.test_util.aiohttp import AiohttpClientMocker
 
-TOKEN_URL = "https://idpcvs.peugeot.com/am/oauth2/access_token"
+
+@pytest.fixture
+def platforms() -> list[str]:
+    """Fixture to specify platforms to test."""
+    return [Platform.SENSOR]
 
 
 async def test_expired_token(
     hass: HomeAssistant,
-    config_entry: MockConfigEntry,
     aioclient_mock: AiohttpClientMocker,
+    config_entry: MockConfigEntry,
+    client: MagicMock,
 ) -> None:
     """Test that the token is correctly refreshed when expired."""
+    config_entry.data["token"]["expires_at"] = time.time() - 60
     aioclient_mock.post(
-        TOKEN_URL,
-        params={
+        "https://idpcvs.peugeot.com/am/oauth2/access_token",
+        data={
             "grant_type": "refresh_token",
             "scope": "openid profile",
             "refresh_token": "mock-refresh-token",
@@ -41,74 +50,39 @@ async def test_expired_token(
         },
     )
 
-    assert hass.data[config_entry.domain][config_entry.entry_id]
-    data = hass.data[config_entry.domain][config_entry.entry_id]
-    assert isinstance(data, HomeAssistantStellantisData)
-    data = cast(HomeAssistantStellantisData, data)
+    assert config_entry.state is ConfigEntryState.NOT_LOADED
 
-    data.session.token["expires_at"] = time.time() - 60
-    assert not data.session.valid_token
+    config_entry.add_to_hass(hass)
+    with patch(
+        "homeassistant.components.stellantis.StellantisClient", return_value=client
+    ):
+        assert await hass.config_entries.async_setup(config_entry.entry_id)
 
-    await data.session.async_ensure_token_valid()
-    await hass.async_block_till_done()
-    assert data.session.valid_token
+    assert config_entry.state is ConfigEntryState.LOADED
 
 
+@pytest.mark.usefixtures("setup_integration")
 async def test_revoked_token(
     hass: HomeAssistant,
     config_entry: MockConfigEntry,
-    aioclient_mock: AiohttpClientMocker,
-) -> None:
-    """Test that the ConfigEntryAuthFailed exception is raised when the token is revoked."""
-    aioclient_mock.post(
-        TOKEN_URL,
-        params={
-            "grant_type": "refresh_token",
-            "scope": "openid profile",
-            "refresh_token": "mock-refresh-token",
-        },
-        status=HTTPStatus.UNAUTHORIZED,
-        json={},
-    )
-
-    assert hass.data[config_entry.domain][config_entry.entry_id]
-    data = hass.data[config_entry.domain][config_entry.entry_id]
-    assert isinstance(data, HomeAssistantStellantisData)
-    data = cast(HomeAssistantStellantisData, data)
-
-    data.session.token["expires_at"] = time.time() - 60
-    assert not data.session.valid_token
-
-    with pytest.raises(ConfigEntryAuthFailed):
-        await data.session.async_ensure_token_valid()
-
-    await hass.async_block_till_done()
-
-
-async def test_revoked_token_while_refreshing(
-    hass: HomeAssistant,
-    config_entry: MockConfigEntry,
-    aioclient_mock: AiohttpClientMocker,
-    vehicle_details: VehicleDetails,
+    client: MagicMock,
+    vehicle_details: Vehicle,
 ) -> None:
     """Test that the ConfigEntryAuthFailed exception is raised when the token is revoked while coordinator is updating."""
+    await async_setup_component(hass, HA_DOMAIN, {})
+    assert config_entry.state is ConfigEntryState.LOADED
 
-    aioclient_mock.clear_requests()
-    aioclient_mock.get(
-        f"{API_ENDPOINT}/user/vehicles/{vehicle_details.id}/status",
-        params={"client_id": FIXTURE_CLIENT_ID},
-        status=HTTPStatus.UNAUTHORIZED,
-        json={},
+    client.get_vehicle_status.return_value = None
+    client.get_vehicle_status.side_effect = StellantisApiError(HTTPStatus.UNAUTHORIZED)
+
+    await hass.services.async_call(
+        HA_DOMAIN,
+        SERVICE_UPDATE_ENTITY,
+        {ATTR_ENTITY_ID: "sensor.peugeot_suv_3008_ignition"},
+        blocking=True,
     )
 
-    assert hass.data[config_entry.domain][config_entry.entry_id]
-    data = hass.data[config_entry.domain][config_entry.entry_id]
-    assert isinstance(data, HomeAssistantStellantisData)
-    data = cast(HomeAssistantStellantisData, data)
-
-    assert data.session.valid_token
-
-    with pytest.raises(ConfigEntryAuthFailed):
-        await data.coordinator._async_update_data()
-
-    await hass.async_block_till_done()
+    flows = hass.config_entries.flow.async_progress()
+    assert len(flows) == 1
+    assert flows[0]["context"]["source"] == "reauth"
+    assert flows[0]["context"]["entry_id"] == config_entry.entry_id

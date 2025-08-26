@@ -1,29 +1,29 @@
 """Config flow for Stellantis integration."""
 
-from asyncio import timeout
 from collections.abc import Mapping
-from http import HTTPStatus
 import logging
 import secrets
-from typing import Any
+from types import MappingProxyType
+from typing import Any, cast
 
 import aiohttp
 import pycountry
+from stellantis.client import Client as StellantisClient
+from stellantis.model.error import StellantisError
 import voluptuous as vol
 from yarl import URL
 
 from homeassistant.config_entries import ConfigEntry, ConfigFlowResult
 from homeassistant.const import CONF_COUNTRY, CONF_URL, CONF_WEBHOOK_ID
-from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.config_entry_oauth2_flow import (
     AbstractOAuth2FlowHandler,
     _decode_jwt,
 )
 from homeassistant.helpers.selector import CountrySelector, CountrySelectorConfig
 
-from .const import API_ENDPOINT, CONF_BRAND, DOMAIN, Brand
-from .oauth import StellantisOauth2Implementation
+from .api import AsyncConfigEntryAuth
+from .const import CONF_BRAND, DOMAIN, Brand
+from .oauth import StellantisOauth2Implementation, StellantisOAuth2Session
 
 
 class StellantisConfigFlow(AbstractOAuth2FlowHandler, domain=DOMAIN):
@@ -33,9 +33,8 @@ class StellantisConfigFlow(AbstractOAuth2FlowHandler, domain=DOMAIN):
     DOMAIN = DOMAIN
 
     flow_impl: StellantisOauth2Implementation
-    brand: Brand | None = None
+    brand: str | None = None
     country_code: str | None = None
-    reauth_entry: ConfigEntry | None = None
 
     @property
     def logger(self) -> logging.Logger:
@@ -61,37 +60,20 @@ class StellantisConfigFlow(AbstractOAuth2FlowHandler, domain=DOMAIN):
         self, entry_data: Mapping[str, Any]
     ) -> ConfigFlowResult:
         """Perform reauth upon an API authentication error."""
-        self.reauth_entry = self.hass.config_entries.async_get_entry(
-            self.context["entry_id"]
-        )
-        if self.reauth_entry is None:
-            raise HomeAssistantError("Reauth requested for non-existing entry")
-        self.brand = Brand(self.reauth_entry.data[CONF_BRAND])
         return await self.async_step_reauth_confirm()
 
     async def async_step_reauth_confirm(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Dialog that informs the user that reauth is required."""
-        if self.brand is None:
-            return self.async_abort(reason="no_brand_selected")
-        if user_input is None or CONF_COUNTRY not in user_input:
+        if user_input is None:
             return self.async_show_form(
                 step_id="reauth_confirm",
-                data_schema=vol.Schema(
-                    {
-                        vol.Required(
-                            CONF_COUNTRY, default=self.hass.config.country
-                        ): await self.hass.async_add_executor_job(
-                            self.get_countries_config
-                        ),
-                    }
-                ),
-                description_placeholders={
-                    "brand": self.brand.value,
-                },
+                data_schema=vol.Schema({}),
+                description_placeholders={"brand": self.init_data[CONF_BRAND]},
             )
-        return await self.async_step_login(user_input)
+
+        return await self.async_step_user(self.init_data)
 
     async def async_step_brand_country(
         self, user_input: dict[str, Any] | None = None
@@ -120,19 +102,6 @@ class StellantisConfigFlow(AbstractOAuth2FlowHandler, domain=DOMAIN):
 
     async def async_step_login(self, user_input: dict[str, Any]) -> ConfigFlowResult:
         """Handle the login step."""
-
-        if user_input is None:
-            return self.async_abort(reason="no_user_input")
-
-        if self.brand is None:
-            if CONF_BRAND not in user_input:
-                return self.async_abort(reason="no_brand_selected")
-
-            if user_input[CONF_BRAND] not in list(Brand):
-                return self.async_abort(reason="invalid_brand_selected")
-
-            self.brand = Brand(user_input[CONF_BRAND])
-
         if CONF_URL in user_input:
             url = URL(user_input[CONF_URL])
 
@@ -147,16 +116,13 @@ class StellantisConfigFlow(AbstractOAuth2FlowHandler, domain=DOMAIN):
             }
             return await self.async_step_creation()
 
-        if self.country_code is None:
-            if CONF_COUNTRY not in user_input:
-                return self.async_abort(reason="no_country_code_selected")
+        self.brand = cast(str, user_input[CONF_BRAND])
+        self.country_code = cast(str, user_input[CONF_COUNTRY]).lower()
 
-            self.country_code = user_input[CONF_COUNTRY].lower()
-
-        self.flow_impl = StellantisOauth2Implementation(self.hass, DOMAIN, self.brand)
-        oauth_url = await self.flow_impl.async_generate_authorize_url_with_country_code(
-            self.flow_id, self.country_code
+        self.flow_impl = StellantisOauth2Implementation(
+            self.hass, DOMAIN, Brand(self.brand), self.country_code
         )
+        oauth_url = await self.flow_impl.async_generate_authorize_url(self.flow_id)
         return self.async_show_form(
             step_id="login",
             data_schema=vol.Schema(
@@ -166,7 +132,7 @@ class StellantisConfigFlow(AbstractOAuth2FlowHandler, domain=DOMAIN):
             ),
             description_placeholders={
                 "oauth_url": oauth_url,
-                "brand": self.brand.value,
+                "brand": self.brand,
                 "redirect_uri": self.flow_impl.redirect_uri + self.country_code,
             },
         )
@@ -174,31 +140,46 @@ class StellantisConfigFlow(AbstractOAuth2FlowHandler, domain=DOMAIN):
     async def async_oauth_create_entry(self, data: dict) -> ConfigFlowResult:
         """Create an entry for the flow."""
         email = "Unknown email"
-        if self.brand is None:
-            return self.async_abort(reason="no_brand_selected")
         try:
-            session = async_get_clientsession(self.hass)
-            async with timeout(10):
-                response = await session.get(
-                    API_ENDPOINT + "/user",
-                    params={"client_id": self.flow_impl.client_id},
-                    headers={
-                        "authorization": "Bearer " + data["token"]["access_token"],
-                        "x-introspect-realm": self.flow_impl.realm,
-                    },
-                )
+            dummy_entry = ConfigEntry(
+                version=0,
+                minor_version=0,
+                discovery_keys=MappingProxyType({}),
+                domain=DOMAIN,
+                options=None,
+                data=data,
+                source="dummy",
+                unique_id=None,
+                subentries_data=None,
+                title="dummy",
+            )
+            oauth_session = StellantisOAuth2Session(
+                self.hass, dummy_entry, self.flow_impl
+            )
+            auth = AsyncConfigEntryAuth(self.hass, oauth_session)
+            await auth.async_get_access_token()
+            data.update(dummy_entry.data)
 
-                if response.status == HTTPStatus.OK:
-                    email = (await response.json())["email"]
-        except (TimeoutError, aiohttp.ClientError):
+            stellantis_client = StellantisClient(auth)
+
+            user = await stellantis_client.get_user()
+            if user.email:
+                email = user.email
+        except (
+            TimeoutError,
+            aiohttp.ClientError,
+            aiohttp.ClientResponseError,
+            StellantisError,
+        ):
             pass
 
-        title = f"{self.brand.value}: {email}"
-        data[CONF_BRAND] = self.brand.value
-        if self.reauth_entry:
-            data[CONF_WEBHOOK_ID] = self.reauth_entry.data[CONF_WEBHOOK_ID]
+        title = f"{self.brand}: {email}"
+        data[CONF_BRAND] = self.brand
+        data[CONF_COUNTRY] = self.country_code
+        if self.init_data:
+            data[CONF_WEBHOOK_ID] = self.init_data[CONF_WEBHOOK_ID]
             return self.async_update_reload_and_abort(
-                self.reauth_entry,
+                self._get_reauth_entry(),
                 title=title,
                 data=data,
             )

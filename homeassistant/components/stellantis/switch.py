@@ -1,51 +1,152 @@
 """Stellantis switch platform."""
 
+import copy
+from dataclasses import dataclass
 from typing import Any
 
-from jsonpath import jsonpath
+from stellantis.model import (
+    AirConditioningStatus,
+    ChargingStatusEnum,
+    ChargingType,
+    DoorLockedState,
+    EnergyType,
+    Motorization,
+    Remote,
+    RemoteCharging,
+    RemoteChargingPreferences,
+    RemotePreconditioning,
+    RemotePreconditioningAirConditioning,
+)
 
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.helpers.typing import UNDEFINED
 
-from . import HomeAssistantStellantisData
-from .api import StellantisVehicle
-from .const import ATTR_ENABLED, DOMAIN, SVE_TRANSLATION_PLACEHOLDER_SLOT
-from .coordinator import StellantisUpdateCoordinator
-from .entity import StellantisBaseToggleEntity
+from .const import DOMAIN, SVE_TRANSLATION_PLACEHOLDER_SLOT
+from .coordinator import StellantisConfigEntry
+from .entity import (
+    StellantisEntityDescription,
+    StellantisPreconditioningEntity,
+    StellantisToggleEntity,
+    StellantisToggleEntityDescription,
+)
 from .helpers import preconditioning_program_setter_body
+
+
+@dataclass(frozen=True, kw_only=True)
+class StellantisSwitchEntityDescription(
+    StellantisToggleEntityDescription, SwitchEntityDescription
+):
+    """Describes a Stellantis switch entity."""
+
+
+PRECONDITIONING_SWITCH_ENTITY_DESCRIPTION = StellantisSwitchEntityDescription(
+    key="preconditioning",
+    translation_key="preconditioning",
+    remote_request_on=Remote(
+        preconditioning=RemotePreconditioning(
+            air_conditioning=RemotePreconditioningAirConditioning(immediate=True)
+        )
+    ),
+    remote_request_off=Remote(
+        preconditioning=RemotePreconditioning(
+            air_conditioning=RemotePreconditioningAirConditioning(immediate=False)
+        )
+    ),
+    value_fn=lambda status: air_conditioning_status == AirConditioningStatus.ENABLED
+    if (preconditioning := status.preconditioning)
+    and (air_conditioning := preconditioning.air_conditioning)
+    and (air_conditioning_status := air_conditioning.status)
+    else None,
+)
+
+DELAYED_CHARGE_SWITCH_ENTITY_DESCRIPTION = StellantisSwitchEntityDescription(
+    key="partial_charge",
+    translation_key="partial_charge",
+    remote_request_on=Remote(charging=RemoteCharging(immediate=True)),
+    remote_request_off=Remote(charging=RemoteCharging(immediate=False)),
+    value_fn=lambda status: charging_status == ChargingStatusEnum.IN_PROGRESS
+    if (
+        energy := next(
+            (
+                energy
+                for energy in status.energies or []
+                if energy.type == EnergyType.ELECTRIC
+            ),
+            None,
+        )
+    )
+    and (extension := energy.extension)
+    and (electric := extension.electric)
+    and (charging := electric.charging)
+    and (charging_status := charging.status)
+    else None,
+)
+
+PARTIAL_CHARGE_SWITCH_ENTITY_DESCRIPTION = StellantisSwitchEntityDescription(
+    key="partial_charge",
+    translation_key="partial_charge",
+    remote_request_on=Remote(
+        charging=RemoteCharging(
+            preferences=RemoteChargingPreferences(type=ChargingType.FULL)
+        )
+    ),
+    remote_request_off=Remote(
+        charging=RemoteCharging(
+            preferences=RemoteChargingPreferences(type=ChargingType.PARTIAL)
+        )
+    ),
+    value_fn=lambda status: charging_type == ChargingType.PARTIAL
+    if (
+        energy := next(
+            (
+                energy
+                for energy in status.energies or []
+                if energy.type == EnergyType.ELECTRIC
+            ),
+            None,
+        )
+    )
+    and (extension := energy.extension)
+    and (electric := extension.electric)
+    and (charging := electric.charging)
+    and (charging_type := charging.type)
+    else None,
+)
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: StellantisConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up the Stellantis switches."""
-
-    data: HomeAssistantStellantisData = hass.data[DOMAIN][entry.entry_id]
-
-    for vehicle in data.coordinator.data:
-        if jsonpath(
-            vehicle.status,
-            "$.preconditioning.airConditioning",
+    entities: list[SwitchEntity] = []
+    for vehicle_coordinator in entry.runtime_data:
+        if (
+            vehicle_coordinator.data.preconditioning
+            and vehicle_coordinator.data.preconditioning.air_conditioning
         ):
-            async_add_entities(
+            entities.extend(
                 [
                     StellantisPreconditioningSwitch(
                         hass,
-                        data.coordinator,
-                        vehicle,
+                        vehicle_coordinator,
+                        PRECONDITIONING_SWITCH_ENTITY_DESCRIPTION,
                         entry,
-                    ),
+                    )
                 ]
                 + [
                     StellantisPreconditioningProgramSwitch(
                         hass,
-                        data.coordinator,
-                        vehicle,
+                        vehicle_coordinator,
+                        StellantisEntityDescription(
+                            key=f"preconditioning_program_{slot}",
+                            translation_key="preconditioning_program",
+                            value_fn=lambda _: None,
+                        ),
                         entry,
                         slot,
                     )
@@ -53,137 +154,96 @@ async def async_setup_entry(
                 ]
             )
 
-        if jsonpath(
-            vehicle.status,
-            "$.energies[?(@.type == 'Electric')]",
+        if next(
+            (
+                energy
+                for energy in vehicle_coordinator.data.energies or []
+                if energy.type == EnergyType.ELECTRIC
+            ),
+            None,
         ):
-            async_add_entities(
-                (
-                    StellantisDelayedChargeSwitch(
+            entities.extend(
+                [
+                    StellantisChargeRelatedSwitch(
                         hass,
-                        data.coordinator,
-                        vehicle,
+                        vehicle_coordinator,
+                        DELAYED_CHARGE_SWITCH_ENTITY_DESCRIPTION,
                         entry,
                     ),
-                    StellantisPartialChargeSwitch(
+                    StellantisChargeRelatedSwitch(
                         hass,
-                        data.coordinator,
-                        vehicle,
+                        vehicle_coordinator,
+                        PARTIAL_CHARGE_SWITCH_ENTITY_DESCRIPTION,
                         entry,
                     ),
-                )
+                ]
             )
 
+    async_add_entities(entities)
 
-class StellantisPreconditioningSwitch(StellantisBaseToggleEntity, SwitchEntity):
+
+class StellantisPreconditioningSwitch(StellantisToggleEntity, SwitchEntity):
     """Representation of Stellantis preconditioning switch."""
 
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        coordinator: StellantisUpdateCoordinator,
-        vehicle: StellantisVehicle,
-        entry: ConfigEntry,
-    ) -> None:
-        """Initialize the preconditioning switch."""
-        super().__init__(
-            hass,
-            coordinator,
-            vehicle,
-            SwitchEntityDescription(
-                key="preconditioning",
-                translation_key="preconditioning",
-            ),
-            entry,
-            "$.preconditioning.airConditioning.status",
-            {"preconditioning": {"airConditioning": {"immediate": True}}},
-            {"preconditioning": {"airConditioning": {"immediate": False}}},
-            "turn on preconditioning",
-            "turn off preconditioning",
-        )
-
-    @property
-    def is_on(self) -> bool | None:
-        """Return the state of the charge."""
-        if self._attr_remote_action_value is not None:
-            ret = self._attr_remote_action_value
-            self._attr_remote_action_value = None
-            return ret
-        return None if not self.status_value else self.status_value == "Enabled"
+    entity_description: StellantisSwitchEntityDescription
 
     @property
     def available(self) -> bool:
         """Return true if the the vehicle is able to precondition.
 
         The conditions are:
-        - Car must have a electric engine
+        - Car must have a electric engine (this is for all the preconditioning features)
         - Ignition must be off
         - Car must be locked
         - Enough battery
             - For plug-in hybrid cars, the electric battery must be at least 20%
             - For electric cars, the electric battery must be at least 50%
         """
-        electric_level = self.get_from_vehicle_status(
-            "$.energies[?(@.type == 'Electric')].level"
-        )
-        if not electric_level:
+        if not super().available:
             return False
-        try:
-            doors_lock_state = self.get_from_vehicle_status("$.doorsState.lockedStates")
-        except KeyError:
-            doors_lock_state = None
+
+        electric_level = None
+        for energies in self.vehicle_status.energies or []:
+            if energies.type == EnergyType.ELECTRIC:
+                electric_level = energies.level
+
+        if electric_level is None:
+            return False
+
+        match self.vehicle.motorization:
+            case Motorization.HYBRID:
+                if electric_level < 20:
+                    return False
+            case Motorization.ELECTRIC:
+                if electric_level < 50:
+                    return False
+
+        if (doors_state := self.vehicle_status.doors_state) and (
+            doors_lock_states := doors_state.locked_states
+        ):
+            if not (
+                DoorLockedState.LOCKED in doors_lock_states
+                or DoorLockedState.SUPER_LOCKED in doors_lock_states
+            ):
+                return False
         # If the door lock state does not exist we consider that doors are locked because we can't know the true state
-        doors_locked = not doors_lock_state or doors_lock_state not in (
-            "Locked",
-            "SuperLocked",
-        )
-        hybrid = len(self.get_from_vehicle_status("$.energies")) == 2
-        return (
-            super().available
-            and doors_locked
-            and (
-                (hybrid and electric_level > 20) or (not hybrid and electric_level > 50)
-            )
-        )
+
+        return True
 
 
-class StellantisPreconditioningProgramSwitch(StellantisBaseToggleEntity, SwitchEntity):
+class StellantisPreconditioningProgramSwitch(
+    StellantisPreconditioningEntity[bool], SwitchEntity
+):
     """Representation of Stellantis preconditioning program enable switch."""
 
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        coordinator: StellantisUpdateCoordinator,
-        vehicle: StellantisVehicle,
-        entry: ConfigEntry,
-        slot: int,
-    ) -> None:
-        """Initialize the preconditioning program enable switch."""
-        super().__init__(
-            hass,
-            coordinator,
-            vehicle,
-            SwitchEntityDescription(
-                key=f"preconditioning_program_{slot}",
-                translation_key=f"preconditioning_program_{slot}",
-            ),
-            entry,
-            f"$.preconditioning.airConditioning.programs[?(@.slot == {slot})]",
-            {},
-            {},
-            f"enable preconditioning program {slot}",
-            f"disable preconditioning program {slot}",
-        )
-        self.slot = slot
+    entity_description: StellantisSwitchEntityDescription
 
-    def get_enable_or_disabled_program_request_body(
-        self, enabled: bool
-    ) -> dict[str, Any]:
+    async def enable_or_disable_program(self, enabled: bool) -> None:
         """Return the request body to enable or disable a program.
 
         Because API requires the whole program to be sent, we need to copy the program and set the enabled value.
         """
-        if not self.status_value:
+        if self.program == UNDEFINED:
             raise ServiceValidationError(
                 translation_domain=DOMAIN,
                 translation_key="preconditioning_program_not_defined",
@@ -191,113 +251,58 @@ class StellantisPreconditioningProgramSwitch(StellantisBaseToggleEntity, SwitchE
                     SVE_TRANSLATION_PLACEHOLDER_SLOT: str(self.slot)
                 },
             )
-        self.status_value[ATTR_ENABLED] = enabled
-        return preconditioning_program_setter_body(self.status_value)
+        program = copy.deepcopy(self.program)
+        program.enabled = enabled
+        await self.async_call_remote_action(
+            preconditioning_program_setter_body(program), enabled
+        )
 
-    @property
-    def is_on(self) -> bool | None:
-        """Return if the preconditioning program is enabled."""
-        return None if not self.status_value else self.status_value["enabled"]
+    def _handle_update_from_successful_remote_action(self, state: bool) -> None:
+        """Handle successful remote action updates."""
+        if self.program != UNDEFINED:
+            self._attr_is_on = state
+            super()._handle_update_from_successful_remote_action(state)
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        self._attr_is_on = self.program.enabled if self.program != UNDEFINED else None
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Send a remote action to enable preconditioning program."""
-        request_body = self.get_enable_or_disabled_program_request_body(True)
-        await self.async_call_remote_action(request_body, True, self.logger_action_on)
+        await self.enable_or_disable_program(True)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Send a remote action to disable preconditioning program."""
-        request_body = self.get_enable_or_disabled_program_request_body(False)
-        await self.async_call_remote_action(request_body, False, self.logger_action_off)
+        await self.enable_or_disable_program(False)
+
+
+class StellantisChargeRelatedSwitch(StellantisToggleEntity, SwitchEntity):
+    """Representation of Stellantis charge control switch."""
+
+    entity_description: StellantisSwitchEntityDescription
+
+    @property
+    def charging_status(self) -> ChargingStatusEnum | None:
+        """Return the charging status."""
+        for energy in self.vehicle_status.energies or []:
+            if (
+                energy.type == "Electric"
+                and (extension := energy.extension)
+                and (electric := extension.electric)
+                and (charging := electric.charging)
+            ):
+                return charging.status
+        return None
 
     @property
     def available(self) -> bool:
-        """Return available if the program exists."""
-        try:
-            _ = self.status_value
-        except KeyError:
-            return False
-        return self.coordinator.last_update_success
+        """Return true if the charge can be controlled at the moment.
 
-
-class StellantisDelayedChargeSwitch(StellantisBaseToggleEntity, SwitchEntity):
-    """Representation of Stellantis delayed charge switch."""
-
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        coordinator: StellantisUpdateCoordinator,
-        vehicle: StellantisVehicle,
-        entry: ConfigEntry,
-    ) -> None:
-        """Initialize the delayed charge switch."""
-        super().__init__(
-            hass,
-            coordinator,
-            vehicle,
-            SwitchEntityDescription(
-                key="delayed_charge",
-                translation_key="delayed_charge",
-            ),
-            entry,
-            "$.energies[?(@.type == 'Electric')].extension.electric.charging.status",
-            {"charging": {"immediate": True}},
-            {"charging": {"immediate": False}},
-            "stop and delay charge",
-            "set the vehicle to charge immediately",
+        The car charge can be controlled only if it is in progress or stopped.
+        If its unknown, as we don't know the true state, the entity should be available so it can be controlled.
+        """
+        return super().available and self.charging_status in (
+            ChargingStatusEnum.STOPPED,
+            ChargingStatusEnum.IN_PROGRESS,
+            None,
         )
-
-    @property
-    def is_on(self) -> bool | None:
-        """Return the state of the charge."""
-        if self._attr_remote_action_value is not None:
-            ret = self._attr_remote_action_value
-            self._attr_remote_action_value = None
-            return ret
-        return None if not self.status_value else self.status_value == "Stopped"
-
-    @property
-    def available(self) -> bool:
-        """Return true if the the vehicle has is able to control the charge."""
-        return super().available and self.status_value in ("Stopped", "InProgress")
-
-
-class StellantisPartialChargeSwitch(StellantisBaseToggleEntity, SwitchEntity):
-    """Representation of Stellantis partial charge switch."""
-
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        coordinator: StellantisUpdateCoordinator,
-        vehicle: StellantisVehicle,
-        entry: ConfigEntry,
-    ) -> None:
-        """Initialize the partial charge switch."""
-        super().__init__(
-            hass,
-            coordinator,
-            vehicle,
-            SwitchEntityDescription(
-                key="partial_charge",
-                translation_key="partial_charge",
-            ),
-            entry,
-            "$.energies[?(@.type == 'Electric')].extension.electric.charging.type",
-            {"charging": {"preferences": {"type": "Partial"}}},
-            {"charging": {"preferences": {"type": "Full"}}},
-            "set partial charge",
-            "set full charge",
-        )
-
-    @property
-    def is_on(self) -> bool | None:
-        """Return the state of the charge."""
-        if self._attr_remote_action_value is not None:
-            ret = self._attr_remote_action_value
-            self._attr_remote_action_value = None
-            return ret
-        return None if not self.status_value else self.status_value == "Partial"
-
-    @property
-    def available(self) -> bool:
-        """Return true if the the vehicle has is able to control the charge."""
-        return super().available and self.status_value in ("Stopped", "InProgress")

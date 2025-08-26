@@ -1,89 +1,79 @@
 """Stellantis device tracker platform."""
 
 from collections.abc import Mapping
-import contextlib
+from dataclasses import dataclass
 from typing import Any
 
-from homeassistant.components.device_tracker import SourceType
 from homeassistant.components.device_tracker.config_entry import (
     TrackerEntity,
     TrackerEntityDescription,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from . import HomeAssistantStellantisData
-from .const import ATTR_ALTITUDE, ATTR_HEADING, ATTR_SIGNAL_QUALITY, DOMAIN
-from .entity import StellantisBaseEntity
+from .coordinator import StellantisConfigEntry
+from .entity import StellantisBaseEntity, StellantisEntityDescription
+
+
+@dataclass(frozen=True, kw_only=True)
+class StellantisTrackerEntityDescription(
+    StellantisEntityDescription, TrackerEntityDescription
+):
+    """Describes a Stellantis tracker entity."""
+
+
+DEVICE_TRACKER_ENTITY_DESCRIPTION = StellantisTrackerEntityDescription(
+    key="device_tracker", value_fn=lambda _: None
+)
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: StellantisConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up the Stellantis device tracker."""
-    data: HomeAssistantStellantisData = hass.data[DOMAIN][entry.entry_id]
-
     async_add_entities(
         StellantisTrackerEntity(
-            data.coordinator,
-            vehicle_data,
-            TrackerEntityDescription(
-                key="device_tracker",
-                name="",
-                icon="mdi:car-arrow-right",
-            ),
+            vehicle_coordinator,
+            DEVICE_TRACKER_ENTITY_DESCRIPTION,
         )
-        for vehicle_data in data.coordinator.data
+        for vehicle_coordinator in entry.runtime_data
     )
 
 
 class StellantisTrackerEntity(StellantisBaseEntity, TrackerEntity):
     """Representation of a Stellantis vehicle tracker entity."""
 
-    entity_description: TrackerEntityDescription
-    source_type = SourceType.GPS
+    entity_description: StellantisTrackerEntityDescription
 
     @property
     def longitude(self) -> float | None:
         """Return longitude value of the vehicle."""
-        try:
-            return self.get_from_vehicle_status(
-                "$.lastPosition.geometry.coordinates[0]"
-            )
-        except KeyError:
-            return None
+        if self.vehicle_status.last_position:
+            return self.vehicle_status.last_position.geometry.coordinates[0]
+        return None
 
     @property
     def latitude(self) -> float | None:
         """Return latitude value of the vehicle."""
-        try:
-            return self.get_from_vehicle_status(
-                "$.lastPosition.geometry.coordinates[1]"
-            )
-        except KeyError:
-            return None
+        if self.vehicle_status.last_position:
+            return self.vehicle_status.last_position.geometry.coordinates[1]
+        return None
 
     @property
     def extra_state_attributes(self) -> Mapping[str, Any] | None:
         """Return device specific attributes."""
-        attrs = {}
-        for attr, path in (
-            (ATTR_ALTITUDE, "geometry.coordinates[2]"),
-            (ATTR_HEADING, "properties.heading"),
-            (ATTR_SIGNAL_QUALITY, "properties.signalQuality"),
-        ):
-            with contextlib.suppress(KeyError, IndexError):
-                attrs[attr] = self.get_from_vehicle_status("$.lastPosition." + path)
-        return attrs
+        if self.vehicle_status.last_position:
+            return {
+                "altitude": self.vehicle_status.last_position.geometry.coordinates[2],
+                "heading": self.vehicle_status.last_position.properties.heading,
+                "signal_quality": self.vehicle_status.last_position.properties.signal_quality,
+                "created_at": self.vehicle_status.last_position.properties.created_at,
+            }
+        return None
 
     @property
     def available(self) -> bool:
         """Return if entity is available."""
-        try:
-            self.get_from_vehicle_status("$.lastPosition")
-            return super().available
-        except KeyError:
-            return False
+        return super().available and self.vehicle_status.last_position is not None

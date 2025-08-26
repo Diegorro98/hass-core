@@ -1,68 +1,53 @@
 """Stellantis switch platform."""
 
+from dataclasses import dataclass
+
+from stellantis.model import Remote, RemoteLights
+
 from homeassistant.components.light import (
     ColorMode,
     LightEntity,
     LightEntityDescription,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from . import HomeAssistantStellantisData
-from .api import StellantisVehicle
-from .const import DOMAIN
-from .coordinator import StellantisUpdateCoordinator
-from .entity import StellantisBaseToggleEntity
+from .coordinator import StellantisConfigEntry
+from .entity import StellantisToggleEntity, StellantisToggleEntityDescription
+
+
+@dataclass(frozen=True, kw_only=True)
+class StellantisLightEntityDescription(
+    StellantisToggleEntityDescription,
+    LightEntityDescription,
+):
+    """Light entity description."""
+
+
+LIGHTS_ENTITY_DESCRIPTION = StellantisLightEntityDescription(
+    key="lights",
+    translation_key="lights",
+    value_fn=lambda _: None,
+    remote_request_on=Remote(lights=RemoteLights(on=True)),
+    remote_request_off=Remote(lights=RemoteLights(on=False)),
+)
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: StellantisConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up the Stellantis switches."""
-
-    data: HomeAssistantStellantisData = hass.data[DOMAIN][entry.entry_id]
-
-    # In the future, when "onboardCapabilities" extension header works, we will know
-    # whether to add lights if the vehicle has the capability to toggle the lights remotely
     async_add_entities(
-        StellantisLights(
-            hass,
-            data.coordinator,
-            vehicle_data,
-            entry,
-        )
-        for vehicle_data in data.coordinator.data
+        StellantisLights(hass, vehicle_coordinator, LIGHTS_ENTITY_DESCRIPTION, entry)
+        for vehicle_coordinator in entry.runtime_data
     )
 
 
-class StellantisLights(StellantisBaseToggleEntity, LightEntity):
+class StellantisLights(LightEntity, StellantisToggleEntity):
     """Representation of Stellantis vehicle lights."""
 
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        coordinator: StellantisUpdateCoordinator,
-        vehicle: StellantisVehicle,
-        entry: ConfigEntry,
-    ) -> None:
-        """Initialize the vehicle lights."""
-        super().__init__(
-            hass,
-            coordinator,
-            vehicle,
-            LightEntityDescription(
-                key="lights",
-                translation_key="lights",
-            ),
-            entry,
-            None,
-            {"lights": {"on": True}},
-            {"lights": {"on": False}},
-            "turn on the lights",
-            "turn off the lights",
-        )
-        self._attr_color_mode = ColorMode.ONOFF
-        self._attr_supported_color_modes = {ColorMode.ONOFF}
+    _attr_color_mode = ColorMode.ONOFF
+    _attr_supported_color_modes = {ColorMode.ONOFF}
+    entity_description: StellantisLightEntityDescription

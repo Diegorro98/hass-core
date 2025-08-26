@@ -1,108 +1,97 @@
 """Stellantis switch platform."""
 
-from typing import Any
+from collections.abc import Mapping
+from dataclasses import dataclass
+from typing import Any, cast
+
+from stellantis.model import (
+    DoorLockedState,
+    Remote,
+    RemoteDoorsState,
+    RemoteDoorsStateEnum,
+)
 
 from homeassistant.components.lock import LockEntity, LockEntityDescription
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from . import HomeAssistantStellantisData
-from .api import StellantisVehicle
-from .const import DOMAIN
-from .coordinator import StellantisUpdateCoordinator
-from .entity import StellantisBaseActionableEntity
+from .coordinator import StellantisConfigEntry
+from .entity import StellantisActionableEntity, StellantisToggleEntityDescription
+
+
+@dataclass(frozen=True, kw_only=True)
+class StellantisLockEntityDescription(
+    StellantisToggleEntityDescription, LockEntityDescription
+):
+    """Describes Stellantis lock entity."""
+
+
+DOORS_LOCK_ENTITY_DESCRIPTION = StellantisLockEntityDescription(
+    key="doors",
+    translation_key="doors",
+    remote_request_on=Remote(door=RemoteDoorsState(state=RemoteDoorsStateEnum.LOCKED)),
+    remote_request_off=Remote(
+        door=RemoteDoorsState(state=RemoteDoorsStateEnum.UNLOCKED)
+    ),
+    value_fn=lambda status: (
+        True
+        if DoorLockedState.LOCKED in locked_states
+        or DoorLockedState.SUPER_LOCKED in locked_states
+        else False
+        if DoorLockedState.UNLOCKED in locked_states
+        else None
+    )
+    if (doors_state := status.doors_state)
+    and (locked_states := doors_state.locked_states)
+    else None,
+)
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: StellantisConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up the Stellantis locks."""
-
-    data: HomeAssistantStellantisData = hass.data[DOMAIN][entry.entry_id]
-
-    # In the future, when "onboardCapabilities" extension header works, we will know
-    # whether to add the door lock if the vehicle has the capability to lock/unlock the doors remotely.
     async_add_entities(
         StellantisDoorsLock(
-            hass,
-            data.coordinator,
-            vehicle_data,
-            entry,
+            hass, vehicle_coordinator, DOORS_LOCK_ENTITY_DESCRIPTION, entry
         )
-        for vehicle_data in data.coordinator.data
+        for vehicle_coordinator in entry.runtime_data
     )
 
 
-class StellantisDoorsLock(StellantisBaseActionableEntity[bool], LockEntity):
+class StellantisDoorsLock(StellantisActionableEntity[bool], LockEntity):
     """Representation of Stellantis doors lock state."""
 
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        coordinator: StellantisUpdateCoordinator,
-        vehicle: StellantisVehicle,
-        entry: ConfigEntry,
-    ) -> None:
-        """Initialize the doors lock."""
-        super().__init__(
-            hass,
-            coordinator,
-            vehicle,
-            LockEntityDescription(
-                key="doors",
-                translation_key="doors",
-            ),
-            entry,
-        )
+    entity_description: StellantisLockEntityDescription
 
     async def async_lock(self, **kwargs: Any) -> None:
         """Lock the doors."""
         await self.async_call_remote_action(
-            {"door": {"state": "Locked"}},
-            True,
-            "lock the vehicle",
+            self.entity_description.remote_request_on, True
         )
 
     async def async_unlock(self, **kwargs: Any) -> None:
         """Unlock the doors."""
         await self.async_call_remote_action(
-            {"door": {"state": "Unlocked"}},
-            True,
-            "lock the vehicle",
+            self.entity_description.remote_request_off, False
         )
 
-    @property
-    def status_value(self):
-        """Return the state reported from the API."""
-        return self.get_from_vehicle_status("$.doorsState.lockedStates")
+    def _handle_update_from_successful_remote_action(self, state: bool) -> None:
+        """Handle successful remote action updates."""
+        self._attr_is_locked = state
+        super()._handle_update_from_successful_remote_action(state)
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        self._attr_is_locked = cast(bool | None, self.status_value)
 
     @property
-    def is_locked(self) -> bool | None:
-        """Return the lock state of the doors."""
-        if self._attr_remote_action_value is not None:
-            ret = self._attr_remote_action_value
-            self._attr_remote_action_value = None
-            return ret
-
-        try:
-            locked_states = self.status_value
-            if locked_states:
-                if ("Locked", "SuperLocked") in locked_states:
-                    return True
-                if "Unlocked" in locked_states:
-                    return False
-        except KeyError:
-            pass
-        return None
-
-    @property
-    def available(self) -> bool:
-        """Return true if the vehicle is turned off."""
-        try:
-            _ = self.status_value
-        except KeyError:
-            return False
-        return super().available
+    def extra_state_attributes(self) -> Mapping[str, Any] | None:
+        """Return the state attributes."""
+        return {
+            "locked_states": self.vehicle_status.doors_state.locked_states
+            if self.vehicle_status.doors_state
+            else None
+        }

@@ -1,13 +1,23 @@
 """Stellantis entity base classes."""
 
+from abc import abstractmethod
 from asyncio import timeout
-from typing import Any, Generic, TypeVar
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any, Generic, TypeVar, cast
 
-from jsonpath import jsonpath
+from propcache.api import cached_property
+from stellantis.model import (
+    IgnitionType,
+    PreconditioningProgram,
+    Remote,
+    RemoteEventType,
+    Status,
+    Vehicle,
+)
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ServiceValidationError
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import (
     Entity,
@@ -15,54 +25,59 @@ from homeassistant.helpers.entity import (
     ToggleEntity,
     ToggleEntityDescription,
 )
+from homeassistant.helpers.typing import UNDEFINED, StateType, UndefinedType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .api import StellantisVehicle
-from .const import (
-    ATTR_EVENT_TYPE,
-    ATTR_FAILURE_CAUSE,
-    ATTR_REMOTE_ACTION_ID,
-    ATTR_STATUS,
-    CONF_CALLBACK_ID,
-    DOMAIN,
-    LOGGER,
-    EventStatusType,
-    RemoteDoneEventStatus,
-)
-from .coordinator import StellantisUpdateCoordinator
+from .const import CONF_CALLBACK_ID, DOMAIN, LOGGER, RemoteDoneEventStatus
+from .coordinator import StellantisConfigEntry, StellantisVehicleCoordinator
 from .webhook import StellantisCallbackEvent
 
+T = TypeVar("T")
 
-class StellantisBaseEntity(CoordinatorEntity[StellantisUpdateCoordinator], Entity):
+
+@dataclass(frozen=True, kw_only=True)
+class StellantisEntityDescription(EntityDescription):
+    """Common base description for Stellantis entities that can be toggled."""
+
+    value_fn: Callable[[Status], StateType | UndefinedType]
+
+
+class StellantisBaseEntity(CoordinatorEntity[StellantisVehicleCoordinator], Entity):
     """Common base for Stellantis entities."""
 
-    coordinator: StellantisUpdateCoordinator
+    coordinator: StellantisVehicleCoordinator
+    entity_description: StellantisEntityDescription
+    _attr_has_entity_name = True
 
     def __init__(
         self,
-        coordinator: StellantisUpdateCoordinator,
-        vehicle: StellantisVehicle,
-        description: EntityDescription,
+        coordinator: StellantisVehicleCoordinator,
+        description: StellantisEntityDescription,
     ) -> None:
         """Initialize entity."""
-        super().__init__(coordinator)
-        self.vehicle = vehicle
-        self._attr_has_entity_name = True
-        self._attr_unique_id = f"{vehicle.details.vin}-{description.key}"
+        super().__init__(coordinator, True)
+        assert self.vehicle.id
+        assert self.vehicle.vin
+        self._attr_unique_id = f"{coordinator.vehicle.vin}-{description.key}"
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, self.vehicle.details.vin)},
-            manufacturer=self.vehicle.details.brand,
-            model=f"{self.vehicle.details.label} {self.vehicle.details.motorization}",
-            name=f"{self.vehicle.details.brand} {self.vehicle.details.label}",
-            serial_number=self.vehicle.details.vin,
+            identifiers={(DOMAIN, self.vehicle.id), (DOMAIN, self.vehicle.vin)},
         )
         self.entity_description = description
 
-    def get_from_vehicle_status(self, value_path: str) -> Any:
-        """Return the vehicle status."""
-        if matches := jsonpath(self.vehicle.status, value_path):
-            return matches[0]
-        raise KeyError(value_path)
+    @property
+    def vehicle(self) -> Vehicle:
+        """Get the vehicle details."""
+        return self.coordinator.vehicle
+
+    @property
+    def vehicle_status(self) -> Status:
+        """Get the vehicle status."""
+        return self.coordinator.data
+
+    @cached_property
+    def status_value(self) -> StateType | UndefinedType:
+        """Get the status value."""
+        return self.entity_description.value_fn(self.vehicle_status)
 
     async def async_added_to_hass(self) -> None:
         """When entity is added to hass."""
@@ -70,128 +85,163 @@ class StellantisBaseEntity(CoordinatorEntity[StellantisUpdateCoordinator], Entit
         self._handle_coordinator_update()
 
 
-T = TypeVar("T")
-
-
-class StellantisBaseActionableEntity(StellantisBaseEntity, Generic[T]):
+class StellantisActionableEntity(StellantisBaseEntity, Generic[T]):
     """Common base for Stellantis entities that can call remote actions."""
-
-    _attr_remote_action_value: T | None = None
 
     def __init__(
         self,
         hass: HomeAssistant,
-        coordinator: StellantisUpdateCoordinator,
-        vehicle: StellantisVehicle,
-        description: EntityDescription,
-        entry: ConfigEntry,
+        coordinator: StellantisVehicleCoordinator,
+        description: StellantisEntityDescription,
+        entry: StellantisConfigEntry,
     ) -> None:
         """Initialize entity."""
-        super().__init__(coordinator, vehicle, description)
+        super().__init__(coordinator, description)
         self.hass = hass
         self.entry = entry
 
+    @abstractmethod
+    def _handle_update_from_successful_remote_action(self, state: T) -> None:
+        """Handle successful remote action updates."""
+        self.async_write_ha_state()
+
     async def async_call_remote_action(
-        self, request_body: dict[str, Any], state_if_success: T, logger_action: str
+        self, remote: Remote, state_if_success: T
     ) -> None:
         """Call a remote action and handle the response."""
         async with timeout(10):
-            response_data = await self.coordinator.api.async_send_remote_action(
-                self.vehicle.details.id,
+            assert self.vehicle.id
+            response_data = await self.coordinator.client.send_remote_to_vhl(
+                self.vehicle.id,
                 self.entry.data[CONF_CALLBACK_ID],
-                request_body,
+                remote,
             )
 
-        if ATTR_REMOTE_ACTION_ID not in response_data:
+        if not response_data.remote_action_id:
             LOGGER.warning(
-                f"The remote action to {logger_action} will not be tracked as the remote action ID is missing from the API response"
+                f"The remote action for {self.unique_id} will not be tracked as the remote action ID is missing from the API response"
             )
+            return
 
         try:
             async with timeout(10):
                 while True:
                     with StellantisCallbackEvent(
-                        self.hass, response_data[ATTR_REMOTE_ACTION_ID]
+                        self.hass, response_data.remote_action_id
                     ) as callback_event:
                         event_status = await callback_event
-                        match event_status[ATTR_EVENT_TYPE]:
-                            case EventStatusType.PENDING:
+                        match event_status.type:
+                            case RemoteEventType.PENDING:
                                 LOGGER.debug(
                                     "Pending notification received from remote action, reason: %s",
-                                    event_status.get(ATTR_STATUS, "Not specified"),
+                                    event_status.status or "Not specified",
                                 )
                                 continue
-                            case EventStatusType.DONE:
-                                match event_status[ATTR_STATUS]:
+                            case RemoteEventType.DONE:
+                                match event_status.status:
                                     case RemoteDoneEventStatus.FAILED:
-                                        raise ServiceValidationError(
+                                        raise HomeAssistantError(
                                             translation_domain=DOMAIN,
                                             translation_key="remote_request_failed",
                                             translation_placeholders={
-                                                "failure_cause": event_status.get(
-                                                    ATTR_FAILURE_CAUSE, "Not specified"
-                                                )
+                                                "failure_cause": event_status.failure_cause
+                                                or "Not specified"
                                             },
                                         )
-                                self._attr_remote_action_value = state_if_success
-                                self.async_write_ha_state()
+                                self._handle_update_from_successful_remote_action(
+                                    state_if_success
+                                )
                         break
         except TimeoutError:
             LOGGER.warning(
-                f"Confirmation of the remote action to {logger_action} was not received in time"
+                f"Confirmation of the remote action to {self.unique_id} was not received in time"
             )
 
 
-class StellantisBaseToggleEntity(StellantisBaseActionableEntity[bool], ToggleEntity):
-    """Common base for Stellantis entities that can be toggled."""
+@dataclass(frozen=True, kw_only=True)
+class StellantisToggleEntityDescription(
+    StellantisEntityDescription, ToggleEntityDescription
+):
+    """Common base description for Stellantis entities that can be toggled."""
 
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        coordinator: StellantisUpdateCoordinator,
-        vehicle: StellantisVehicle,
-        description: ToggleEntityDescription,
-        entry: ConfigEntry,
-        value_path: str | None,
-        request_body_on: dict[str, Any],
-        request_body_off: dict[str, Any],
-        logger_action_on: str,
-        logger_action_off: str,
-    ) -> None:
-        """Initialize entity."""
-        super().__init__(hass, coordinator, vehicle, description, entry)
-        self.value_path = value_path
-        self.request_body_on = request_body_on
-        self.request_body_off = request_body_off
-        self.logger_action_on = logger_action_on
-        self.logger_action_off = logger_action_off
+    remote_request_on: Remote
+    remote_request_off: Remote
+    value_fn: Callable[[Status], bool | None]
 
-    @property
-    def status_value(self):
-        """Return the state reported from the API."""
-        return self.get_from_vehicle_status(self.value_path)
+
+class StellantisToggleEntity(StellantisActionableEntity[bool], ToggleEntity):
+    """Common base class for Stellantis entities that can be toggled."""
+
+    entity_description: StellantisToggleEntityDescription
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Send a remote action to turn on something."""
         await self.async_call_remote_action(
-            self.request_body_on, True, self.logger_action_on
+            self.entity_description.remote_request_on, True
         )
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Send a remote action to turn off something."""
         await self.async_call_remote_action(
-            self.request_body_off, False, self.logger_action_off
+            self.entity_description.remote_request_off, False
         )
+
+    def _handle_update_from_successful_remote_action(self, state: bool) -> None:
+        """Handle successful remote action updates."""
+        self._attr_is_on = state
+        super()._handle_update_from_successful_remote_action(state)
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        self._attr_is_on = cast(bool | None, self.status_value)
 
     @property
     def available(self) -> bool:
-        """Return true if the vehicle is turned off."""
-        if self.get_from_vehicle_status("$.ignition.type") == "Stop":
-            if not self.value_path:
-                return super().available
-            try:
-                _ = self.status_value
-            except KeyError:
-                return False
-            return super().available
-        return False
+        """Return true if the vehicle is stopped (or cannot be determined).
+
+        Actionable entities can still be used although the coordinator's last update wasn't successful
+        """
+        return (
+            ignition := self.vehicle_status.ignition
+        ) is None or ignition.type == IgnitionType.STOP
+
+
+class StellantisPreconditioningEntity(StellantisActionableEntity[T], Generic[T]):
+    """Common base class for Stellantis preconditioning related entities."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        coordinator: StellantisVehicleCoordinator,
+        description: StellantisEntityDescription,
+        entry: StellantisConfigEntry,
+        slot: int,
+    ) -> None:
+        """Initialize entity."""
+        super().__init__(hass, coordinator, description, entry)
+        self.slot = slot
+        self._attr_translation_placeholders = {"slot": str(slot)}
+
+    @cached_property
+    def program(self) -> PreconditioningProgram | UndefinedType:
+        """Return the status value of the preconditioning program."""
+        if (
+            (preconditioning := self.vehicle_status.preconditioning)
+            and (air_conditioning := preconditioning.air_conditioning)
+            and (programs := air_conditioning.programs)
+        ):
+            for program in programs:
+                if program.slot == self.slot:
+                    return program
+        return UNDEFINED
+
+    @property
+    def available(self) -> bool:
+        """Return available if the program exists.
+
+        Programs can be still be modified while the vehicle is in motion.
+        """
+        return (
+            StellantisActionableEntity.available.__get__(self)
+            and self.program != UNDEFINED
+        )

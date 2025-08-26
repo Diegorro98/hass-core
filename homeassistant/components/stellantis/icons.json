@@ -167,9 +167,6 @@
       "powertrain_status": {
         "default": "mdi:car-info"
       },
-      "doors_lock_state": {
-        "default": "mdi:car-door-lock"
-      },
       "privacy": {
         "default": "mdi:eye-outline",
         "state": {

@@ -130,7 +130,7 @@
   },
   "doorsState": {
     "createdAt": "2019-08-24T14:15:22Z",
-    "lockedStates": ["Unlocked"],
+    "lockedStates": ["Locked"],
     "opening": [
       {
         "identifier": "Driver",
@@ -221,5 +221,6 @@
       "createdAt": "2019-08-24T14:15:22Z",
       "activation": "Active"
     }
-  }
+  },
+  "_links": {}
 }
