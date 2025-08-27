@@ -50,7 +50,7 @@ async def handle_webhook(
         UnresolvedTypeReferenceError,
         BadDialect,
     ):
-        LOGGER.exception("Received invalid webhook payload")
+        LOGGER.exception("Received invalid webhook payload: %s", await request.text())
         return Response(status=HTTPStatus.BAD_REQUEST)
 
     if not (remote_event := data.remote_event) or not (
@@ -63,7 +63,7 @@ async def handle_webhook(
         if remote_action_id in handlers:
             callback_event = handlers[remote_action_id]
             callback_event.set_result(event_status)
-    LOGGER.debug("Received webhook payload: %s", data)
+    LOGGER.debug("Received webhook payload: %s", await request.text())
     return Response(status=HTTPStatus.OK)
 
 

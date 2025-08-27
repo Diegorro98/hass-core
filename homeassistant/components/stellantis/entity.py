@@ -15,6 +15,7 @@ from stellantis.model import (
     Status,
     Vehicle,
 )
+from stellantis.model.error import StellantisError
 
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
@@ -109,13 +110,19 @@ class StellantisActionableEntity(StellantisBaseEntity, Generic[T]):
         self, remote: Remote, state_if_success: T
     ) -> None:
         """Call a remote action and handle the response."""
-        async with timeout(10):
-            assert self.vehicle.id
+        assert self.vehicle.id
+        try:
             response_data = await self.coordinator.client.send_remote_to_vhl(
                 self.vehicle.id,
                 self.entry.data[CONF_CALLBACK_ID],
                 remote,
             )
+        except StellantisError as e:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="executing_remote_request_failed",
+                translation_placeholders={"failure_cause": str(e) or "Not specified"},
+            ) from e
 
         if not response_data.remote_action_id:
             LOGGER.warning(

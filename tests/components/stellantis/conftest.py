@@ -11,7 +11,9 @@ from stellantis.model import (
     CallbackStatus,
     CallbackSubscribe,
     CallbackType,
+    Message,
     Motorization,
+    RemoteEvent,
     Status,
     UserCallback,
     Vehicle,
@@ -29,11 +31,21 @@ from homeassistant.components.stellantis.const import (
     DOMAIN,
     Brand,
 )
+from homeassistant.components.webhook import DOMAIN as WEBHOOK_DOMAIN
 from homeassistant.config_entries import ConfigEntryState
-from homeassistant.const import CONF_COUNTRY, CONF_WEBHOOK_ID, Platform
+from homeassistant.const import (
+    CONF_COUNTRY,
+    CONF_WEBHOOK_ID,
+    EVENT_CALL_SERVICE,
+    Platform,
+)
 from homeassistant.core import HomeAssistant
+from homeassistant.setup import async_setup_component
+
+from .const import RESULT_FAILED, RESULT_SUCCESS
 
 from tests.common import MockConfigEntry, load_fixture
+from tests.typing import ClientSessionGenerator
 
 CLIENT_ID = "1234"
 CLIENT_SECRET = "5678"
@@ -175,3 +187,59 @@ def mock_client() -> MagicMock:
 def vehicle_fixture() -> Vehicle:
     """Define a vehicle fixture."""
     return FIXTURE_VEHICLE_DETAILS
+
+
+@pytest.fixture
+async def send_webhook_result_success(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    hass_client_no_auth: ClientSessionGenerator,
+):
+    """Fixture to return a function to send webhook results."""
+    assert await async_setup_component(hass, WEBHOOK_DOMAIN, {})
+    client = await hass_client_no_auth()
+
+    async def send_webhook_result(_) -> None:
+        await client.post(
+            "/api/webhook/" + config_entry.data[CONF_WEBHOOK_ID],
+            json=Message(
+                remote_event=RemoteEvent(
+                    remote_action_id="test_remote_action_id",
+                    event_status=RESULT_SUCCESS,
+                )
+            ).to_dict(),
+        )
+
+    hass.bus.async_listen_once(EVENT_CALL_SERVICE, send_webhook_result)
+
+    yield
+
+    await hass.async_block_till_done()
+
+
+@pytest.fixture
+async def send_webhook_result_failed(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    hass_client_no_auth: ClientSessionGenerator,
+):
+    """Fixture to return a function to send webhook results."""
+    assert await async_setup_component(hass, WEBHOOK_DOMAIN, {})
+    client = await hass_client_no_auth()
+
+    async def send_webhook_result(_) -> None:
+        await client.post(
+            "/api/webhook/" + config_entry.data[CONF_WEBHOOK_ID],
+            json=Message(
+                remote_event=RemoteEvent(
+                    remote_action_id="test_remote_action_id",
+                    event_status=RESULT_FAILED,
+                )
+            ).to_dict(),
+        )
+
+    hass.bus.async_listen_once(EVENT_CALL_SERVICE, send_webhook_result)
+
+    yield
+
+    await hass.async_block_till_done()

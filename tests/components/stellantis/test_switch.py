@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from stellantis.model import RemotePostResponse, Vehicle
+from stellantis.model.error import StellantisError
 
 from homeassistant.const import (
     ATTR_ENTITY_ID,
@@ -16,9 +17,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 
-from .const import RESULT_FAILED, RESULT_PENDING, RESULT_SUCCESS
-from .helpers import create_future_result
-
 from tests.common import MockConfigEntry
 
 
@@ -29,6 +27,7 @@ def platforms() -> list[Platform]:
 
 
 @pytest.mark.usefixtures("setup_integration")
+@pytest.mark.usefixtures("send_webhook_result_success")
 async def test_remote_action_callback_successful(
     hass: HomeAssistant,
     entity_registry: er.EntityRegistry,
@@ -37,42 +36,32 @@ async def test_remote_action_callback_successful(
     vehicle_details: Vehicle,
 ) -> None:
     """Test the result of a successful remote action callback."""
-    test_remote_action_id = "test_remote_action_id"
     client.send_remote_to_vhl.return_value = RemotePostResponse(
-        remote_action_id=test_remote_action_id
+        remote_action_id="test_remote_action_id"
     )
 
-    entity_id = entity_registry.async_get_entity_id(
-        Platform.SWITCH,
-        config_entry.domain,
-        f"{vehicle_details.vin}-preconditioning",
-    )
-    assert entity_id
+    entity_id = "switch.peugeot_suv_3008_preconditioning"
     state = hass.states.get(entity_id)
     assert state
     assert state.state == STATE_OFF
 
-    with patch(
-        "homeassistant.components.stellantis.webhook.StellantisCallbackEvent.__await__",
-        return_value=create_future_result(RESULT_SUCCESS),
-    ) as await_future_mock:
-        await hass.services.async_call(
-            Platform.SWITCH,
-            SERVICE_TURN_ON,
-            {
-                ATTR_ENTITY_ID: entity_id,
-            },
-            blocking=True,
-        )
+    await hass.services.async_call(
+        Platform.SWITCH,
+        SERVICE_TURN_ON,
+        {
+            ATTR_ENTITY_ID: entity_id,
+        },
+        blocking=True,
+    )
 
-    await_future_mock.assert_called_once()
     state = hass.states.get(entity_id)
     assert state
     assert state.state == STATE_ON
 
 
 @pytest.mark.usefixtures("setup_integration")
-async def test_remote_action_callback_failed(
+@pytest.mark.usefixtures("send_webhook_result_failed")
+async def test_remote_action_callback_failed_result(
     hass: HomeAssistant,
     entity_registry: er.EntityRegistry,
     config_entry: MockConfigEntry,
@@ -80,28 +69,16 @@ async def test_remote_action_callback_failed(
     vehicle_details: Vehicle,
 ) -> None:
     """Test the result of a failed remote action callback."""
-    test_remote_action_id = "test_remote_action_id"
     client.send_remote_to_vhl.return_value = RemotePostResponse(
-        remote_action_id=test_remote_action_id
+        remote_action_id="test_remote_action_id"
     )
 
-    entity_id = entity_registry.async_get_entity_id(
-        Platform.SWITCH,
-        config_entry.domain,
-        f"{vehicle_details.vin}-preconditioning",
-    )
-    assert entity_id
+    entity_id = "switch.peugeot_suv_3008_preconditioning"
     state = hass.states.get(entity_id)
     assert state
     old_state = state.state
 
-    with (
-        pytest.raises(HomeAssistantError),
-        patch(
-            "homeassistant.components.stellantis.webhook.StellantisCallbackEvent.__await__",
-            return_value=create_future_result(RESULT_FAILED),
-        ),
-    ):
+    with pytest.raises(HomeAssistantError):
         await hass.services.async_call(
             Platform.SWITCH,
             SERVICE_TURN_ON,
@@ -117,35 +94,22 @@ async def test_remote_action_callback_failed(
 
 
 @pytest.mark.usefixtures("setup_integration")
-async def test_remote_action_callback_pending_and_done(
+async def test_remote_action_callback_failed_executing(
     hass: HomeAssistant,
     entity_registry: er.EntityRegistry,
     config_entry: MockConfigEntry,
     client: MagicMock,
     vehicle_details: Vehicle,
 ) -> None:
-    """Test the result of a pending remote action callback."""
-    test_remote_action_id = "test_remote_action_id"
-    client.send_remote_to_vhl.return_value = RemotePostResponse(
-        remote_action_id=test_remote_action_id
-    )
+    """Test the result of a failed remote action callback."""
+    client.send_remote_to_vhl.side_effect = StellantisError("Test error")
 
-    entity_id = entity_registry.async_get_entity_id(
-        Platform.SWITCH,
-        config_entry.domain,
-        f"{vehicle_details.vin}-preconditioning",
-    )
-    assert entity_id
+    entity_id = "switch.peugeot_suv_3008_preconditioning"
     state = hass.states.get(entity_id)
     assert state
-    assert state.state == STATE_OFF
+    old_state = state.state
 
-    with patch(
-        "homeassistant.components.stellantis.webhook.StellantisCallbackEvent.__await__",
-        side_effect=[
-            create_future_result(result) for result in (RESULT_PENDING, RESULT_SUCCESS)
-        ],
-    ) as await_future_mock:
+    with pytest.raises(HomeAssistantError):
         await hass.services.async_call(
             Platform.SWITCH,
             SERVICE_TURN_ON,
@@ -155,10 +119,9 @@ async def test_remote_action_callback_pending_and_done(
             blocking=True,
         )
 
-    assert await_future_mock.call_count == 2
     state = hass.states.get(entity_id)
     assert state
-    assert state.state == STATE_ON
+    assert state.state == old_state
 
 
 @pytest.mark.usefixtures("setup_integration")
@@ -170,17 +133,11 @@ async def test_remote_action_callback_timeout(
     vehicle_details: Vehicle,
 ) -> None:
     """Test the case were a "Done" response is not received within the timeout period."""
-    test_remote_action_id = "test_remote_action_id"
-    entity_id = entity_registry.async_get_entity_id(
-        Platform.SWITCH,
-        config_entry.domain,
-        f"{vehicle_details.vin}-preconditioning",
-    )
     client.send_remote_to_vhl.return_value = RemotePostResponse(
-        remote_action_id=test_remote_action_id
+        remote_action_id="test_remote_action_id"
     )
 
-    assert entity_id
+    entity_id = "switch.peugeot_suv_3008_preconditioning"
     state = hass.states.get(entity_id)
     assert state
     old_state = state.state
