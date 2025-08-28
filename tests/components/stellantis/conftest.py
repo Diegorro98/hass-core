@@ -8,6 +8,7 @@ import pytest
 from stellantis.client import Client as StellantisClient
 from stellantis.model import (
     Callback,
+    CallbackRef,
     CallbackStatus,
     CallbackSubscribe,
     CallbackType,
@@ -192,6 +193,9 @@ def mock_client(vehicle_details: Vehicle, vehicle_status: Status) -> MagicMock:
 
     mock.get_vehicle_status = AsyncMock(return_value=vehicle_status)
     mock.send_remote_to_vhl = AsyncMock()
+    mock.set_user_vehicle_remote = AsyncMock(
+        return_value=CallbackRef(callback_id="mock-callback-id")
+    )
 
     return mock
 
