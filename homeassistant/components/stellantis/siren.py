@@ -49,4 +49,4 @@ class StellantisHorn(StellantisToggleEntity, SirenEntity):
     """Representation of Stellantis vehicle horn."""
 
     entity_description: StellantisSirenEntityDescription
-    attr_supported_features = SirenEntityFeature.TURN_ON | SirenEntityFeature.TURN_OFF
+    _attr_supported_features = SirenEntityFeature.TURN_ON | SirenEntityFeature.TURN_OFF

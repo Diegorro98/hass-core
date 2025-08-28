@@ -1,0 +1,33 @@
+# serializer version: 1
+# name: test_remote_action_payload[light.peugeot_suv_3008_lights-turn_off]
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': None,
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': dict({
+      'on': False,
+    }),
+    'navigation': None,
+    'preconditioning': None,
+    'wake_up': None,
+  })
+# ---
+# name: test_remote_action_payload[light.peugeot_suv_3008_lights-turn_on]
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': None,
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': dict({
+      'on': True,
+    }),
+    'navigation': None,
+    'preconditioning': None,
+    'wake_up': None,
+  })
+# ---
