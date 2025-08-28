@@ -79,7 +79,7 @@ set_preconditioning_program:
         device:
           integration: stellantis
     program_number:
-      required: true
+      required: false
       selector:
         number:
           mode: "box"
@@ -94,10 +94,15 @@ set_preconditioning_program:
       example: "20:00"
       selector:
         time:
-    daily_recurrence:
+    recurrence:
       required: false
       selector:
-        boolean:
+        select:
+          multiple: false
+          translation_key: "occurrence"
+          options:
+            - daily
+            - none
     occurrence:
       required: false
       selector:

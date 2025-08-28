@@ -142,8 +142,20 @@ async def setup_integration(
         return await hass.config_entries.async_setup(config_entry.entry_id)
 
 
+@pytest.fixture(name="vehicle_details")
+def vehicle_fixture() -> Vehicle:
+    """Define a vehicle fixture."""
+    return FIXTURE_VEHICLE_DETAILS
+
+
+@pytest.fixture(name="vehicle_status")
+def vehicle_status_fixture() -> Status:
+    """Define a vehicle fixture."""
+    return FIXTURE_VEHICLE_STATUS
+
+
 @pytest.fixture(name="client")
-def mock_client() -> MagicMock:
+def mock_client(vehicle_details: Vehicle, vehicle_status: Status) -> MagicMock:
     """Fixture to mock Client from Stellantis."""
 
     mock = MagicMock(
@@ -169,7 +181,7 @@ def mock_client() -> MagicMock:
 
     mock.get_vehicles_by_device = AsyncMock(
         return_value=Vehicles(
-            embedded=VehiclesEmbedded(vehicles=[FIXTURE_VEHICLE_DETAILS]),
+            embedded=VehiclesEmbedded(vehicles=[vehicle_details]),
             total=1,
             total_page=1,
             current_page=1,
@@ -177,16 +189,10 @@ def mock_client() -> MagicMock:
         )
     )
 
-    mock.get_vehicle_status = AsyncMock(return_value=FIXTURE_VEHICLE_STATUS)
+    mock.get_vehicle_status = AsyncMock(return_value=vehicle_status)
     mock.send_remote_to_vhl = AsyncMock()
 
     return mock
-
-
-@pytest.fixture(name="vehicle_details")
-def vehicle_fixture() -> Vehicle:
-    """Define a vehicle fixture."""
-    return FIXTURE_VEHICLE_DETAILS
 
 
 @pytest.fixture

@@ -13,7 +13,7 @@ ATTR_HEADING = "heading"
 ATTR_OCCURRENCE = "occurrence"
 ATTR_POSITION = "position"
 ATTR_PROGRAM_NUMBER = "program_number"
-ATTR_DAILY_RECURRENCE = "daily_recurrence"
+ATTR_RECURRENCE = "recurrence"
 ATTR_START = "start"
 DOMAIN = "stellantis"
 

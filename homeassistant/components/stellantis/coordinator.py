@@ -55,7 +55,7 @@ class StellantisVehicleCoordinator(DataUpdateCoordinator[Status]):
         assert self.vehicle.vin
         dr.async_get(self.hass).async_get_or_create(
             config_entry_id=entry.entry_id,
-            identifiers={(DOMAIN, self.vehicle.id), (DOMAIN, self.vehicle.vin)},
+            identifiers={(DOMAIN, self.vehicle.vin)},
             manufacturer=brand,
             model=label,
             hw_version=self.vehicle.motorization,

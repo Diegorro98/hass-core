@@ -61,7 +61,7 @@ class StellantisBaseEntity(CoordinatorEntity[StellantisVehicleCoordinator], Enti
         assert self.vehicle.vin
         self._attr_unique_id = f"{coordinator.vehicle.vin}-{description.key}"
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, self.vehicle.id), (DOMAIN, self.vehicle.vin)},
+            identifiers={(DOMAIN, self.vehicle.vin)},
         )
         self.entity_description = description
 
@@ -137,27 +137,20 @@ class StellantisActionableEntity(StellantisBaseEntity, Generic[T]):
                         self.hass, response_data.remote_action_id
                     ) as callback_event:
                         event_status = await callback_event
-                        match event_status.type:
-                            case RemoteEventType.PENDING:
-                                LOGGER.debug(
-                                    "Pending notification received from remote action, reason: %s",
-                                    event_status.status or "Not specified",
+                        assert event_status.type == RemoteEventType.DONE
+                        match event_status.status:
+                            case RemoteDoneEventStatus.FAILED:
+                                raise HomeAssistantError(
+                                    translation_domain=DOMAIN,
+                                    translation_key="remote_request_failed",
+                                    translation_placeholders={
+                                        "failure_cause": event_status.failure_cause
+                                        or "Not specified"
+                                    },
                                 )
-                                continue
-                            case RemoteEventType.DONE:
-                                match event_status.status:
-                                    case RemoteDoneEventStatus.FAILED:
-                                        raise HomeAssistantError(
-                                            translation_domain=DOMAIN,
-                                            translation_key="remote_request_failed",
-                                            translation_placeholders={
-                                                "failure_cause": event_status.failure_cause
-                                                or "Not specified"
-                                            },
-                                        )
-                                self._handle_update_from_successful_remote_action(
-                                    state_if_success
-                                )
+                        self._handle_update_from_successful_remote_action(
+                            state_if_success
+                        )
                         break
         except TimeoutError:
             LOGGER.warning(

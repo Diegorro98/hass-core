@@ -324,22 +324,19 @@
   },
   "exceptions": {
     "preconditioning_program_not_defined": {
-      "message": "Preconditioning program {slot} is not defined, define it first using \"stellantis.set_preconditioning_program\" service"
+      "message": "Preconditioning program {slot} is not defined, define it first using \"stellantis.set_preconditioning_program\" action"
     },
-    "remote_request_callback_not_found": {
-      "message": "Callback has not been setup for config entry with ID \"{config_entry_id}\", probably because external URL is not configured"
-    },
-    "remote_request_device_not_found": {
+    "action_device_not_found": {
       "message": "Device with ID \"{device_id}\" not found"
     },
-    "remote_request_vehicle_not_found": {
-      "message": "Vehicle with VIN \"{vin}\" not found"
+    "action_config_entry_not_found": {
+      "message": "Stellantis config entry for device with ID '\"{device_id}\"' not found"
     },
-    "remote_request_preconditioning_programs_not_found": {
-      "message": "Preconditioning programs not found for \"{vehicle_name}\" (VIN \"{vin}\"). Maybe this vehicle does not support preconditioning programs."
-    },
-    "remote_request_new_preconditioning_program_missing_fields": {
+    "action_new_preconditioning_program_missing_fields": {
       "message": "To define a new program, all fields are required"
+    },
+    "action_program_not_found": {
+      "message": "Preconditioning program {slot} not found, so it cannot be edited"
     },
     "executing_remote_request_failed": {
       "message": "Execution of the remote action failed. Cause: {failure_cause}"
@@ -349,6 +346,12 @@
     }
   },
   "selector": {
+    "occurrence": {
+      "options": {
+        "daily": "Daily",
+        "none": "None"
+      }
+    },
     "weekdays": {
       "options": {
         "mon": "[%key:common::time::monday%]",
@@ -436,7 +439,7 @@
         },
         "program_number": {
           "name": "[%key:component::stellantis::services::delete_preconditioning_program::fields::program_number::name%]",
-          "description": "Number of the preconditioning program to modify or position where the new program will be stored."
+          "description": "Number of the preconditioning program to modify"
         },
         "enabled": {
           "name": "Enabled",
@@ -446,8 +449,8 @@
           "name": "Start",
           "description": "Time to start the program (Seconds are ignored)."
         },
-        "daily_recurrence": {
-          "name": "Daily recurrence",
+        "recurrence": {
+          "name": "Recurrence",
           "description": "Enable or disable if the program should be repeated over the week."
         },
         "occurrence": {

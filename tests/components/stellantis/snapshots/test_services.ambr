@@ -1,0 +1,320 @@
+# serializer version: 1
+# name: test_create_preconditioning_program
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': None,
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': None,
+    'preconditioning': dict({
+      'air_conditioning': dict({
+        'immediate': None,
+        'programs': list([
+          dict({
+            'actions_type': <ActionType.SET: 'Set'>,
+            'enabled': False,
+            'occurence': dict({
+              'day': list([
+                <WeekDays.MON: 'Mon'>,
+                <WeekDays.WED: 'Wed'>,
+              ]),
+            }),
+            'recurrence': <ProgramRecurrence.DAILY: 'Daily'>,
+            'slot': None,
+            'start': 'PT0S',
+          }),
+        ]),
+      }),
+    }),
+    'wake_up': None,
+  })
+# ---
+# name: test_fully_edit_preconditioning_program
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': None,
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': None,
+    'preconditioning': dict({
+      'air_conditioning': dict({
+        'immediate': None,
+        'programs': list([
+          dict({
+            'actions_type': <ActionType.SET: 'Set'>,
+            'enabled': False,
+            'occurence': dict({
+              'day': list([
+                <WeekDays.MON: 'Mon'>,
+                <WeekDays.WED: 'Wed'>,
+              ]),
+            }),
+            'recurrence': <ProgramRecurrence.DAILY: 'Daily'>,
+            'slot': 1,
+            'start': 'PT0S',
+          }),
+        ]),
+      }),
+    }),
+    'wake_up': None,
+  })
+# ---
+# name: test_partailly_edit_preconditioning_program
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': None,
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': None,
+    'preconditioning': dict({
+      'air_conditioning': dict({
+        'immediate': None,
+        'programs': list([
+          dict({
+            'actions_type': <ActionType.SET: 'Set'>,
+            'enabled': False,
+            'occurence': dict({
+              'day': list([
+                <WeekDays.MON: 'Mon'>,
+              ]),
+            }),
+            'recurrence': <ProgramRecurrence.NONE: 'None'>,
+            'slot': 1,
+            'start': 'PT0S',
+          }),
+        ]),
+      }),
+    }),
+    'wake_up': None,
+  })
+# ---
+# name: test_service_call_remote_action_payload[delete_preconditioning_program-service_data1]
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': None,
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': None,
+    'preconditioning': dict({
+      'air_conditioning': dict({
+        'immediate': None,
+        'programs': list([
+          dict({
+            'actions_type': <ActionType.DELETE: 'Delete'>,
+            'enabled': None,
+            'occurence': None,
+            'recurrence': None,
+            'slot': 3,
+            'start': 'PT0S',
+          }),
+        ]),
+      }),
+    }),
+    'wake_up': None,
+  })
+# ---
+# name: test_service_call_remote_action_payload[send_navigation_positions-service_data2]
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': None,
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': dict({
+      '_driver_approval': None,
+      'positions': list([
+        dict({
+          'coordinates': list([
+            42.1225,
+            -6.71916667,
+          ]),
+          'type': <PointType.POINT: 'Point'>,
+        }),
+      ]),
+    }),
+    'preconditioning': None,
+    'wake_up': None,
+  })
+# ---
+# name: test_service_call_remote_action_payload[send_navigation_positions-service_data3]
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': None,
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': dict({
+      '_driver_approval': None,
+      'positions': list([
+        dict({
+          'coordinates': list([
+            42.1174431,
+            -6.7209368,
+          ]),
+          'type': <PointType.POINT: 'Point'>,
+        }),
+        dict({
+          'coordinates': list([
+            42.125106,
+            -6.7016781,
+          ]),
+          'type': <PointType.POINT: 'Point'>,
+        }),
+      ]),
+    }),
+    'preconditioning': None,
+    'wake_up': None,
+  })
+# ---
+# name: test_service_call_remote_action_payload[send_navigation_positions-service_data4]
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': None,
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': dict({
+      '_driver_approval': None,
+      'positions': list([
+        dict({
+          'coordinates': list([
+            1.0,
+            1.0,
+          ]),
+          'type': <PointType.POINT: 'Point'>,
+        }),
+        dict({
+          'coordinates': list([
+            10.0,
+            10.0,
+          ]),
+          'type': <PointType.POINT: 'Point'>,
+        }),
+      ]),
+    }),
+    'preconditioning': None,
+    'wake_up': None,
+  })
+# ---
+# name: test_service_call_remote_action_payload[send_navigation_positions-service_data5]
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': None,
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': dict({
+      '_driver_approval': None,
+      'positions': list([
+        dict({
+          'coordinates': list([
+            0.0,
+            0.0,
+          ]),
+          'type': <PointType.POINT: 'Point'>,
+        }),
+        dict({
+          'coordinates': list([
+            1.0,
+            1.0,
+          ]),
+          'type': <PointType.POINT: 'Point'>,
+        }),
+        dict({
+          'coordinates': list([
+            2.0,
+            2.0,
+          ]),
+          'type': <PointType.POINT: 'Point'>,
+        }),
+        dict({
+          'coordinates': list([
+            3.0,
+            3.0,
+          ]),
+          'type': <PointType.POINT: 'Point'>,
+        }),
+        dict({
+          'coordinates': list([
+            4.0,
+            4.0,
+          ]),
+          'type': <PointType.POINT: 'Point'>,
+        }),
+        dict({
+          'coordinates': list([
+            5.0,
+            5.0,
+          ]),
+          'type': <PointType.POINT: 'Point'>,
+        }),
+        dict({
+          'coordinates': list([
+            6.0,
+            6.0,
+          ]),
+          'type': <PointType.POINT: 'Point'>,
+        }),
+        dict({
+          'coordinates': list([
+            7.0,
+            7.0,
+          ]),
+          'type': <PointType.POINT: 'Point'>,
+        }),
+        dict({
+          'coordinates': list([
+            8.0,
+            8.0,
+          ]),
+          'type': <PointType.POINT: 'Point'>,
+        }),
+        dict({
+          'coordinates': list([
+            9.0,
+            9.0,
+          ]),
+          'type': <PointType.POINT: 'Point'>,
+        }),
+      ]),
+    }),
+    'preconditioning': None,
+    'wake_up': None,
+  })
+# ---
+# name: test_service_call_remote_action_payload[wake_up-service_data0]
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': None,
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': None,
+    'preconditioning': None,
+    'wake_up': dict({
+      'action': <WakeUpAction.WAKE_UP: 'WakeUp'>,
+    }),
+  })
+# ---
