@@ -20,7 +20,7 @@ from .entity import (
     StellantisEntityDescription,
     StellantisPreconditioningEntity,
 )
-from .helpers import preconditioning_program_setter_body
+from .helpers import preconditioning_program_setter_body, time_to_iso_duration
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -68,8 +68,9 @@ async def async_setup_entry(
                     hass,
                     vehicle_coordinator,
                     StellantisEntityDescription(
-                        key=f"preconditioning_program_{slot}_start_time",
-                        translation_key=f"preconditioning_program_{slot}_start_time",
+                        key=f"preconditioning_program_{slot}",
+                        translation_key="preconditioning_program",
+                        translation_placeholders={"slot": str(slot)},
                         value_fn=lambda _: None,
                     ),
                     entry,
@@ -131,7 +132,7 @@ class StellantisPreconditioningProgramStartTime(
             )
 
         program = copy.deepcopy(self.program)
-        program.start = f"PT{value.hour}H{value.minute}M"
+        program.start = time_to_iso_duration(value)
         await self.async_call_remote_action(
             preconditioning_program_setter_body(program), value
         )
@@ -162,9 +163,7 @@ class StellantisChargingTime(StellantisActionableEntity[time], TimeEntity):
         await self.async_call_remote_action(
             Remote(
                 charging=RemoteCharging(
-                    schedule=Schedule(
-                        next_delayed_time=f"PT{value.hour}H{value.minute}M"
-                    )
+                    schedule=Schedule(next_delayed_time=time_to_iso_duration(value))
                 )
             ),
             value,

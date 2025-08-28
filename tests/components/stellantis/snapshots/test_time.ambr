@@ -1,0 +1,217 @@
+# serializer version: 1
+# name: test_remote_action_payload[time.peugeot_suv_3008_charging_time-value0]
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': dict({
+      '_next_delayed_time': None,
+      'immediate': None,
+      'preferences': None,
+      'schedule': dict({
+        'next_delayed_time': 'PT22H',
+        'programs': None,
+      }),
+    }),
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': None,
+    'preconditioning': None,
+    'wake_up': None,
+  })
+# ---
+# name: test_remote_action_payload[time.peugeot_suv_3008_charging_time-value1]
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': dict({
+      '_next_delayed_time': None,
+      'immediate': None,
+      'preferences': None,
+      'schedule': dict({
+        'next_delayed_time': 'PT22H30M',
+        'programs': None,
+      }),
+    }),
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': None,
+    'preconditioning': None,
+    'wake_up': None,
+  })
+# ---
+# name: test_remote_action_payload[time.peugeot_suv_3008_charging_time-value2]
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': dict({
+      '_next_delayed_time': None,
+      'immediate': None,
+      'preferences': None,
+      'schedule': dict({
+        'next_delayed_time': 'PT30M',
+        'programs': None,
+      }),
+    }),
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': None,
+    'preconditioning': None,
+    'wake_up': None,
+  })
+# ---
+# name: test_remote_action_payload[time.peugeot_suv_3008_charging_time-value3]
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': dict({
+      '_next_delayed_time': None,
+      'immediate': None,
+      'preferences': None,
+      'schedule': dict({
+        'next_delayed_time': 'PT0S',
+        'programs': None,
+      }),
+    }),
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': None,
+    'preconditioning': None,
+    'wake_up': None,
+  })
+# ---
+# name: test_remote_action_payload[time.peugeot_suv_3008_preconditioning_program_1_start_time-value0]
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': None,
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': None,
+    'preconditioning': dict({
+      'air_conditioning': dict({
+        'immediate': None,
+        'programs': list([
+          dict({
+            'actions_type': <ActionType.SET: 'Set'>,
+            'enabled': True,
+            'occurence': dict({
+              'day': list([
+                <WeekDays.MON: 'Mon'>,
+              ]),
+            }),
+            'recurrence': <ProgramRecurrence.NONE: 'None'>,
+            'slot': 1,
+            'start': 'PT22H',
+          }),
+        ]),
+      }),
+    }),
+    'wake_up': None,
+  })
+# ---
+# name: test_remote_action_payload[time.peugeot_suv_3008_preconditioning_program_1_start_time-value1]
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': None,
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': None,
+    'preconditioning': dict({
+      'air_conditioning': dict({
+        'immediate': None,
+        'programs': list([
+          dict({
+            'actions_type': <ActionType.SET: 'Set'>,
+            'enabled': True,
+            'occurence': dict({
+              'day': list([
+                <WeekDays.MON: 'Mon'>,
+              ]),
+            }),
+            'recurrence': <ProgramRecurrence.NONE: 'None'>,
+            'slot': 1,
+            'start': 'PT22H30M',
+          }),
+        ]),
+      }),
+    }),
+    'wake_up': None,
+  })
+# ---
+# name: test_remote_action_payload[time.peugeot_suv_3008_preconditioning_program_1_start_time-value2]
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': None,
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': None,
+    'preconditioning': dict({
+      'air_conditioning': dict({
+        'immediate': None,
+        'programs': list([
+          dict({
+            'actions_type': <ActionType.SET: 'Set'>,
+            'enabled': True,
+            'occurence': dict({
+              'day': list([
+                <WeekDays.MON: 'Mon'>,
+              ]),
+            }),
+            'recurrence': <ProgramRecurrence.NONE: 'None'>,
+            'slot': 1,
+            'start': 'PT30M',
+          }),
+        ]),
+      }),
+    }),
+    'wake_up': None,
+  })
+# ---
+# name: test_remote_action_payload[time.peugeot_suv_3008_preconditioning_program_1_start_time-value3]
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': None,
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': None,
+    'preconditioning': dict({
+      'air_conditioning': dict({
+        'immediate': None,
+        'programs': list([
+          dict({
+            'actions_type': <ActionType.SET: 'Set'>,
+            'enabled': True,
+            'occurence': dict({
+              'day': list([
+                <WeekDays.MON: 'Mon'>,
+              ]),
+            }),
+            'recurrence': <ProgramRecurrence.NONE: 'None'>,
+            'slot': 1,
+            'start': 'PT0S',
+          }),
+        ]),
+      }),
+    }),
+    'wake_up': None,
+  })
+# ---

@@ -1,7 +1,6 @@
 """Handle Stellantis service calls."""
 
 from asyncio import timeout
-from datetime import timedelta
 from typing import Any, cast
 
 from stellantis.model import (
@@ -44,7 +43,7 @@ from .const import (
     RemoteDoneEventStatus,
 )
 from .coordinator import StellantisConfigEntry, StellantisVehicleCoordinator
-from .helpers import preconditioning_program_setter_body
+from .helpers import preconditioning_program_setter_body, time_to_iso_duration
 from .webhook import StellantisCallbackEvent
 
 SVE_TRANSLATION_PLACEHOLDER_CONFIG_ENTRY_ID = "config_entry_id"
@@ -163,11 +162,6 @@ async def async_send_remote_requests(
         LOGGER.warning(
             f"Status notification for 'stellantis.{service_name}' service was not received in time"
         )
-
-
-def transform_to_stellantis_time_schema(time: timedelta) -> str:
-    """Transform time to ISO 8601 with the schema: P[n]Y[n]M[n]DT[n]H[n]M[n]S."""
-    return f"PT{time.seconds // 3600}H{time.seconds % 3600 // 60}M"
 
 
 async def async_setup_hass_services(hass: HomeAssistant) -> None:
@@ -298,15 +292,13 @@ async def async_setup_hass_services(hass: HomeAssistant) -> None:
                     translation_key="remote_request_new_preconditioning_program_missing_fields",
                 )
             program_to_set = PreconditioningProgram(
-                start=transform_to_stellantis_time_schema(call.data[ATTR_START]),
+                start=time_to_iso_duration(call.data[ATTR_START]),
                 enabled=call.data[ATTR_ENABLED],
             )
 
         else:
             if ATTR_START in call.data:
-                program_to_set.start = transform_to_stellantis_time_schema(
-                    call.data[ATTR_START]
-                )
+                program_to_set.start = time_to_iso_duration(call.data[ATTR_START])
             if ATTR_ENABLED in call.data:
                 program_to_set.enabled = call.data[ATTR_ENABLED]
         if ATTR_OCCURRENCE in call.data:

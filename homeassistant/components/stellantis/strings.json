@@ -217,17 +217,8 @@
           "failure": "Failure"
         }
       },
-      "preconditioning_program_1": {
-        "name": "Preconditioning program 1"
-      },
-      "preconditioning_program_2": {
-        "name": "Preconditioning program 2"
-      },
-      "preconditioning_program_3": {
-        "name": "Preconditioning program 3"
-      },
-      "preconditioning_program_4": {
-        "name": "Preconditioning program 4"
+      "preconditioning_program": {
+        "name": "Preconditioning program {slot}"
       },
       "powertrain_status": {
         "name": "Powertrain status",
@@ -314,29 +305,8 @@
       "preconditioning": {
         "name": "Preconditioning"
       },
-      "preconditioning_program_1": {
-        "name": "[%key:component::stellantis::entity::sensor::preconditioning_program_1::name%]",
-        "state": {
-          "on": "[%key:common::state::enabled%]",
-          "off": "[%key:common::state::disabled%]"
-        }
-      },
-      "preconditioning_program_2": {
-        "name": "[%key:component::stellantis::entity::sensor::preconditioning_program_2::name%]",
-        "state": {
-          "on": "[%key:common::state::enabled%]",
-          "off": "[%key:common::state::disabled%]"
-        }
-      },
-      "preconditioning_program_3": {
-        "name": "[%key:component::stellantis::entity::sensor::preconditioning_program_3::name%]",
-        "state": {
-          "on": "[%key:common::state::enabled%]",
-          "off": "[%key:common::state::disabled%]"
-        }
-      },
-      "preconditioning_program_4": {
-        "name": "[%key:component::stellantis::entity::sensor::preconditioning_program_4::name%]",
+      "preconditioning_program": {
+        "name": "[%key:component::stellantis::entity::sensor::preconditioning_program::name%]",
         "state": {
           "on": "[%key:common::state::enabled%]",
           "off": "[%key:common::state::disabled%]"
@@ -347,17 +317,8 @@
       "charging_time": {
         "name": "Charging time"
       },
-      "preconditioning_program_1_start_time": {
-        "name": "Preconditioning program 1 start time"
-      },
-      "preconditioning_program_2_start_time": {
-        "name": "Preconditioning program 2 start time"
-      },
-      "preconditioning_program_3_start_time": {
-        "name": "Preconditioning program 3 start time"
-      },
-      "preconditioning_program_4_start_time": {
-        "name": "Preconditioning program 4 start time"
+      "preconditioning_program": {
+        "name": "Preconditioning program {slot} start time"
       }
     }
   },

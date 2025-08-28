@@ -611,7 +611,8 @@ async def async_setup_entry(
                     vehicle_coordinator,
                     StellantisSensorEntityDescription(
                         key=f"preconditioning_program_{slot}",
-                        translation_key=f"preconditioning_program_{slot}",
+                        translation_key="preconditioning_program",
+                        translation_placeholders={"slot": str(slot)},
                         device_class=SensorDeviceClass.TIMESTAMP,
                         value_fn=lambda _: None,
                     ),

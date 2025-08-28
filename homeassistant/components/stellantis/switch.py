@@ -63,8 +63,8 @@ PRECONDITIONING_SWITCH_ENTITY_DESCRIPTION = StellantisSwitchEntityDescription(
 )
 
 DELAYED_CHARGE_SWITCH_ENTITY_DESCRIPTION = StellantisSwitchEntityDescription(
-    key="partial_charge",
-    translation_key="partial_charge",
+    key="delayed_charge",
+    translation_key="delayed_charge",
     remote_request_on=Remote(charging=RemoteCharging(immediate=True)),
     remote_request_off=Remote(charging=RemoteCharging(immediate=False)),
     value_fn=lambda status: charging_status == ChargingStatusEnum.IN_PROGRESS
@@ -146,6 +146,7 @@ async def async_setup_entry(
                             key=f"preconditioning_program_{slot}",
                             translation_key="preconditioning_program",
                             value_fn=lambda _: None,
+                            translation_placeholders={"slot": str(slot)},
                         ),
                         entry,
                         slot,

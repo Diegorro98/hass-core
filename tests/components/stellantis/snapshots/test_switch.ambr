@@ -1,0 +1,185 @@
+# serializer version: 1
+# name: test_remote_action_payload[switch.peugeot_suv_3008_delayed_charge-turn_off]
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': dict({
+      '_next_delayed_time': None,
+      'immediate': False,
+      'preferences': None,
+      'schedule': None,
+    }),
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': None,
+    'preconditioning': None,
+    'wake_up': None,
+  })
+# ---
+# name: test_remote_action_payload[switch.peugeot_suv_3008_delayed_charge-turn_on]
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': dict({
+      '_next_delayed_time': None,
+      'immediate': True,
+      'preferences': None,
+      'schedule': None,
+    }),
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': None,
+    'preconditioning': None,
+    'wake_up': None,
+  })
+# ---
+# name: test_remote_action_payload[switch.peugeot_suv_3008_partial_charge-turn_off]
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': dict({
+      '_next_delayed_time': None,
+      'immediate': None,
+      'preferences': dict({
+        'level': None,
+        'type': <ChargingType.PARTIAL: 'Partial'>,
+      }),
+      'schedule': None,
+    }),
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': None,
+    'preconditioning': None,
+    'wake_up': None,
+  })
+# ---
+# name: test_remote_action_payload[switch.peugeot_suv_3008_partial_charge-turn_on]
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': dict({
+      '_next_delayed_time': None,
+      'immediate': None,
+      'preferences': dict({
+        'level': None,
+        'type': <ChargingType.FULL: 'Full'>,
+      }),
+      'schedule': None,
+    }),
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': None,
+    'preconditioning': None,
+    'wake_up': None,
+  })
+# ---
+# name: test_remote_action_payload[switch.peugeot_suv_3008_preconditioning-turn_off]
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': None,
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': None,
+    'preconditioning': dict({
+      'air_conditioning': dict({
+        'immediate': False,
+        'programs': None,
+      }),
+    }),
+    'wake_up': None,
+  })
+# ---
+# name: test_remote_action_payload[switch.peugeot_suv_3008_preconditioning-turn_on]
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': None,
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': None,
+    'preconditioning': dict({
+      'air_conditioning': dict({
+        'immediate': True,
+        'programs': None,
+      }),
+    }),
+    'wake_up': None,
+  })
+# ---
+# name: test_remote_action_payload[switch.peugeot_suv_3008_preconditioning_program_1-turn_off]
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': None,
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': None,
+    'preconditioning': dict({
+      'air_conditioning': dict({
+        'immediate': None,
+        'programs': list([
+          dict({
+            'actions_type': <ActionType.SET: 'Set'>,
+            'enabled': False,
+            'occurence': dict({
+              'day': list([
+                <WeekDays.MON: 'Mon'>,
+              ]),
+            }),
+            'recurrence': <ProgramRecurrence.NONE: 'None'>,
+            'slot': 1,
+            'start': 'PT14H30M',
+          }),
+        ]),
+      }),
+    }),
+    'wake_up': None,
+  })
+# ---
+# name: test_remote_action_payload[switch.peugeot_suv_3008_preconditioning_program_1-turn_on]
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': None,
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': None,
+    'preconditioning': dict({
+      'air_conditioning': dict({
+        'immediate': None,
+        'programs': list([
+          dict({
+            'actions_type': <ActionType.SET: 'Set'>,
+            'enabled': True,
+            'occurence': dict({
+              'day': list([
+                <WeekDays.MON: 'Mon'>,
+              ]),
+            }),
+            'recurrence': <ProgramRecurrence.NONE: 'None'>,
+            'slot': 1,
+            'start': 'PT14H30M',
+          }),
+        ]),
+      }),
+    }),
+    'wake_up': None,
+  })
+# ---

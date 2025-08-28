@@ -1,0 +1,35 @@
+# serializer version: 1
+# name: test_remote_action_payload[lock.peugeot_suv_3008_doors-lock]
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': None,
+    'door': dict({
+      '_forced': None,
+      'state': <RemoteDoorsStateEnum.LOCKED: 'Locked'>,
+    }),
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': None,
+    'preconditioning': None,
+    'wake_up': None,
+  })
+# ---
+# name: test_remote_action_payload[lock.peugeot_suv_3008_doors-unlock]
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': None,
+    'door': dict({
+      '_forced': None,
+      'state': <RemoteDoorsStateEnum.UNLOCKED: 'Unlocked'>,
+    }),
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': None,
+    'preconditioning': None,
+    'wake_up': None,
+  })
+# ---

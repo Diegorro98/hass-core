@@ -72,7 +72,7 @@
           },
           "charging": {
             "plugged": true,
-            "status": "Disconnected",
+            "status": "Stopped",
             "remainingTime": "PT6H30M",
             "chargingRate": 500,
             "chargingPowerLevel": "Level1",

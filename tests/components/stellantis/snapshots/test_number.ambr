@@ -1,0 +1,23 @@
+# serializer version: 1
+# name: test_remote_action_payload[number.peugeot_suv_3008_charging_power_level]
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': dict({
+      '_next_delayed_time': None,
+      'immediate': None,
+      'preferences': dict({
+        'level': <ChargingPowerLevel.LEVEL2: 'Level2'>,
+        'type': None,
+      }),
+      'schedule': None,
+    }),
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': None,
+    'preconditioning': None,
+    'wake_up': None,
+  })
+# ---
