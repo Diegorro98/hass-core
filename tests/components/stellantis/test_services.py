@@ -111,10 +111,6 @@ async def test_service_call_remote_action_payload(
     snapshot: SnapshotAssertion,
 ) -> None:
     """Check the payloads from a successful service call."""
-    client.send_remote_to_vhl.return_value = RemotePostResponse(
-        remote_action_id="test_remote_action_id"
-    )
-
     assert vehicle_details.vin
     device_entry = device_registry.async_get_or_create(
         config_entry_id=config_entry.entry_id,
@@ -145,10 +141,6 @@ async def test_fully_edit_preconditioning_program(
     snapshot: SnapshotAssertion,
 ) -> None:
     """Test the full edit of a preconditioning program."""
-    client.send_remote_to_vhl.return_value = RemotePostResponse(
-        remote_action_id="test_remote_action_id"
-    )
-
     slot = 1
     programs = vehicle_status.preconditioning.air_conditioning.programs
     assert programs
@@ -208,12 +200,7 @@ async def test_partailly_edit_preconditioning_program(
     snapshot: SnapshotAssertion,
 ) -> None:
     """Test the partial edit of a preconditioning program."""
-    client.send_remote_to_vhl.return_value = RemotePostResponse(
-        remote_action_id="test_remote_action_id"
-    )
-
     slot = 1
-
     programs = vehicle_status.preconditioning.air_conditioning.programs
     assert programs
 
@@ -262,10 +249,6 @@ async def test_create_preconditioning_program(
     snapshot: SnapshotAssertion,
 ) -> None:
     """Test create a preconditioning program."""
-    client.send_remote_to_vhl.return_value = RemotePostResponse(
-        remote_action_id="test_remote_action_id"
-    )
-
     assert vehicle_details.vin
     device_entry = device_registry.async_get_or_create(
         config_entry_id=config_entry.entry_id,
@@ -449,10 +432,6 @@ async def test_remote_action_callback_timeout(
     vehicle_details: Vehicle,
 ) -> None:
     """Test the case were a "Done" response is not received within the timeout period."""
-    client.send_remote_to_vhl.return_value = RemotePostResponse(
-        remote_action_id="test_remote_action_id"
-    )
-
     assert vehicle_details.vin
     device_entry = device_registry.async_get_or_create(
         config_entry_id=config_entry.entry_id,
@@ -535,9 +514,6 @@ async def test_remote_request_failed_result(
     vehicle_details: Vehicle,
 ) -> None:
     """Test a failed remote request raises an exception."""
-    client.send_remote_to_vhl.return_value = RemotePostResponse(
-        remote_action_id="test_remote_action_id"
-    )
 
     assert vehicle_details.vin
     device_entry = device_registry.async_get_or_create(

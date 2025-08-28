@@ -14,6 +14,7 @@ from stellantis.model import (
     Message,
     Motorization,
     RemoteEvent,
+    RemotePostResponse,
     Status,
     UserCallback,
     Vehicle,
@@ -200,13 +201,18 @@ async def send_webhook_result_success(
     hass: HomeAssistant,
     config_entry: MockConfigEntry,
     hass_client_no_auth: ClientSessionGenerator,
+    client: MagicMock,
 ):
     """Fixture to return a function to send webhook results."""
     assert await async_setup_component(hass, WEBHOOK_DOMAIN, {})
-    client = await hass_client_no_auth()
+    hass_client = await hass_client_no_auth()
+
+    client.send_remote_to_vhl.return_value = RemotePostResponse(
+        remote_action_id="test_remote_action_id"
+    )
 
     async def send_webhook_result(_) -> None:
-        await client.post(
+        await hass_client.post(
             "/api/webhook/" + config_entry.data[CONF_WEBHOOK_ID],
             json=Message(
                 remote_event=RemoteEvent(
@@ -228,13 +234,18 @@ async def send_webhook_result_failed(
     hass: HomeAssistant,
     config_entry: MockConfigEntry,
     hass_client_no_auth: ClientSessionGenerator,
+    client: MagicMock,
 ):
     """Fixture to return a function to send webhook results."""
     assert await async_setup_component(hass, WEBHOOK_DOMAIN, {})
-    client = await hass_client_no_auth()
+    hass_client = await hass_client_no_auth()
+
+    client.send_remote_to_vhl.return_value = RemotePostResponse(
+        remote_action_id="test_remote_action_id"
+    )
 
     async def send_webhook_result(_) -> None:
-        await client.post(
+        await hass_client.post(
             "/api/webhook/" + config_entry.data[CONF_WEBHOOK_ID],
             json=Message(
                 remote_event=RemoteEvent(
