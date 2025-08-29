@@ -22,9 +22,33 @@ from tests.test_util.aiohttp import AiohttpClientMocker
 
 
 @pytest.fixture
-def platforms() -> list[str]:
+def platforms() -> list[Platform]:
     """Fixture to specify platforms to test."""
     return [Platform.SENSOR]
+
+
+@pytest.fixture
+async def setup_integration() -> None:
+    """Override the setup_integration fixture to avoid auto-using it."""
+
+
+@pytest.fixture
+async def setup_integration_override(
+    hass: HomeAssistant,
+    platforms: list[Platform],
+    config_entry: MockConfigEntry,
+    client: MagicMock,
+) -> bool:
+    """Fixture to setup the integration."""
+    config_entry.add_to_hass(hass)
+    assert config_entry.state is ConfigEntryState.NOT_LOADED
+    with (
+        patch("homeassistant.components.stellantis.PLATFORMS", platforms),
+        patch(
+            "homeassistant.components.stellantis.StellantisClient", return_value=client
+        ),
+    ):
+        return await hass.config_entries.async_setup(config_entry.entry_id)
 
 
 async def test_expired_token(
@@ -61,7 +85,7 @@ async def test_expired_token(
     assert config_entry.state is ConfigEntryState.LOADED
 
 
-@pytest.mark.usefixtures("setup_integration")
+@pytest.mark.usefixtures("setup_integration_override")
 async def test_revoked_token(
     hass: HomeAssistant,
     config_entry: MockConfigEntry,

@@ -20,7 +20,6 @@ def platforms() -> list[Platform]:
     return [Platform.TIME]
 
 
-@pytest.mark.usefixtures("setup_integration")
 @pytest.mark.usefixtures("send_webhook_result_success")
 async def test_remote_action_callback_successful(
     hass: HomeAssistant, client: MagicMock
@@ -45,7 +44,6 @@ async def test_remote_action_callback_successful(
     assert state.state == objective
 
 
-@pytest.mark.usefixtures("setup_integration")
 @pytest.mark.usefixtures("send_webhook_result_failed")
 async def test_remote_action_callback_failed_result(
     hass: HomeAssistant, client: MagicMock
@@ -70,7 +68,6 @@ async def test_remote_action_callback_failed_result(
     assert state.state == old_state
 
 
-@pytest.mark.usefixtures("setup_integration")
 async def test_remote_action_callback_failed_executing(
     hass: HomeAssistant, client: MagicMock
 ) -> None:
@@ -95,7 +92,6 @@ async def test_remote_action_callback_failed_executing(
     assert state.state == old_state
 
 
-@pytest.mark.usefixtures("setup_integration")
 async def test_remote_action_callback_timeout(
     hass: HomeAssistant, client: MagicMock
 ) -> None:
@@ -122,7 +118,6 @@ async def test_remote_action_callback_timeout(
     assert state.state == old_state
 
 
-@pytest.mark.usefixtures("setup_integration")
 @pytest.mark.usefixtures("send_webhook_result_success")
 # These test are repeated to check that the conversion from time object
 # to ISO 8601 duration format is working correctly.

@@ -48,7 +48,6 @@ from tests.common import MockConfigEntry
 from tests.typing import ClientSessionGenerator
 
 
-@pytest.mark.usefixtures("setup_integration")
 @pytest.mark.usefixtures("send_webhook_result_success")
 @pytest.mark.parametrize(
     ("service", "service_data"),
@@ -129,7 +128,6 @@ async def test_service_call_remote_action_payload(
     )
 
 
-@pytest.mark.usefixtures("setup_integration")
 @pytest.mark.usefixtures("send_webhook_result_success")
 async def test_fully_edit_preconditioning_program(
     hass: HomeAssistant,
@@ -188,7 +186,6 @@ async def test_fully_edit_preconditioning_program(
     assert program.start != "PT0S"
 
 
-@pytest.mark.usefixtures("setup_integration")
 @pytest.mark.usefixtures("send_webhook_result_success")
 async def test_partailly_edit_preconditioning_program(
     hass: HomeAssistant,
@@ -238,7 +235,6 @@ async def test_partailly_edit_preconditioning_program(
     assert program.start != "PT0S"
 
 
-@pytest.mark.usefixtures("setup_integration")
 @pytest.mark.usefixtures("send_webhook_result_success")
 async def test_create_preconditioning_program(
     hass: HomeAssistant,
@@ -273,7 +269,6 @@ async def test_create_preconditioning_program(
     )
 
 
-@pytest.mark.usefixtures("setup_integration")
 async def test_device_not_found_exception(
     hass: HomeAssistant,
 ) -> None:
@@ -288,7 +283,6 @@ async def test_device_not_found_exception(
         )
 
 
-@pytest.mark.usefixtures("setup_integration")
 async def test_different_domain_device_exception(
     hass: HomeAssistant,
     device_registry: dr.DeviceRegistry,
@@ -311,7 +305,6 @@ async def test_different_domain_device_exception(
         )
 
 
-@pytest.mark.usefixtures("setup_integration")
 async def test_create_preconditioning_program_missing_fields(
     hass: HomeAssistant,
     device_registry: dr.DeviceRegistry,
@@ -339,7 +332,6 @@ async def test_create_preconditioning_program_missing_fields(
         )
 
 
-@pytest.mark.usefixtures("setup_integration")
 async def test_edit_preconditioning_program_missing_program(
     hass: HomeAssistant,
     device_registry: dr.DeviceRegistry,
@@ -370,7 +362,6 @@ async def test_edit_preconditioning_program_missing_program(
         )
 
 
-@pytest.mark.usefixtures("setup_integration")
 async def test_remote_request_failed_execution(
     hass: HomeAssistant,
     device_registry: dr.DeviceRegistry,
@@ -398,7 +389,6 @@ async def test_remote_request_failed_execution(
         )
 
 
-@pytest.mark.usefixtures("setup_integration")
 async def test_remote_request_missing_remote_action_id(
     hass: HomeAssistant,
     device_registry: dr.DeviceRegistry,
@@ -423,7 +413,6 @@ async def test_remote_request_missing_remote_action_id(
     )
 
 
-@pytest.mark.usefixtures("setup_integration")
 async def test_remote_action_callback_timeout(
     hass: HomeAssistant,
     device_registry: dr.DeviceRegistry,
@@ -450,7 +439,6 @@ async def test_remote_action_callback_timeout(
         )
 
 
-@pytest.mark.usefixtures("setup_integration")
 async def test_remote_request_pending_and_done(
     hass: HomeAssistant,
     device_registry: dr.DeviceRegistry,
@@ -504,7 +492,6 @@ async def test_remote_request_pending_and_done(
     )
 
 
-@pytest.mark.usefixtures("setup_integration")
 @pytest.mark.usefixtures("send_webhook_result_failed")
 async def test_remote_request_failed_result(
     hass: HomeAssistant,

@@ -1,6 +1,6 @@
 """Test the Stellantis config flow."""
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from stellantis.client import AbstractAuth, Client as StellantisClient
@@ -18,6 +18,29 @@ from homeassistant.helpers import config_entry_oauth2_flow
 
 from tests.common import MockConfigEntry
 from tests.test_util.aiohttp import AiohttpClientMocker
+
+
+@pytest.fixture
+async def setup_integration() -> None:
+    """Override the setup_integration fixture to avoid auto-using it."""
+
+
+@pytest.fixture
+async def setup_integration_override(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    client: MagicMock,
+) -> bool:
+    """Fixture to setup the integration."""
+    config_entry.add_to_hass(hass)
+    assert config_entry.state is ConfigEntryState.NOT_LOADED
+    with (
+        patch("homeassistant.components.stellantis.PLATFORMS", []),
+        patch(
+            "homeassistant.components.stellantis.StellantisClient", return_value=client
+        ),
+    ):
+        return await hass.config_entries.async_setup(config_entry.entry_id)
 
 
 async def test_full_flow(
@@ -105,7 +128,7 @@ async def test_full_flow(
     assert await abstract_auth_impl.async_get_access_token() == "mock-access-token"
 
 
-@pytest.mark.usefixtures("setup_integration")
+@pytest.mark.usefixtures("setup_integration_override")
 async def test_reauth_flow(
     hass: HomeAssistant,
     config_entry: MockConfigEntry,
@@ -327,7 +350,7 @@ async def test_flow_get_user_missing_email(
     assert result["reason"] == "missing_email"
 
 
-@pytest.mark.usefixtures("setup_integration")
+@pytest.mark.usefixtures("setup_integration_override")
 async def test_reauth_flow_different_id_abort(
     hass: HomeAssistant,
     config_entry: MockConfigEntry,

@@ -25,7 +25,6 @@ def platforms() -> list[Platform]:
     return [Platform.LIGHT]
 
 
-@pytest.mark.usefixtures("setup_integration")
 @pytest.mark.usefixtures("send_webhook_result_success")
 async def test_remote_action_callback_successful(
     hass: HomeAssistant, client: MagicMock
@@ -51,7 +50,6 @@ async def test_remote_action_callback_successful(
     assert state.state == STATE_ON
 
 
-@pytest.mark.usefixtures("setup_integration")
 @pytest.mark.usefixtures("send_webhook_result_failed")
 async def test_remote_action_callback_failed_result(
     hass: HomeAssistant, client: MagicMock
@@ -78,7 +76,6 @@ async def test_remote_action_callback_failed_result(
     assert state.state == old_state
 
 
-@pytest.mark.usefixtures("setup_integration")
 async def test_remote_action_callback_failed_executing(
     hass: HomeAssistant,
     client: MagicMock,
@@ -106,7 +103,6 @@ async def test_remote_action_callback_failed_executing(
     assert state.state == old_state
 
 
-@pytest.mark.usefixtures("setup_integration")
 async def test_remote_action_callback_timeout(
     hass: HomeAssistant, client: MagicMock
 ) -> None:
@@ -135,7 +131,6 @@ async def test_remote_action_callback_timeout(
     assert state.state == old_state
 
 
-@pytest.mark.usefixtures("setup_integration")
 @pytest.mark.usefixtures("send_webhook_result_success")
 @pytest.mark.parametrize("service", [SERVICE_TURN_ON, SERVICE_TURN_OFF])
 @pytest.mark.parametrize("entity_id", ["light.peugeot_suv_3008_lights"])

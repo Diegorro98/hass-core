@@ -187,7 +187,7 @@ def platforms() -> list[Platform]:
     return []
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 async def setup_integration(
     hass: HomeAssistant,
     platforms: list[Platform],

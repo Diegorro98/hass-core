@@ -1,6 +1,5 @@
 """Test diagnostics for Stellantis."""
 
-import pytest
 from stellantis.model import Vehicle
 from syrupy.assertion import SnapshotAssertion
 
@@ -15,7 +14,6 @@ from homeassistant.helpers import device_registry as dr
 from tests.common import MockConfigEntry
 
 
-@pytest.mark.usefixtures("setup_integration")
 async def test_async_get_config_entry_diagnostics(
     hass: HomeAssistant,
     config_entry: MockConfigEntry,
@@ -25,7 +23,6 @@ async def test_async_get_config_entry_diagnostics(
     assert await async_get_config_entry_diagnostics(hass, config_entry) == snapshot
 
 
-@pytest.mark.usefixtures("setup_integration")
 async def test_async_get_device_diagnostics_vehicle(
     hass: HomeAssistant,
     device_registry: dr.DeviceRegistry,
@@ -43,7 +40,6 @@ async def test_async_get_device_diagnostics_vehicle(
     assert await async_get_device_diagnostics(hass, config_entry, device) == snapshot
 
 
-@pytest.mark.usefixtures("setup_integration")
 async def test_async_get_device_diagnostics_vehicle_without_embedded_extension(
     hass: HomeAssistant,
     device_registry: dr.DeviceRegistry,

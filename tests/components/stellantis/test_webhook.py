@@ -15,7 +15,6 @@ from tests.common import MockConfigEntry
 from tests.typing import ClientSessionGenerator
 
 
-@pytest.mark.usefixtures("setup_integration")
 @pytest.mark.parametrize("result", [RESULT_SUCCESS, RESULT_FAILED])
 async def test_webhook_result(
     hass: HomeAssistant,
@@ -46,7 +45,6 @@ async def test_webhook_result(
         assert callback_event.result() == result
 
 
-@pytest.mark.usefixtures("setup_integration")
 async def test_webhook_result_pending(
     hass: HomeAssistant,
     config_entry: MockConfigEntry,
