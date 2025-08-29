@@ -177,7 +177,7 @@ def mock_config_entry(token_entry: dict[str, Any]) -> MockConfigEntry:
             CONF_CALLBACK_ID: "mock-callback-id",
             "token": token_entry,
         },
-        unique_id="1234567890",
+        unique_id="example@domain.com",
     )
 
 

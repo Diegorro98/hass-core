@@ -25,7 +25,10 @@
       "no_brand_selected": "The brand is required. Please select a brand.",
       "no_country_selected": "The country is required. Please select a country.",
       "invalid_url": "The url is invalid. Please check that it has been correctly pasted and try again.",
-      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]"
+      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
+      "get_user_error": "Unable to retrieve user information.",
+      "missing_email": "Unable to get the user email.",
+      "wrong_account": "Please ensure you reconfigure against the same account."
     }
   },
   "entity": {

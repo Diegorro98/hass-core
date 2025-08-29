@@ -3,27 +3,47 @@
 from collections.abc import Mapping
 import logging
 import secrets
-from types import MappingProxyType
 from typing import Any, cast
 
-import aiohttp
 import pycountry
-from stellantis.client import Client as StellantisClient
+from stellantis.client import AbstractAuth, Client as StellantisClient
+from stellantis.const import API_ENDPOINT
 from stellantis.model.error import StellantisError
 import voluptuous as vol
 from yarl import URL
 
-from homeassistant.config_entries import ConfigEntry, ConfigFlowResult
+from homeassistant.config_entries import SOURCE_REAUTH, ConfigFlowResult
 from homeassistant.const import CONF_COUNTRY, CONF_URL, CONF_WEBHOOK_ID
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.config_entry_oauth2_flow import (
     AbstractOAuth2FlowHandler,
     _decode_jwt,
 )
+from homeassistant.helpers.httpx_client import get_async_client
 from homeassistant.helpers.selector import CountrySelector, CountrySelectorConfig
 
-from .api import AsyncConfigEntryAuth
 from .const import CONF_BRAND, DOMAIN, Brand
-from .oauth import StellantisOauth2Implementation, StellantisOAuth2Session
+from .oauth import StellantisOauth2Implementation
+
+
+class _OneShotAuth(AbstractAuth):
+    """Provide Stellantis authentication tied to an OAuth2 based config entry."""
+
+    def __init__(
+        self, hass: HomeAssistant, token: str, client_id: str, realm: str
+    ) -> None:
+        """Initialize Stellantis one shot auth."""
+        self.token = token
+        super().__init__(
+            get_async_client(hass),
+            API_ENDPOINT,
+            client_id,
+            realm,
+        )
+
+    async def async_get_access_token(self) -> str:
+        """Return a valid access token."""
+        return self.token
 
 
 class StellantisConfigFlow(AbstractOAuth2FlowHandler, domain=DOMAIN):
@@ -139,49 +159,39 @@ class StellantisConfigFlow(AbstractOAuth2FlowHandler, domain=DOMAIN):
 
     async def async_oauth_create_entry(self, data: dict) -> ConfigFlowResult:
         """Create an entry for the flow."""
-        email = "Unknown email"
+        stellantis_client = StellantisClient(
+            _OneShotAuth(
+                self.hass,
+                data["token"]["access_token"],
+                self.flow_impl.client_id,
+                self.flow_impl.realm,
+            )
+        )
         try:
-            dummy_entry = ConfigEntry(
-                version=0,
-                minor_version=0,
-                discovery_keys=MappingProxyType({}),
-                domain=DOMAIN,
-                options=None,
-                data=data,
-                source="dummy",
-                unique_id=None,
-                subentries_data=None,
-                title="dummy",
-            )
-            oauth_session = StellantisOAuth2Session(
-                self.hass, dummy_entry, self.flow_impl
-            )
-            auth = AsyncConfigEntryAuth(self.hass, oauth_session)
-            await auth.async_get_access_token()
-            data.update(dummy_entry.data)
-
-            stellantis_client = StellantisClient(auth)
-
             user = await stellantis_client.get_user()
-            if user.email:
-                email = user.email
-        except (
-            TimeoutError,
-            aiohttp.ClientError,
-            aiohttp.ClientResponseError,
-            StellantisError,
-        ):
-            pass
-
-        title = f"{self.brand}: {email}"
-        data[CONF_BRAND] = self.brand
-        data[CONF_COUNTRY] = self.country_code
-        if self.init_data:
-            data[CONF_WEBHOOK_ID] = self.init_data[CONF_WEBHOOK_ID]
-            return self.async_update_reload_and_abort(
-                self._get_reauth_entry(),
-                title=title,
-                data=data,
+        except StellantisError as err:
+            return self.async_abort(
+                reason="get_user_error", description_placeholders={"error": str(err)}
             )
-        data[CONF_WEBHOOK_ID] = secrets.token_hex()
-        return self.async_create_entry(title=title, data=data)
+
+        if user.email:
+            email = user.email
+        else:
+            return self.async_abort(reason="missing_email")
+
+        await self.async_set_unique_id(email)
+        if self.source == SOURCE_REAUTH:
+            self._abort_if_unique_id_mismatch(reason="wrong_account")
+            return self.async_update_reload_and_abort(
+                self._get_reauth_entry(), data_updates=data
+            )
+        self._abort_if_unique_id_configured()
+
+        data.update(
+            {
+                CONF_BRAND: self.brand,
+                CONF_COUNTRY: self.country_code,
+                CONF_WEBHOOK_ID: secrets.token_hex(),
+            }
+        )
+        return self.async_create_entry(title=f"{self.brand}: {email}", data=data)
