@@ -105,15 +105,15 @@ class StellantisConfigFlow(AbstractOAuth2FlowHandler, domain=DOMAIN):
         if CONF_URL in user_input:
             url = URL(user_input[CONF_URL])
 
-            if "code" not in url.query or len(url.query["code"]) != 36:
+            if not (code := url.query.get("code")) or not (
+                raw_state := url.query.get("state")
+            ):
                 return self.async_abort(reason="invalid_url")
-
-            state = _decode_jwt(self.hass, url.query["state"])
-
             self.external_data = {
-                "code": url.query["code"],
-                "state": state,
+                "code": code,
+                "state": _decode_jwt(self.hass, raw_state),
             }
+
             return await self.async_step_creation()
 
         self.brand = cast(str, user_input[CONF_BRAND])

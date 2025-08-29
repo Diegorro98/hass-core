@@ -2,13 +2,12 @@
 
 from unittest.mock import patch
 
-import pycountry
 from stellantis.client import Client as StellantisClient
 from stellantis.model import User
 from yarl import URL
 
 from homeassistant import config_entries
-from homeassistant.components.stellantis.const import CONF_BRAND, DOMAIN, Brand
+from homeassistant.components.stellantis.const import CONF_BRAND, DOMAIN
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import CONF_COUNTRY, CONF_URL
 from homeassistant.core import HomeAssistant
@@ -34,8 +33,8 @@ async def test_full_flow(
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         {
-            CONF_BRAND: Brand.PEUGEOT,
-            CONF_COUNTRY: pycountry.countries.get(alpha_2="ES").alpha_2,
+            CONF_BRAND: "Peugeot",
+            CONF_COUNTRY: "ES",
         },
     )
     assert result["type"] == FlowResultType.FORM
@@ -162,3 +161,54 @@ async def test_reauth_flow(
 
     assert result["type"] == FlowResultType.ABORT
     assert result["reason"] == "reauth_successful"
+
+
+async def test_full_flow_invalid_url(
+    hass: HomeAssistant,
+    aioclient_mock: AiohttpClientMocker,
+) -> None:
+    """Check full flow."""
+    result = await hass.config_entries.flow.async_init(
+        "stellantis",
+        context={"source": config_entries.SOURCE_USER},
+    )
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {
+            CONF_BRAND: "Peugeot",
+            CONF_COUNTRY: "ES",
+        },
+    )
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {
+            CONF_URL: "https://example.com/auth",
+        },
+    )
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "invalid_url"
+
+
+async def test_reauth_flow_invalid_url(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    aioclient_mock: AiohttpClientMocker,
+) -> None:
+    """Check reauth flow."""
+    config_entry.add_to_hass(hass)
+
+    result = await config_entry.start_reauth_flow(hass)
+
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {
+            CONF_URL: "https://example.com/auth",
+        },
+    )
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "invalid_url"
