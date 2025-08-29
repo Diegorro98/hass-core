@@ -2858,7 +2858,6 @@ streamlabswater==1.0.1
 
 # homeassistant.components.huawei_lte
 # homeassistant.components.solaredge
-# homeassistant.components.stellantis
 # homeassistant.components.traccar
 stringcase==1.2.0
 
