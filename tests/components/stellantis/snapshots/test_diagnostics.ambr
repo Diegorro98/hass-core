@@ -1,0 +1,903 @@
+# serializer version: 1
+# name: test_async_get_config_entry_diagnostics
+  dict({
+    'TEST_VIN_00000000': dict({
+      'brand': 'Peugeot',
+      'id': 'test_id',
+      'label': 'SUV 3008',
+      'motorization': <Motorization.HYBRID: 'Hybrid'>,
+      'onboard_capabilities': dict({
+        'data': list([
+          'data:vehicle:devices:pnc',
+          'data:telemetry',
+          'data:telemetry:environment',
+          'data:telemetry:privacy',
+          'data:telemetry:vehicle',
+          'data:telemetry:vehicle:ignition',
+          'data:telemetry:vehicle:preconditioning',
+          'data:telemetry:vehicle:energies',
+          'data:telemetry:vehicle:engines',
+          'data:telemetry:vehicle:doorsState',
+          'data:telemetry:vehicle:powertrain',
+          'data:telemetry:vehicle:battery',
+          'data:telemetry:vehicle:safety',
+          'data:telemetry:vehicle:odometer',
+          'data:telemetry:vehicle:kinetic',
+          'data:telemetry:vehicle:transmission',
+          'data:telemetry:vehicle:adas',
+          'data:telemetry:vehicle:lightingSystem',
+          'data:telemetry:vehicle:maintenance',
+          'data:telemetry:vehicle:drivingBehavior',
+          'data:telemetry:vehicle:wipingBlades',
+          'data:telemetry:vehicle:alarm',
+          'data:position',
+          'data:trip',
+          'data:alert',
+          'data:collision',
+        ]),
+        'remote': dict({
+          'charging': dict({
+            'parameters': dict({
+              'immediate': dict({
+                'start': True,
+                'stop': True,
+              }),
+              'preferences': dict({
+                'level': True,
+                'type': True,
+              }),
+              'schedule': dict({
+                'nextDelayedTime': True,
+                'programs': dict({
+                  'size': 4,
+                  'supported': True,
+                }),
+              }),
+            }),
+            'scopeName': 'remote:charging:write',
+            'supported': True,
+          }),
+          'door': dict({
+            'scopeName': 'remote:door:write',
+            'supported': True,
+          }),
+          'horn': dict({
+            'scopeName': 'remote:horn:write',
+            'supported': True,
+          }),
+          'lights': dict({
+            'scopeName': 'remote:lights:write',
+            'supported': True,
+          }),
+          'navigation': dict({
+            'scopeName': 'remote:navigation:write',
+            'supported': True,
+          }),
+          'preconditioning': dict({
+            'parameters': dict({
+              'immediate': True,
+              'programs': dict({
+                'size': 4,
+              }),
+            }),
+            'scopeName': 'remote:preconditioning:write',
+            'supported': True,
+          }),
+          'wakeup': dict({
+            'scopeName': 'remote:wakeup:write',
+            'supported': True,
+          }),
+        }),
+      }),
+      'status': dict({
+        'alarm': dict({
+          'status': dict({
+            'activation': 'Active',
+            'createdAt': '2019-08-24T14:15:22+00:00',
+          }),
+          'trigger': dict({
+            'createdAt': '2019-08-24T14:15:22+00:00',
+            'position': dict({
+              'geometry': dict({
+                'coordinates': list([
+                  5.970338,
+                  -62.536239,
+                ]),
+                'type': 'Point',
+              }),
+              'properties': dict({
+                'createdAt': '2019-08-24T14:15:22+00:00',
+                'fixStatus': '2D',
+                'heading': 360,
+                'signalQuality': 0,
+                'type': 'Estimated',
+              }),
+              'type': 'Feature',
+            }),
+            'startAt': '2019-08-24T14:15:22+00:00',
+            'type': 'NoBreakIn',
+          }),
+        }),
+        'battery': dict({
+          'createdAt': '2019-08-24T14:15:22+00:00',
+          'voltage': 0.0,
+        }),
+        'createdAt': '2019-08-24T14:15:22+00:00',
+        'doorsState': dict({
+          'createdAt': '2019-08-24T14:15:22+00:00',
+          'lockedStates': list([
+            'Locked',
+          ]),
+          'opening': list([
+            dict({
+              'identifier': 'Driver',
+              'state': 'Open',
+            }),
+          ]),
+        }),
+        'drivingBehavior': dict({
+          'createdAt': '2019-08-24T14:15:22+00:00',
+          'mode': 'Normal',
+        }),
+        'energies': list([
+          dict({
+            'autonomy': 0,
+            'createdAt': '2019-08-24T14:15:22+00:00',
+            'extension': dict({
+              'fuel': dict({
+                'consumptions': dict({
+                  'instant': 0.0,
+                  'total': 0.0,
+                }),
+              }),
+            }),
+            'level': 100.0,
+            'subType': 'FossilEnergy',
+            'type': 'Fuel',
+          }),
+          dict({
+            'autonomy': 0,
+            'createdAt': '2019-08-24T14:15:22+00:00',
+            'extension': dict({
+              'electric': dict({
+                'battery': dict({
+                  'health': dict({
+                    'capacity': 100,
+                    'resistance': 100,
+                  }),
+                  'load': dict({
+                    'capacity': 10,
+                    'residual': 0,
+                  }),
+                }),
+                'charging': dict({
+                  'chargingMode': 'No',
+                  'chargingPowerLevel': 'Level1',
+                  'chargingRate': 500,
+                  'nextDelayedTime': 'PT14H30M',
+                  'plugged': True,
+                  'remainingTime': 'PT6H30M',
+                  'schedule': dict({
+                    'programs': list([
+                      dict({
+                        'chargeUntilFull': True,
+                        'enabled': True,
+                        'end': 'PT14H30M',
+                        'occurence': dict({
+                          'day': list([
+                            'Mon',
+                          ]),
+                        }),
+                        'start': 'PT14H30M',
+                      }),
+                    ]),
+                  }),
+                  'status': 'Stopped',
+                  'type': 'Partial',
+                }),
+              }),
+            }),
+            'level': 100.0,
+            'subType': 'ElectricEnergy',
+            'type': 'Electric',
+          }),
+        ]),
+        'engines': list([
+          dict({
+            'createdAt': '2019-08-24T14:15:22+00:00',
+            'extension': dict({
+              'thermic': dict({
+                'air': dict({
+                  'temp': 0.0,
+                }),
+                'coolant': dict({
+                  'level': 100,
+                  'temp': 0.0,
+                }),
+                'oil': dict({
+                  'level': 100,
+                  'temp': 0.0,
+                }),
+              }),
+            }),
+            'speed': 0.0,
+            'type': 'Thermic',
+          }),
+        ]),
+        'environment': dict({
+          'air': dict({
+            'createdAt': '2019-08-24T14:15:22+00:00',
+            'temp': 33.3,
+          }),
+          'luminosity': dict({
+            'createdAt': '2019-08-24T14:15:22+00:00',
+            'day': True,
+          }),
+        }),
+        'ignition': dict({
+          'createdAt': '2019-08-24T14:15:22+00:00',
+          'type': 'Stop',
+        }),
+        'kinetic': dict({
+          'acceleration': 0.0,
+          'createdAt': '2019-08-24T14:15:22+00:00',
+          'moving': True,
+          'speed': 0.0,
+        }),
+        'lastPosition': dict({
+          'geometry': dict({
+            'coordinates': list([
+              5.970338,
+              -62.536239,
+            ]),
+            'type': 'Point',
+          }),
+          'properties': dict({
+            'createdAt': '2019-08-24T14:15:22+00:00',
+            'fixStatus': '2D',
+            'heading': 360,
+            'signalQuality': 0,
+            'type': 'Estimated',
+          }),
+          'type': 'Feature',
+        }),
+        'lightingSystem': dict({
+          'createdAt': '2019-08-24T14:15:22+00:00',
+          'fog': list([
+            dict({
+              'direction': 'Left',
+              'position': 'Front',
+              'status': 'Off',
+            }),
+          ]),
+          'turn': list([
+            dict({
+              'direction': 'Left',
+              'position': 'Front',
+              'status': 'Off',
+            }),
+          ]),
+        }),
+        'odometer': dict({
+          'createdAt': '2019-08-24T14:15:22+00:00',
+          'mileage': 12978.9,
+        }),
+        'powertrain': dict({
+          'createdAt': '2019-08-24T14:15:22+00:00',
+          'status': 'NotRunning',
+        }),
+        'preconditioning': dict({
+          'airConditioning': dict({
+            'createdAt': '2019-08-24T14:15:22+00:00',
+            'failureCause': 'Defect',
+            'programs': list([
+              dict({
+                'enabled': True,
+                'occurence': dict({
+                  'day': list([
+                    'Mon',
+                  ]),
+                }),
+                'recurrence': 'None',
+                'slot': 1,
+                'start': 'PT14H30M',
+              }),
+            ]),
+            'startingCause': 'Immediate',
+            'status': 'Disabled',
+            'updatedAt': '2019-08-24T14:15:22+00:00',
+          }),
+        }),
+        'privacy': dict({
+          'createdAt': '2019-08-24T14:15:22+00:00',
+          'state': 'None',
+        }),
+        'safety': dict({
+          'autoECallTriggering': 'NotDetected',
+          'beltStatus': list([
+            dict({
+              'belt': 'Normal',
+              'id': 'Driver',
+            }),
+          ]),
+          'createdAt': '2019-08-24T14:15:22+00:00',
+        }),
+        'updatedAt': '2019-08-24T14:15:22+00:00',
+      }),
+      'vin': 'TEST_VIN_00000000',
+    }),
+  })
+# ---
+# name: test_async_get_device_diagnostics_vehicle
+  dict({
+    'brand': 'Peugeot',
+    'id': 'test_id',
+    'label': 'SUV 3008',
+    'motorization': <Motorization.HYBRID: 'Hybrid'>,
+    'onboard_capabilities': dict({
+      'data': list([
+        'data:vehicle:devices:pnc',
+        'data:telemetry',
+        'data:telemetry:environment',
+        'data:telemetry:privacy',
+        'data:telemetry:vehicle',
+        'data:telemetry:vehicle:ignition',
+        'data:telemetry:vehicle:preconditioning',
+        'data:telemetry:vehicle:energies',
+        'data:telemetry:vehicle:engines',
+        'data:telemetry:vehicle:doorsState',
+        'data:telemetry:vehicle:powertrain',
+        'data:telemetry:vehicle:battery',
+        'data:telemetry:vehicle:safety',
+        'data:telemetry:vehicle:odometer',
+        'data:telemetry:vehicle:kinetic',
+        'data:telemetry:vehicle:transmission',
+        'data:telemetry:vehicle:adas',
+        'data:telemetry:vehicle:lightingSystem',
+        'data:telemetry:vehicle:maintenance',
+        'data:telemetry:vehicle:drivingBehavior',
+        'data:telemetry:vehicle:wipingBlades',
+        'data:telemetry:vehicle:alarm',
+        'data:position',
+        'data:trip',
+        'data:alert',
+        'data:collision',
+      ]),
+      'remote': dict({
+        'charging': dict({
+          'parameters': dict({
+            'immediate': dict({
+              'start': True,
+              'stop': True,
+            }),
+            'preferences': dict({
+              'level': True,
+              'type': True,
+            }),
+            'schedule': dict({
+              'nextDelayedTime': True,
+              'programs': dict({
+                'size': 4,
+                'supported': True,
+              }),
+            }),
+          }),
+          'scopeName': 'remote:charging:write',
+          'supported': True,
+        }),
+        'door': dict({
+          'scopeName': 'remote:door:write',
+          'supported': True,
+        }),
+        'horn': dict({
+          'scopeName': 'remote:horn:write',
+          'supported': True,
+        }),
+        'lights': dict({
+          'scopeName': 'remote:lights:write',
+          'supported': True,
+        }),
+        'navigation': dict({
+          'scopeName': 'remote:navigation:write',
+          'supported': True,
+        }),
+        'preconditioning': dict({
+          'parameters': dict({
+            'immediate': True,
+            'programs': dict({
+              'size': 4,
+            }),
+          }),
+          'scopeName': 'remote:preconditioning:write',
+          'supported': True,
+        }),
+        'wakeup': dict({
+          'scopeName': 'remote:wakeup:write',
+          'supported': True,
+        }),
+      }),
+    }),
+    'status': dict({
+      'alarm': dict({
+        'status': dict({
+          'activation': 'Active',
+          'createdAt': '2019-08-24T14:15:22+00:00',
+        }),
+        'trigger': dict({
+          'createdAt': '2019-08-24T14:15:22+00:00',
+          'position': dict({
+            'geometry': dict({
+              'coordinates': list([
+                5.970338,
+                -62.536239,
+              ]),
+              'type': 'Point',
+            }),
+            'properties': dict({
+              'createdAt': '2019-08-24T14:15:22+00:00',
+              'fixStatus': '2D',
+              'heading': 360,
+              'signalQuality': 0,
+              'type': 'Estimated',
+            }),
+            'type': 'Feature',
+          }),
+          'startAt': '2019-08-24T14:15:22+00:00',
+          'type': 'NoBreakIn',
+        }),
+      }),
+      'battery': dict({
+        'createdAt': '2019-08-24T14:15:22+00:00',
+        'voltage': 0.0,
+      }),
+      'createdAt': '2019-08-24T14:15:22+00:00',
+      'doorsState': dict({
+        'createdAt': '2019-08-24T14:15:22+00:00',
+        'lockedStates': list([
+          'Locked',
+        ]),
+        'opening': list([
+          dict({
+            'identifier': 'Driver',
+            'state': 'Open',
+          }),
+        ]),
+      }),
+      'drivingBehavior': dict({
+        'createdAt': '2019-08-24T14:15:22+00:00',
+        'mode': 'Normal',
+      }),
+      'energies': list([
+        dict({
+          'autonomy': 0,
+          'createdAt': '2019-08-24T14:15:22+00:00',
+          'extension': dict({
+            'fuel': dict({
+              'consumptions': dict({
+                'instant': 0.0,
+                'total': 0.0,
+              }),
+            }),
+          }),
+          'level': 100.0,
+          'subType': 'FossilEnergy',
+          'type': 'Fuel',
+        }),
+        dict({
+          'autonomy': 0,
+          'createdAt': '2019-08-24T14:15:22+00:00',
+          'extension': dict({
+            'electric': dict({
+              'battery': dict({
+                'health': dict({
+                  'capacity': 100,
+                  'resistance': 100,
+                }),
+                'load': dict({
+                  'capacity': 10,
+                  'residual': 0,
+                }),
+              }),
+              'charging': dict({
+                'chargingMode': 'No',
+                'chargingPowerLevel': 'Level1',
+                'chargingRate': 500,
+                'nextDelayedTime': 'PT14H30M',
+                'plugged': True,
+                'remainingTime': 'PT6H30M',
+                'schedule': dict({
+                  'programs': list([
+                    dict({
+                      'chargeUntilFull': True,
+                      'enabled': True,
+                      'end': 'PT14H30M',
+                      'occurence': dict({
+                        'day': list([
+                          'Mon',
+                        ]),
+                      }),
+                      'start': 'PT14H30M',
+                    }),
+                  ]),
+                }),
+                'status': 'Stopped',
+                'type': 'Partial',
+              }),
+            }),
+          }),
+          'level': 100.0,
+          'subType': 'ElectricEnergy',
+          'type': 'Electric',
+        }),
+      ]),
+      'engines': list([
+        dict({
+          'createdAt': '2019-08-24T14:15:22+00:00',
+          'extension': dict({
+            'thermic': dict({
+              'air': dict({
+                'temp': 0.0,
+              }),
+              'coolant': dict({
+                'level': 100,
+                'temp': 0.0,
+              }),
+              'oil': dict({
+                'level': 100,
+                'temp': 0.0,
+              }),
+            }),
+          }),
+          'speed': 0.0,
+          'type': 'Thermic',
+        }),
+      ]),
+      'environment': dict({
+        'air': dict({
+          'createdAt': '2019-08-24T14:15:22+00:00',
+          'temp': 33.3,
+        }),
+        'luminosity': dict({
+          'createdAt': '2019-08-24T14:15:22+00:00',
+          'day': True,
+        }),
+      }),
+      'ignition': dict({
+        'createdAt': '2019-08-24T14:15:22+00:00',
+        'type': 'Stop',
+      }),
+      'kinetic': dict({
+        'acceleration': 0.0,
+        'createdAt': '2019-08-24T14:15:22+00:00',
+        'moving': True,
+        'speed': 0.0,
+      }),
+      'lastPosition': dict({
+        'geometry': dict({
+          'coordinates': list([
+            5.970338,
+            -62.536239,
+          ]),
+          'type': 'Point',
+        }),
+        'properties': dict({
+          'createdAt': '2019-08-24T14:15:22+00:00',
+          'fixStatus': '2D',
+          'heading': 360,
+          'signalQuality': 0,
+          'type': 'Estimated',
+        }),
+        'type': 'Feature',
+      }),
+      'lightingSystem': dict({
+        'createdAt': '2019-08-24T14:15:22+00:00',
+        'fog': list([
+          dict({
+            'direction': 'Left',
+            'position': 'Front',
+            'status': 'Off',
+          }),
+        ]),
+        'turn': list([
+          dict({
+            'direction': 'Left',
+            'position': 'Front',
+            'status': 'Off',
+          }),
+        ]),
+      }),
+      'odometer': dict({
+        'createdAt': '2019-08-24T14:15:22+00:00',
+        'mileage': 12978.9,
+      }),
+      'powertrain': dict({
+        'createdAt': '2019-08-24T14:15:22+00:00',
+        'status': 'NotRunning',
+      }),
+      'preconditioning': dict({
+        'airConditioning': dict({
+          'createdAt': '2019-08-24T14:15:22+00:00',
+          'failureCause': 'Defect',
+          'programs': list([
+            dict({
+              'enabled': True,
+              'occurence': dict({
+                'day': list([
+                  'Mon',
+                ]),
+              }),
+              'recurrence': 'None',
+              'slot': 1,
+              'start': 'PT14H30M',
+            }),
+          ]),
+          'startingCause': 'Immediate',
+          'status': 'Disabled',
+          'updatedAt': '2019-08-24T14:15:22+00:00',
+        }),
+      }),
+      'privacy': dict({
+        'createdAt': '2019-08-24T14:15:22+00:00',
+        'state': 'None',
+      }),
+      'safety': dict({
+        'autoECallTriggering': 'NotDetected',
+        'beltStatus': list([
+          dict({
+            'belt': 'Normal',
+            'id': 'Driver',
+          }),
+        ]),
+        'createdAt': '2019-08-24T14:15:22+00:00',
+      }),
+      'updatedAt': '2019-08-24T14:15:22+00:00',
+    }),
+    'vin': 'TEST_VIN_00000000',
+  })
+# ---
+# name: test_async_get_device_diagnostics_vehicle_without_embedded_extension
+  dict({
+    'brand': None,
+    'id': 'test_id',
+    'label': None,
+    'motorization': <Motorization.HYBRID: 'Hybrid'>,
+    'onboard_capabilities': dict({
+    }),
+    'status': dict({
+      'alarm': dict({
+        'status': dict({
+          'activation': 'Active',
+          'createdAt': '2019-08-24T14:15:22+00:00',
+        }),
+        'trigger': dict({
+          'createdAt': '2019-08-24T14:15:22+00:00',
+          'position': dict({
+            'geometry': dict({
+              'coordinates': list([
+                5.970338,
+                -62.536239,
+              ]),
+              'type': 'Point',
+            }),
+            'properties': dict({
+              'createdAt': '2019-08-24T14:15:22+00:00',
+              'fixStatus': '2D',
+              'heading': 360,
+              'signalQuality': 0,
+              'type': 'Estimated',
+            }),
+            'type': 'Feature',
+          }),
+          'startAt': '2019-08-24T14:15:22+00:00',
+          'type': 'NoBreakIn',
+        }),
+      }),
+      'battery': dict({
+        'createdAt': '2019-08-24T14:15:22+00:00',
+        'voltage': 0.0,
+      }),
+      'createdAt': '2019-08-24T14:15:22+00:00',
+      'doorsState': dict({
+        'createdAt': '2019-08-24T14:15:22+00:00',
+        'lockedStates': list([
+          'Locked',
+        ]),
+        'opening': list([
+          dict({
+            'identifier': 'Driver',
+            'state': 'Open',
+          }),
+        ]),
+      }),
+      'drivingBehavior': dict({
+        'createdAt': '2019-08-24T14:15:22+00:00',
+        'mode': 'Normal',
+      }),
+      'energies': list([
+        dict({
+          'autonomy': 0,
+          'createdAt': '2019-08-24T14:15:22+00:00',
+          'extension': dict({
+            'fuel': dict({
+              'consumptions': dict({
+                'instant': 0.0,
+                'total': 0.0,
+              }),
+            }),
+          }),
+          'level': 100.0,
+          'subType': 'FossilEnergy',
+          'type': 'Fuel',
+        }),
+        dict({
+          'autonomy': 0,
+          'createdAt': '2019-08-24T14:15:22+00:00',
+          'extension': dict({
+            'electric': dict({
+              'battery': dict({
+                'health': dict({
+                  'capacity': 100,
+                  'resistance': 100,
+                }),
+                'load': dict({
+                  'capacity': 10,
+                  'residual': 0,
+                }),
+              }),
+              'charging': dict({
+                'chargingMode': 'No',
+                'chargingPowerLevel': 'Level1',
+                'chargingRate': 500,
+                'nextDelayedTime': 'PT14H30M',
+                'plugged': True,
+                'remainingTime': 'PT6H30M',
+                'schedule': dict({
+                  'programs': list([
+                    dict({
+                      'chargeUntilFull': True,
+                      'enabled': True,
+                      'end': 'PT14H30M',
+                      'occurence': dict({
+                        'day': list([
+                          'Mon',
+                        ]),
+                      }),
+                      'start': 'PT14H30M',
+                    }),
+                  ]),
+                }),
+                'status': 'Stopped',
+                'type': 'Partial',
+              }),
+            }),
+          }),
+          'level': 100.0,
+          'subType': 'ElectricEnergy',
+          'type': 'Electric',
+        }),
+      ]),
+      'engines': list([
+        dict({
+          'createdAt': '2019-08-24T14:15:22+00:00',
+          'extension': dict({
+            'thermic': dict({
+              'air': dict({
+                'temp': 0.0,
+              }),
+              'coolant': dict({
+                'level': 100,
+                'temp': 0.0,
+              }),
+              'oil': dict({
+                'level': 100,
+                'temp': 0.0,
+              }),
+            }),
+          }),
+          'speed': 0.0,
+          'type': 'Thermic',
+        }),
+      ]),
+      'environment': dict({
+        'air': dict({
+          'createdAt': '2019-08-24T14:15:22+00:00',
+          'temp': 33.3,
+        }),
+        'luminosity': dict({
+          'createdAt': '2019-08-24T14:15:22+00:00',
+          'day': True,
+        }),
+      }),
+      'ignition': dict({
+        'createdAt': '2019-08-24T14:15:22+00:00',
+        'type': 'Stop',
+      }),
+      'kinetic': dict({
+        'acceleration': 0.0,
+        'createdAt': '2019-08-24T14:15:22+00:00',
+        'moving': True,
+        'speed': 0.0,
+      }),
+      'lastPosition': dict({
+        'geometry': dict({
+          'coordinates': list([
+            5.970338,
+            -62.536239,
+          ]),
+          'type': 'Point',
+        }),
+        'properties': dict({
+          'createdAt': '2019-08-24T14:15:22+00:00',
+          'fixStatus': '2D',
+          'heading': 360,
+          'signalQuality': 0,
+          'type': 'Estimated',
+        }),
+        'type': 'Feature',
+      }),
+      'lightingSystem': dict({
+        'createdAt': '2019-08-24T14:15:22+00:00',
+        'fog': list([
+          dict({
+            'direction': 'Left',
+            'position': 'Front',
+            'status': 'Off',
+          }),
+        ]),
+        'turn': list([
+          dict({
+            'direction': 'Left',
+            'position': 'Front',
+            'status': 'Off',
+          }),
+        ]),
+      }),
+      'odometer': dict({
+        'createdAt': '2019-08-24T14:15:22+00:00',
+        'mileage': 12978.9,
+      }),
+      'powertrain': dict({
+        'createdAt': '2019-08-24T14:15:22+00:00',
+        'status': 'NotRunning',
+      }),
+      'preconditioning': dict({
+        'airConditioning': dict({
+          'createdAt': '2019-08-24T14:15:22+00:00',
+          'failureCause': 'Defect',
+          'programs': list([
+            dict({
+              'enabled': True,
+              'occurence': dict({
+                'day': list([
+                  'Mon',
+                ]),
+              }),
+              'recurrence': 'None',
+              'slot': 1,
+              'start': 'PT14H30M',
+            }),
+          ]),
+          'startingCause': 'Immediate',
+          'status': 'Disabled',
+          'updatedAt': '2019-08-24T14:15:22+00:00',
+        }),
+      }),
+      'privacy': dict({
+        'createdAt': '2019-08-24T14:15:22+00:00',
+        'state': 'None',
+      }),
+      'safety': dict({
+        'autoECallTriggering': 'NotDetected',
+        'beltStatus': list([
+          dict({
+            'belt': 'Normal',
+            'id': 'Driver',
+          }),
+        ]),
+        'createdAt': '2019-08-24T14:15:22+00:00',
+      }),
+      'updatedAt': '2019-08-24T14:15:22+00:00',
+    }),
+    'vin': 'TEST_VIN_00000000',
+  })
+# ---

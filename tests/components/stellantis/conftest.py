@@ -1,5 +1,6 @@
 """Tests for the Stellantis integration."""
 
+from copy import deepcopy
 import time
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -12,10 +13,24 @@ from stellantis.model import (
     CallbackStatus,
     CallbackSubscribe,
     CallbackType,
+    ChargingCapabilitiesParameters,
+    ChargingImmediateCapabilities,
+    ChargingPreferencesCapabilities,
+    ChargingScheduleCapabilities,
+    ChargingScheduleProgramsCapabilities,
     Message,
     Motorization,
+    OnboardCapabilities,
+    OnboardCapabilitiesEnum,
+    OnboardCapabilitiesRemoteFunctions,
+    OnboardCapability,
+    OnboardCapabilityCharging,
+    OnboardCapabilityPreconditioning,
+    PreconditioningCapabilitiesParameters,
+    PreconditioningProgramsCapabilities,
     RemoteEvent,
     RemotePostResponse,
+    Scopes,
     Status,
     UserCallback,
     Vehicle,
@@ -76,7 +91,54 @@ FIXTURE_VEHICLE_DETAILS = Vehicle(
             branding=VehicleBranding(
                 brand=Brand.PEUGEOT.value,
                 label="SUV 3008",
-            )
+            ),
+            onboard_capabilities=OnboardCapabilities(
+                data=list(OnboardCapabilitiesEnum.__members__.values()),
+                remote=OnboardCapabilitiesRemoteFunctions(
+                    preconditioning=OnboardCapabilityPreconditioning(
+                        supported=True,
+                        scope_name=Scopes.REMOTE_PRECONDITIONING_WRITE,
+                        parameters=PreconditioningCapabilitiesParameters(
+                            programs=PreconditioningProgramsCapabilities(size=4),
+                            immediate=True,
+                        ),
+                    ),
+                    door=OnboardCapability(
+                        supported=True,
+                        scope_name=Scopes.REMOTE_DOOR_WRITE,
+                    ),
+                    horn=OnboardCapability(
+                        supported=True, scope_name=Scopes.REMOTE_HORN_WRITE
+                    ),
+                    charging=OnboardCapabilityCharging(
+                        supported=True,
+                        scope_name=Scopes.REMOTE_CHARGING_WRITE,
+                        parameters=ChargingCapabilitiesParameters(
+                            immediate=ChargingImmediateCapabilities(
+                                start=True, stop=True
+                            ),
+                            schedule=ChargingScheduleCapabilities(
+                                programs=ChargingScheduleProgramsCapabilities(
+                                    supported=True, size=4
+                                ),
+                                next_delayed_time=True,
+                            ),
+                            preferences=ChargingPreferencesCapabilities(
+                                level=True, type=True
+                            ),
+                        ),
+                    ),
+                    lights=OnboardCapability(
+                        supported=True, scope_name=Scopes.REMOTE_LIGHTS_WRITE
+                    ),
+                    wakeup=OnboardCapability(
+                        supported=True, scope_name=Scopes.REMOTE_WAKEUP_WRITE
+                    ),
+                    navigation=OnboardCapability(
+                        supported=True, scope_name=Scopes.REMOTE_NAVIGATION_WRITE
+                    ),
+                ),
+            ),
         )
     ),
     links={},
@@ -147,13 +209,13 @@ async def setup_integration(
 @pytest.fixture(name="vehicle_details")
 def vehicle_fixture() -> Vehicle:
     """Define a vehicle fixture."""
-    return FIXTURE_VEHICLE_DETAILS
+    return deepcopy(FIXTURE_VEHICLE_DETAILS)
 
 
 @pytest.fixture(name="vehicle_status")
 def vehicle_status_fixture() -> Status:
     """Define a vehicle fixture."""
-    return FIXTURE_VEHICLE_STATUS
+    return deepcopy(FIXTURE_VEHICLE_STATUS)
 
 
 @pytest.fixture(name="client")
