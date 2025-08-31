@@ -141,8 +141,8 @@ async def test_fully_edit_preconditioning_program(
     assert program.start != "PT0S"
     assert program.occurence  # codespell:ignore occurence
     assert set(program.occurence.day) != {  # codespell:ignore occurence
-        WeekDays.MON,
-        WeekDays.WED,
+        WeekDays.MONDAY,
+        WeekDays.WEDNESDAY,
     }
     assert program.recurrence != ProgramRecurrence.DAILY
     assert program.enabled

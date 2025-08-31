@@ -138,7 +138,7 @@
             'enabled': False,
             'occurence': dict({
               'day': list([
-                <WeekDays.MON: 'Mon'>,
+                <WeekDays.MONDAY: 'Mon'>,
               ]),
             }),
             'recurrence': <ProgramRecurrence.NONE: 'None'>,
@@ -170,7 +170,7 @@
             'enabled': True,
             'occurence': dict({
               'day': list([
-                <WeekDays.MON: 'Mon'>,
+                <WeekDays.MONDAY: 'Mon'>,
               ]),
             }),
             'recurrence': <ProgramRecurrence.NONE: 'None'>,

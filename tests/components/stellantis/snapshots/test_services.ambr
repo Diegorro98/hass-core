@@ -18,8 +18,8 @@
             'enabled': False,
             'occurence': dict({
               'day': list([
-                <WeekDays.MON: 'Mon'>,
-                <WeekDays.WED: 'Wed'>,
+                <WeekDays.MONDAY: 'Mon'>,
+                <WeekDays.WEDNESDAY: 'Wed'>,
               ]),
             }),
             'recurrence': <ProgramRecurrence.DAILY: 'Daily'>,
@@ -51,8 +51,8 @@
             'enabled': False,
             'occurence': dict({
               'day': list([
-                <WeekDays.MON: 'Mon'>,
-                <WeekDays.WED: 'Wed'>,
+                <WeekDays.MONDAY: 'Mon'>,
+                <WeekDays.WEDNESDAY: 'Wed'>,
               ]),
             }),
             'recurrence': <ProgramRecurrence.DAILY: 'Daily'>,
@@ -84,7 +84,7 @@
             'enabled': False,
             'occurence': dict({
               'day': list([
-                <WeekDays.MON: 'Mon'>,
+                <WeekDays.MONDAY: 'Mon'>,
               ]),
             }),
             'recurrence': <ProgramRecurrence.NONE: 'None'>,
