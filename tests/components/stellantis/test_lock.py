@@ -1,22 +1,190 @@
 """Test for Stellantis lock platform."""
 
+from collections.abc import Callable
+from copy import deepcopy
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
-from stellantis.model import Vehicle
+from stellantis.model import DoorLockedState, IgnitionType, Status, Vehicle
 from stellantis.model.error import StellantisError
 from syrupy.assertion import SnapshotAssertion
 
+from homeassistant.components.homeassistant import (
+    DOMAIN as HA_DOMAIN,
+    SERVICE_UPDATE_ENTITY,
+)
 from homeassistant.components.lock import LockState
-from homeassistant.const import ATTR_ENTITY_ID, SERVICE_LOCK, SERVICE_UNLOCK, Platform
+from homeassistant.const import (
+    ATTR_ENTITY_ID,
+    SERVICE_LOCK,
+    SERVICE_UNLOCK,
+    STATE_UNAVAILABLE,
+    STATE_UNKNOWN,
+    Platform,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.setup import async_setup_component
 
 
 @pytest.fixture
 def platforms() -> list[Platform]:
     """Fixture to specify platforms to test."""
     return [Platform.LOCK]
+
+
+@pytest.mark.parametrize(
+    ("expected_updated_state", "expected_locked_states", "update_status_value_fn"),
+    [
+        (
+            LockState.LOCKED,
+            {DoorLockedState.SUPER_LOCKED},
+            lambda status: setattr(
+                status.doors_state, "locked_states", [DoorLockedState.SUPER_LOCKED]
+            ),
+        ),
+        (
+            LockState.UNLOCKED,
+            {DoorLockedState.UNLOCKED},
+            lambda status: setattr(
+                status.doors_state, "locked_states", [DoorLockedState.UNLOCKED]
+            ),
+        ),
+        (
+            STATE_UNKNOWN,
+            None,
+            lambda status: setattr(status.doors_state, "locked_states", []),
+        ),
+        (
+            STATE_UNKNOWN,
+            None,
+            lambda status: setattr(status.doors_state, "locked_states", None),
+        ),
+        (
+            STATE_UNKNOWN,
+            None,
+            lambda status: setattr(
+                status,
+                "doors_state",
+                None,
+            ),
+        ),
+        (
+            STATE_UNKNOWN,
+            {DoorLockedState.CARGO_DOORS_LOCKED},
+            lambda status: setattr(
+                status.doors_state,
+                "locked_states",
+                [DoorLockedState.CARGO_DOORS_LOCKED],
+            ),
+        ),
+        (
+            LockState.LOCKED,
+            {DoorLockedState.LOCKED, DoorLockedState.CARGO_DOORS_LOCKED},
+            lambda status: setattr(
+                status.doors_state,
+                "locked_states",
+                [DoorLockedState.LOCKED, DoorLockedState.CARGO_DOORS_LOCKED],
+            ),
+        ),
+        (
+            LockState.UNLOCKED,
+            {DoorLockedState.UNLOCKED, DoorLockedState.CARGO_DOORS_LOCKED},
+            lambda status: setattr(
+                status.doors_state,
+                "locked_states",
+                [DoorLockedState.UNLOCKED, DoorLockedState.CARGO_DOORS_LOCKED],
+            ),
+        ),
+    ],
+)
+async def test_lock_states_and_updates(
+    hass: HomeAssistant,
+    client: MagicMock,
+    vehicle_status: Status,
+    expected_updated_state: str,
+    expected_locked_states: set[str],
+    update_status_value_fn: Callable[[Status], None],
+) -> None:
+    """Test Stellantis lock states and updates."""
+    entity_id = "lock.peugeot_suv_3008_doors"
+    initial_state = hass.states.get(entity_id)
+    assert initial_state
+    assert (
+        set(cast(list, initial_state.attributes.get("locked_states")))
+        != expected_locked_states
+    )
+
+    new_vehicle_status = deepcopy(vehicle_status)
+    update_status_value_fn(new_vehicle_status)
+    client.get_vehicle_status.return_value = new_vehicle_status
+    await async_setup_component(hass, HA_DOMAIN, {})
+    await hass.services.async_call(
+        HA_DOMAIN,
+        SERVICE_UPDATE_ENTITY,
+        {ATTR_ENTITY_ID: entity_id},
+        blocking=True,
+    )
+
+    updated_state = hass.states.get(entity_id)
+    assert updated_state
+    assert updated_state.state == expected_updated_state
+    attributes = updated_state.attributes.get("locked_states")
+    if attributes is not None:
+        assert set(cast(list, attributes)) == expected_locked_states
+    else:
+        assert attributes == expected_locked_states
+
+
+async def test_unavailability_on_turned_on(
+    hass: HomeAssistant, client: MagicMock, vehicle_status: Status
+) -> None:
+    """Tests that the lock becomes unavailable when the car is running."""
+    entity_id = "lock.peugeot_suv_3008_doors"
+    initial_state = hass.states.get(entity_id)
+    assert initial_state
+    assert initial_state.state != STATE_UNAVAILABLE
+
+    new_vehicle_status = deepcopy(vehicle_status)
+    assert new_vehicle_status.ignition
+    new_vehicle_status.ignition.type = IgnitionType.START
+    client.get_vehicle_status.return_value = new_vehicle_status
+    await async_setup_component(hass, HA_DOMAIN, {})
+    await hass.services.async_call(
+        HA_DOMAIN,
+        SERVICE_UPDATE_ENTITY,
+        {ATTR_ENTITY_ID: entity_id},
+        blocking=True,
+    )
+
+    updated_state = hass.states.get(entity_id)
+    assert updated_state
+    assert updated_state.state == STATE_UNAVAILABLE
+
+
+async def test_availability_on_api_error(
+    hass: HomeAssistant, client: MagicMock
+) -> None:
+    """Tests that the lock does not become unavailable on API error."""
+    entity_id = "lock.peugeot_suv_3008_doors"
+    initial_state = hass.states.get(entity_id)
+    assert initial_state
+    assert initial_state.state != STATE_UNAVAILABLE
+
+    client.get_vehicle_status.return_value = None
+    client.get_vehicle_status.side_effect = StellantisError
+    await async_setup_component(hass, HA_DOMAIN, {})
+    await hass.services.async_call(
+        HA_DOMAIN,
+        SERVICE_UPDATE_ENTITY,
+        {ATTR_ENTITY_ID: entity_id},
+        blocking=True,
+    )
+
+    updated_state = hass.states.get(entity_id)
+    assert updated_state
+    assert updated_state.state != STATE_UNAVAILABLE
 
 
 @pytest.mark.usefixtures("send_webhook_result_success")

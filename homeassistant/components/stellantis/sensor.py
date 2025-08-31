@@ -1,11 +1,24 @@
 """Stellantis sensor platform."""
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any
 
-from stellantis.model import EnergySubType, EnergyType, EngineType, Status, WeekDays
+from stellantis.model import (
+    AirConditioningStatus,
+    AutoECallTriggering,
+    ChargingMode,
+    ChargingStatusEnum,
+    DrivingMode,
+    EnergySubType,
+    EnergyType,
+    EngineType,
+    IgnitionType,
+    PowertrainStatus,
+    PrivacyState,
+    Status,
+    WeekDays,
+)
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -22,17 +35,14 @@ from homeassistant.const import (
     UnitOfTime,
     UnitOfVolume,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.typing import UNDEFINED, StateType, UndefinedType
 from homeassistant.util import dt as dt_util, slugify
 
 from .coordinator import StellantisConfigEntry
-from .entity import (
-    StellantisBaseEntity,
-    StellantisEntityDescription,
-    StellantisPreconditioningEntity,
-)
+from .entity import StellantisBaseEntity, StellantisEntityDescription
+from .helpers import get_energy, get_engine
 
 WEEK_DAYS_LIST = list(WeekDays.__members__.values())
 
@@ -44,7 +54,7 @@ class StellantisSensorEntityDescription(
     """Describes Stellantis sensor entity."""
 
 
-FUEL_ENERGY_EXTENSION_SENSORS: tuple[StellantisSensorEntityDescription, ...] = (
+FUEL_ENERGY_EXTENSION_SENSORS = (
     StellantisSensorEntityDescription(
         key="fuel_consumption",
         translation_key="fuel_consumption",
@@ -53,16 +63,7 @@ FUEL_ENERGY_EXTENSION_SENSORS: tuple[StellantisSensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfVolume.LITERS,
         suggested_display_precision=4,
         value_fn=lambda status: consumptions.total
-        if (
-            energy := next(
-                (
-                    energy
-                    for energy in (status.energies or [])
-                    if energy.type == EnergyType.FUEL
-                ),
-                None,
-            )
-        )
+        if (energy := get_energy(status, EnergyType.FUEL))
         and (extension := energy.extension)
         and (fuel := extension.fuel)
         and (consumptions := fuel.consumptions)
@@ -71,22 +72,13 @@ FUEL_ENERGY_EXTENSION_SENSORS: tuple[StellantisSensorEntityDescription, ...] = (
 )
 
 
-ELECTRIC_ENERGY_EXTENSION_SENSORS: tuple[StellantisSensorEntityDescription, ...] = (
+ELECTRIC_ENERGY_EXTENSION_SENSORS = (
     StellantisSensorEntityDescription(
         key="battery_total_capacity",
         translation_key="battery_total_capacity",
         native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
         value_fn=lambda status: load.capacity
-        if (
-            energy := next(
-                (
-                    energy
-                    for energy in (status.energies or [])
-                    if energy.type == EnergyType.ELECTRIC
-                ),
-                None,
-            )
-        )
+        if (energy := get_energy(status, EnergyType.ELECTRIC))
         and (extension := energy.extension)
         and (electric := extension.electric)
         and (battery := electric.battery)
@@ -98,16 +90,7 @@ ELECTRIC_ENERGY_EXTENSION_SENSORS: tuple[StellantisSensorEntityDescription, ...]
         translation_key="residual_electric_energy",
         native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
         value_fn=lambda status: load.residual
-        if (
-            energy := next(
-                (
-                    energy
-                    for energy in (status.energies or [])
-                    if energy.type == EnergyType.ELECTRIC
-                ),
-                None,
-            )
-        )
+        if (energy := get_energy(status, EnergyType.ELECTRIC))
         and (extension := energy.extension)
         and (electric := extension.electric)
         and (battery := electric.battery)
@@ -120,16 +103,7 @@ ELECTRIC_ENERGY_EXTENSION_SENSORS: tuple[StellantisSensorEntityDescription, ...]
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=PERCENTAGE,
         value_fn=lambda status: health.capacity
-        if (
-            energy := next(
-                (
-                    energy
-                    for energy in (status.energies or [])
-                    if energy.type == EnergyType.ELECTRIC
-                ),
-                None,
-            )
-        )
+        if (energy := get_energy(status, EnergyType.ELECTRIC))
         and (extension := energy.extension)
         and (electric := extension.electric)
         and (battery := electric.battery)
@@ -142,16 +116,7 @@ ELECTRIC_ENERGY_EXTENSION_SENSORS: tuple[StellantisSensorEntityDescription, ...]
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=PERCENTAGE,
         value_fn=lambda status: health.resistance
-        if (
-            energy := next(
-                (
-                    energy
-                    for energy in (status.energies or [])
-                    if energy.type == EnergyType.ELECTRIC
-                ),
-                None,
-            )
-        )
+        if (energy := get_energy(status, EnergyType.ELECTRIC))
         and (extension := energy.extension)
         and (electric := extension.electric)
         and (battery := electric.battery)
@@ -162,17 +127,12 @@ ELECTRIC_ENERGY_EXTENSION_SENSORS: tuple[StellantisSensorEntityDescription, ...]
         key="charging_status",
         translation_key="charging_status",
         device_class=SensorDeviceClass.ENUM,
+        options=[
+            slugify(charging_status)
+            for charging_status in ChargingStatusEnum.__members__.values()
+        ],
         value_fn=lambda status: charging.status
-        if (
-            energy := next(
-                (
-                    energy
-                    for energy in (status.energies or [])
-                    if energy.type == EnergyType.ELECTRIC
-                ),
-                None,
-            )
-        )
+        if (energy := get_energy(status, EnergyType.ELECTRIC))
         and (extension := energy.extension)
         and (electric := extension.electric)
         and (charging := electric.charging)
@@ -184,16 +144,7 @@ ELECTRIC_ENERGY_EXTENSION_SENSORS: tuple[StellantisSensorEntityDescription, ...]
         device_class=SensorDeviceClass.DURATION,
         native_unit_of_measurement=UnitOfTime.SECONDS,
         value_fn=lambda status: charging.remaining_time
-        if (
-            energy := next(
-                (
-                    energy
-                    for energy in (status.energies or [])
-                    if energy.type == EnergyType.ELECTRIC
-                ),
-                None,
-            )
-        )
+        if (energy := get_energy(status, EnergyType.ELECTRIC))
         and (extension := energy.extension)
         and (electric := extension.electric)
         and (charging := electric.charging)
@@ -204,16 +155,7 @@ ELECTRIC_ENERGY_EXTENSION_SENSORS: tuple[StellantisSensorEntityDescription, ...]
         translation_key="charging_rate",
         native_unit_of_measurement=UnitOfSpeed.KILOMETERS_PER_HOUR,
         value_fn=lambda status: charging.charging_rate
-        if (
-            energy := next(
-                (
-                    energy
-                    for energy in (status.energies or [])
-                    if energy.type == EnergyType.ELECTRIC
-                ),
-                None,
-            )
-        )
+        if (energy := get_energy(status, EnergyType.ELECTRIC))
         and (extension := energy.extension)
         and (electric := extension.electric)
         and (charging := electric.charging)
@@ -223,17 +165,12 @@ ELECTRIC_ENERGY_EXTENSION_SENSORS: tuple[StellantisSensorEntityDescription, ...]
         key="charging_mode",
         translation_key="charging_mode",
         device_class=SensorDeviceClass.ENUM,
+        options=[
+            slugify(charging_mode)
+            for charging_mode in ChargingMode.__members__.values()
+        ],
         value_fn=lambda status: charging.charging_mode
-        if (
-            energy := next(
-                (
-                    energy
-                    for energy in (status.energies or [])
-                    if energy.type == EnergyType.ELECTRIC
-                ),
-                None,
-            )
-        )
+        if (energy := get_energy(status, EnergyType.ELECTRIC))
         and (extension := energy.extension)
         and (electric := extension.electric)
         and (charging := electric.charging)
@@ -244,16 +181,7 @@ ELECTRIC_ENERGY_EXTENSION_SENSORS: tuple[StellantisSensorEntityDescription, ...]
         translation_key="next_charge",
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=lambda status: charging.next_delayed_time
-        if (
-            energy := next(
-                (
-                    energy
-                    for energy in (status.energies or [])
-                    if energy.type == EnergyType.ELECTRIC
-                ),
-                None,
-            )
-        )
+        if (energy := get_energy(status, EnergyType.ELECTRIC))
         and (extension := energy.extension)
         and (electric := extension.electric)
         and (charging := electric.charging)
@@ -262,23 +190,14 @@ ELECTRIC_ENERGY_EXTENSION_SENSORS: tuple[StellantisSensorEntityDescription, ...]
 )
 
 
-THERMIC_ENGINE_EXTENSION_SENSORS: tuple[StellantisSensorEntityDescription, ...] = (
+THERMIC_ENGINE_EXTENSION_SENSORS = (
     StellantisSensorEntityDescription(
         key="thermic_engine_coolant_level",
         translation_key="thermic_engine_coolant_level",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=PERCENTAGE,
         value_fn=lambda status: coolant.level
-        if (
-            engine := next(
-                (
-                    engine
-                    for engine in (status.engines or [])
-                    if engine.type == EngineType.THERMIC
-                ),
-                None,
-            )
-        )
+        if (engine := get_engine(status, EngineType.THERMIC))
         and (extension := engine.extension)
         and (thermic := extension.thermic)
         and (coolant := thermic.coolant)
@@ -292,16 +211,7 @@ THERMIC_ENGINE_EXTENSION_SENSORS: tuple[StellantisSensorEntityDescription, ...] 
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         suggested_display_precision=1,
         value_fn=lambda status: coolant.temp
-        if (
-            engine := next(
-                (
-                    engine
-                    for engine in (status.engines or [])
-                    if engine.type == EngineType.THERMIC
-                ),
-                None,
-            )
-        )
+        if (engine := get_engine(status, EngineType.THERMIC))
         and (extension := engine.extension)
         and (thermic := extension.thermic)
         and (coolant := thermic.coolant)
@@ -313,16 +223,7 @@ THERMIC_ENGINE_EXTENSION_SENSORS: tuple[StellantisSensorEntityDescription, ...] 
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=PERCENTAGE,
         value_fn=lambda status: oil.level
-        if (
-            engine := next(
-                (
-                    engine
-                    for engine in (status.engines or [])
-                    if engine.type == EngineType.THERMIC
-                ),
-                None,
-            )
-        )
+        if (engine := get_engine(status, EngineType.THERMIC))
         and (extension := engine.extension)
         and (thermic := extension.thermic)
         and (oil := thermic.oil)
@@ -336,16 +237,7 @@ THERMIC_ENGINE_EXTENSION_SENSORS: tuple[StellantisSensorEntityDescription, ...] 
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         suggested_display_precision=1,
         value_fn=lambda status: oil.temp
-        if (
-            engine := next(
-                (
-                    engine
-                    for engine in (status.engines or [])
-                    if engine.type == EngineType.THERMIC
-                ),
-                None,
-            )
-        )
+        if (engine := get_engine(status, EngineType.THERMIC))
         and (extension := engine.extension)
         and (thermic := extension.thermic)
         and (oil := thermic.oil)
@@ -359,16 +251,7 @@ THERMIC_ENGINE_EXTENSION_SENSORS: tuple[StellantisSensorEntityDescription, ...] 
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         suggested_display_precision=1,
         value_fn=lambda status: air.temp
-        if (
-            engine := next(
-                (
-                    engine
-                    for engine in (status.engines or [])
-                    if engine.type == EngineType.THERMIC
-                ),
-                None,
-            )
-        )
+        if (engine := get_engine(status, EngineType.THERMIC))
         and (extension := engine.extension)
         and (thermic := extension.thermic)
         and (air := thermic.air)
@@ -377,17 +260,21 @@ THERMIC_ENGINE_EXTENSION_SENSORS: tuple[StellantisSensorEntityDescription, ...] 
 )
 
 
-SENSORS: tuple[StellantisSensorEntityDescription, ...] = (
+SENSORS = (
     StellantisSensorEntityDescription(
         key="ignition",
         translation_key="ignition",
         device_class=SensorDeviceClass.ENUM,
+        options=[slugify(ignition) for ignition in IgnitionType.__members__.values()],
         value_fn=lambda status: status.ignition.type if status.ignition else UNDEFINED,
     ),
     StellantisSensorEntityDescription(
         key="powertrain_status",
         translation_key="powertrain_status",
         device_class=SensorDeviceClass.ENUM,
+        options=[
+            slugify(powertrain) for powertrain in PowertrainStatus.__members__.values()
+        ],
         value_fn=lambda status: status.powertrain.status
         if status.powertrain
         else UNDEFINED,
@@ -396,6 +283,10 @@ SENSORS: tuple[StellantisSensorEntityDescription, ...] = (
         key="privacy",
         translation_key="privacy",
         device_class=SensorDeviceClass.ENUM,
+        options=[
+            slugify(privacy_state)
+            for privacy_state in PrivacyState.__members__.values()
+        ],
         value_fn=lambda status: status.privacy.state if status.privacy else UNDEFINED,
     ),
     StellantisSensorEntityDescription(
@@ -410,6 +301,10 @@ SENSORS: tuple[StellantisSensorEntityDescription, ...] = (
         key="auto_e_call_triggering",
         translation_key="auto_e_call_triggering",
         device_class=SensorDeviceClass.ENUM,
+        options=[
+            slugify(auto_e_call)
+            for auto_e_call in AutoECallTriggering.__members__.values()
+        ],
         value_fn=lambda status: status.safety.auto_e_call_triggering
         if status.safety
         else UNDEFINED,
@@ -456,6 +351,9 @@ SENSORS: tuple[StellantisSensorEntityDescription, ...] = (
         key="driving_mode",
         translation_key="driving_mode",
         device_class=SensorDeviceClass.ENUM,
+        options=[
+            slugify(driving_mode) for driving_mode in DrivingMode.__members__.values()
+        ],
         value_fn=lambda status: status.driving_behavior.mode
         if status.driving_behavior
         else UNDEFINED,
@@ -468,6 +366,10 @@ PRECONDITIONING_SENSORS = (
         key="preconditioning_status",
         translation_key="preconditioning_status",
         device_class=SensorDeviceClass.ENUM,
+        options=[
+            slugify(air_conditioning_status)
+            for air_conditioning_status in AirConditioningStatus.__members__.values()
+        ],
         value_fn=lambda status: air_conditioning.status
         if (preconditioning := status.preconditioning)
         and (air_conditioning := preconditioning.air_conditioning)
@@ -503,23 +405,23 @@ def _make_energy_autonomy_fn(
 COMMON_ENERGY_SENSORS = {
     energy_type: (
         StellantisSensorEntityDescription(
-            key=f"{slugify(energy_type)}_energy_level",
-            translation_key=f"{slugify(energy_type)}_energy_level",
+            key=f"{energy_name.lower()}_energy_level",
+            translation_key=f"{energy_name.lower()}_energy_level",
             device_class=SensorDeviceClass.BATTERY,
             native_unit_of_measurement=PERCENTAGE,
             suggested_display_precision=1,
             value_fn=_make_energy_level_fn(energy_type),
         ),
         StellantisSensorEntityDescription(
-            key=f"{slugify(energy_type)}_energy_autonomy",
-            translation_key=f"{slugify(energy_type)}_energy_autonomy",
+            key=f"{energy_name.lower()}_energy_autonomy",
+            translation_key=f"{energy_name.lower()}_energy_autonomy",
             device_class=SensorDeviceClass.DISTANCE,
             native_unit_of_measurement=UnitOfLength.KILOMETERS,
             suggested_display_precision=1,
             value_fn=_make_energy_autonomy_fn(energy_type),
         ),
     )
-    for energy_type in EnergyType.__members__.values()
+    for energy_name, energy_type in EnergyType.__members__.items()
 }
 
 
@@ -571,11 +473,11 @@ def _make_engine_speed_fn(
 
 ENGINE_SENSORS_MAP = {
     engine_type: StellantisSensorEntityDescription(
-        key=f"{slugify(engine_type)}_engine_speed",
-        translation_key=f"{slugify(engine_type)}_engine_speed",
+        key=f"{engine_name.lower()}_engine_speed",
+        translation_key=f"{engine_name.lower()}_engine_speed",
         value_fn=_make_engine_speed_fn(engine_type),
     )
-    for engine_type in EngineType.__members__.values()
+    for engine_name, engine_type in EngineType.__members__.items()
 }
 
 
@@ -607,7 +509,6 @@ async def async_setup_entry(
                 slots = programs.size
             entities.extend(
                 StellantisPreconditioningProgramSensor(
-                    hass,
                     vehicle_coordinator,
                     StellantisSensorEntityDescription(
                         key=f"preconditioning_program_{slot}",
@@ -616,7 +517,6 @@ async def async_setup_entry(
                         device_class=SensorDeviceClass.TIMESTAMP,
                         value_fn=lambda _: None,
                     ),
-                    entry,
                     slot,
                 )
                 for slot in range(1, slots + 1)
@@ -656,80 +556,96 @@ class StellantisSensor(StellantisBaseEntity, SensorEntity):
 
     entity_description: StellantisSensorEntityDescription
 
-    @property
-    def native_value(self) -> StateType | datetime | None:
-        """Calculate the sensor value from the entity description."""
-        if self.status_value and self.status_value != UNDEFINED:
-            if self.entity_description.key == "fuel_consumption":
-                assert isinstance(self.status_value, float)
-                # Fuel consumption is in centiliters, convert it to liters
-                return self.status_value / 100
-            match self.entity_description.device_class:
-                case SensorDeviceClass.TIMESTAMP:
-                    assert isinstance(self.status_value, str)
-                    if (
-                        next_timestamp := _get_next_timestamp(self.status_value)
-                    ) is not None:
-                        return next_timestamp
-                case SensorDeviceClass.DURATION:
-                    assert isinstance(self.status_value, str)
-                    if (
-                        duration := dt_util.parse_duration(self.status_value)
-                    ) is not None:
-                        return duration.total_seconds()
-                case SensorDeviceClass.ENUM:
-                    assert isinstance(self.status_value, str)
-                    return slugify(self.status_value)
-        return None
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        self._attr_available = True
+        status_value = self.status_value
+
+        if status_value is None or status_value == UNDEFINED:
+            self._attr_native_value = None
+            if status_value == UNDEFINED:
+                self._attr_available = False
+            return
+
+        if self.entity_description.key == "fuel_consumption":
+            assert isinstance(status_value, float)
+            # Fuel consumption is in centiliters, convert it to liters
+            self._attr_native_value = status_value / 100
+            return
+
+        match self.entity_description.device_class:
+            case SensorDeviceClass.TIMESTAMP:
+                assert isinstance(status_value, str)
+                self._attr_native_value = get_next_timestamp(status_value)
+            case SensorDeviceClass.DURATION:
+                assert isinstance(status_value, str)
+                duration = dt_util.parse_duration(status_value)
+                self._attr_native_value = (
+                    duration.total_seconds() if duration is not None else None
+                )
+            case SensorDeviceClass.ENUM:
+                assert isinstance(status_value, str)
+                self._attr_native_value = slugify(status_value)
+            case _:
+                self._attr_native_value = status_value
+        super()._handle_coordinator_update()
 
     @property
     def available(self) -> bool:
         """Return if entity is available."""
-        return self.native_value is not None and super().available
+        return self._attr_available and super().available
 
 
-class StellantisPreconditioningProgramSensor(
-    StellantisPreconditioningEntity[None], SensorEntity
-):
+class StellantisPreconditioningProgramSensor(StellantisBaseEntity, SensorEntity):
     """Representation of a Stellantis preconditioning sensor."""
 
     entity_description: StellantisSensorEntityDescription
 
-    def _handle_update_from_successful_remote_action(self, state: None) -> None:
-        pass
+    def __init__(
+        self, coordinator, description: StellantisSensorEntityDescription, slot: int
+    ) -> None:
+        """Initialize the Stellantis sensor."""
+        super().__init__(coordinator, description)
+        self.slot = slot
 
-    @property
-    def native_value(self) -> datetime | None:
-        """Calculate timestamp of the next time the preconditioning program will get activated."""
-        return (
-            _get_next_timestamp_on_weekdays(
-                self.program.start,
-                self.program.occurence.day  # codespell:ignore occurence
-                if self.program.occurence  # codespell:ignore occurence
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        program = None
+        self._attr_available = False
+        self._attr_native_value = None
+        self._attr_extra_state_attributes = {}
+        if (
+            (preconditioning := self.vehicle_status.preconditioning)
+            and (air_conditioning := preconditioning.air_conditioning)
+            and (programs := air_conditioning.programs)
+        ):
+            for _program in programs:
+                if _program.slot == self.slot:
+                    self._attr_available = True
+                    program = _program
+                    break
+        if program:
+            self._attr_native_value = _get_next_timestamp_on_weekdays(
+                program.start,
+                program.occurence.day  # codespell:ignore occurence
+                if program.occurence  # codespell:ignore occurence
                 else None,
             )
-            if self.program != UNDEFINED
-            else None
-        )
+            self._attr_extra_state_attributes.update(
+                {
+                    "recurrence": program.recurrence,
+                    "occurrence": program.occurence,  # codespell:ignore occurence
+                }
+            )
+        super()._handle_coordinator_update()
 
     @property
-    def extra_state_attributes(self) -> Mapping[str, Any] | None:
-        """Return the state attributes."""
-
-        return {
-            "start": self.program.start
-            if self.program and self.program != UNDEFINED
-            else None,
-            "recurrence": self.program.recurrence
-            if self.program and self.program != UNDEFINED
-            else None,
-            "occurrence": self.program.occurence  # codespell:ignore occurence
-            if self.program and self.program != UNDEFINED
-            else None,
-        }
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return self._attr_available and super().available
 
 
-def _get_next_timestamp(time_on_day: str) -> datetime | None:
+def get_next_timestamp(time_on_day: str) -> datetime | None:
     """Get the next time on the day that have not passed yet.
 
     If the current time has already passed today, it will return the time for tomorrow.
@@ -763,8 +679,10 @@ def _get_next_timestamp_on_weekdays(
         if now < next_time:
             return next_time
 
-    for i in range(1, 8):
-        next_day = (current_day + i) % 7
-        if next_day in weekdays_numbers:
-            return dt_util.start_of_local_day() + timedelta(days=i) + duration
-    return None
+        if len(weekdays_numbers) == 1:
+            return next_time + timedelta(days=7)
+
+    days_until_next = min(
+        ((day - current_day) % 7 for day in weekdays_numbers if day != current_day),
+    )
+    return dt_util.start_of_local_day() + timedelta(days=days_until_next) + duration

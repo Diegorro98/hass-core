@@ -1,23 +1,139 @@
 """Test for Stellantis time platform."""
 
+from collections.abc import Callable
+from copy import deepcopy
 from datetime import time
 from unittest.mock import MagicMock, patch
 
 import pytest
-from stellantis.model import Vehicle
+from stellantis.model import Status, Vehicle
 from stellantis.model.error import StellantisError
 from syrupy.assertion import SnapshotAssertion
 
+from homeassistant.components.homeassistant import (
+    DOMAIN as HA_DOMAIN,
+    SERVICE_UPDATE_ENTITY,
+)
 from homeassistant.components.time import ATTR_TIME, SERVICE_SET_VALUE
-from homeassistant.const import ATTR_ENTITY_ID, Platform
+from homeassistant.const import (
+    ATTR_ENTITY_ID,
+    STATE_UNAVAILABLE,
+    STATE_UNKNOWN,
+    Platform,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.setup import async_setup_component
 
 
 @pytest.fixture
 def platforms() -> list[Platform]:
     """Fixture to specify platforms to test."""
     return [Platform.TIME]
+
+
+@pytest.mark.parametrize(
+    ("entity_id", "expected_updated_state", "update_status_value_fn"),
+    [
+        (
+            "time.peugeot_suv_3008_charging_time",
+            "22:00:00",
+            lambda status: setattr(
+                status.energies[1].extension.electric.charging,
+                "next_delayed_time",
+                "PT22H",
+            ),
+        ),
+        (
+            "time.peugeot_suv_3008_charging_time",
+            STATE_UNKNOWN,
+            lambda status: setattr(
+                status.energies[1].extension.electric.charging,
+                "next_delayed_time",
+                None,
+            ),
+        ),
+        (
+            "time.peugeot_suv_3008_preconditioning_program_1_start_time",
+            "22:00:00",
+            lambda status: setattr(
+                status.preconditioning.air_conditioning.programs[0], "start", "PT22H"
+            ),
+        ),
+        (
+            "time.peugeot_suv_3008_preconditioning_program_1_start_time",
+            STATE_UNKNOWN,
+            lambda status: setattr(
+                status.preconditioning.air_conditioning.programs[0],
+                "start",
+                "BAD_FORMAT",
+            ),
+        ),
+        (
+            "time.peugeot_suv_3008_preconditioning_program_1_start_time",
+            STATE_UNAVAILABLE,
+            lambda status: setattr(
+                status.preconditioning.air_conditioning, "programs", None
+            ),
+        ),
+    ],
+)
+async def test_time_state_and_updates(
+    hass: HomeAssistant,
+    client: MagicMock,
+    vehicle_status: Status,
+    entity_id: str,
+    expected_updated_state: str,
+    update_status_value_fn: Callable[[Status], None],
+) -> None:
+    """Test Stellantis time states and updates."""
+    initial_state = hass.states.get(entity_id)
+    assert initial_state
+    assert initial_state.state != expected_updated_state
+
+    new_vehicle_status = deepcopy(vehicle_status)
+    update_status_value_fn(new_vehicle_status)
+    client.get_vehicle_status.return_value = new_vehicle_status
+    await async_setup_component(hass, HA_DOMAIN, {})
+    await hass.services.async_call(
+        HA_DOMAIN,
+        SERVICE_UPDATE_ENTITY,
+        {ATTR_ENTITY_ID: entity_id},
+        blocking=True,
+    )
+
+    updated_state = hass.states.get(entity_id)
+    assert updated_state
+    assert updated_state.state == expected_updated_state
+
+
+@pytest.mark.parametrize(
+    "entity_id",
+    [
+        "time.peugeot_suv_3008_charging_time",
+    ],
+)
+async def test_availability_on_api_error(
+    hass: HomeAssistant, client: MagicMock, entity_id: str
+) -> None:
+    """Tests that the time entities does not become unavailable on API error."""
+    initial_state = hass.states.get(entity_id)
+    assert initial_state
+    assert initial_state.state != STATE_UNAVAILABLE
+
+    client.get_vehicle_status.return_value = None
+    client.get_vehicle_status.side_effect = StellantisError
+    await async_setup_component(hass, HA_DOMAIN, {})
+    await hass.services.async_call(
+        HA_DOMAIN,
+        SERVICE_UPDATE_ENTITY,
+        {ATTR_ENTITY_ID: entity_id},
+        blocking=True,
+    )
+
+    updated_state = hass.states.get(entity_id)
+    assert updated_state
+    assert updated_state.state != STATE_UNAVAILABLE
 
 
 @pytest.mark.usefixtures("send_webhook_result_success")

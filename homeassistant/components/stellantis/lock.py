@@ -1,17 +1,21 @@
 """Stellantis switch platform."""
 
-from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any
 
 from stellantis.model import (
     DoorLockedState,
+    IgnitionType,
     Remote,
     RemoteDoorsState,
     RemoteDoorsStateEnum,
 )
 
-from homeassistant.components.lock import LockEntity, LockEntityDescription
+from homeassistant.components.lock import (
+    LockEntity,
+    LockEntityDescription,
+    LockEntityFeature,
+)
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
@@ -33,17 +37,7 @@ DOORS_LOCK_ENTITY_DESCRIPTION = StellantisLockEntityDescription(
     remote_request_off=Remote(
         door=RemoteDoorsState(state=RemoteDoorsStateEnum.UNLOCKED)
     ),
-    value_fn=lambda status: (
-        True
-        if DoorLockedState.LOCKED in locked_states
-        or DoorLockedState.SUPER_LOCKED in locked_states
-        else False
-        if DoorLockedState.UNLOCKED in locked_states
-        else None
-    )
-    if (doors_state := status.doors_state)
-    and (locked_states := doors_state.locked_states)
-    else None,
+    value_fn=lambda _: None,
 )
 
 
@@ -65,6 +59,7 @@ class StellantisDoorsLock(StellantisActionableEntity[bool], LockEntity):
     """Representation of Stellantis doors lock state."""
 
     entity_description: StellantisLockEntityDescription
+    _attr_supported_features: LockEntityFeature = LockEntityFeature.OPEN
 
     async def async_lock(self, **kwargs: Any) -> None:
         """Lock the doors."""
@@ -85,13 +80,28 @@ class StellantisDoorsLock(StellantisActionableEntity[bool], LockEntity):
 
     @callback
     def _handle_coordinator_update(self) -> None:
-        self._attr_is_locked = cast(bool | None, self.status_value)
+        self._attr_is_locked = None
+        self._attr_extra_state_attributes = {}
+        if (doors_state := self.vehicle_status.doors_state) and (
+            locked_states := doors_state.locked_states
+        ):
+            self._attr_is_locked = (
+                True
+                if DoorLockedState.LOCKED in locked_states
+                or DoorLockedState.SUPER_LOCKED in locked_states
+                else False
+                if DoorLockedState.UNLOCKED in locked_states
+                else None
+            )
+            self._attr_extra_state_attributes["locked_states"] = locked_states
+        super()._handle_coordinator_update()
 
     @property
-    def extra_state_attributes(self) -> Mapping[str, Any] | None:
-        """Return the state attributes."""
-        return {
-            "locked_states": self.vehicle_status.doors_state.locked_states
-            if self.vehicle_status.doors_state
-            else None
-        }
+    def available(self) -> bool:
+        """Return true if the vehicle is stopped (or cannot be determined).
+
+        Actionable entities can still be used although the coordinator's last update wasn't successful
+        """
+        return (
+            ignition := self.vehicle_status.ignition
+        ) is None or ignition.type == IgnitionType.STOP

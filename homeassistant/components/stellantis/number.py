@@ -62,6 +62,7 @@ class StellantisChargingPowerLevelNumber(
 
     @callback
     def _handle_coordinator_update(self) -> None:
+        self._attr_native_value = None
         if (
             (
                 energy := next(
@@ -79,9 +80,9 @@ class StellantisChargingPowerLevelNumber(
             and (charging_power_level := charging.charging_power_level)
         ):
             self._attr_native_value = float(
-                charging_power_level.value.replace("Level", "")
+                charging_power_level.value.removeprefix("Level")
             )
-        self._attr_native_value = None
+        super()._handle_coordinator_update()
 
     async def async_set_native_value(self, value: float) -> None:
         """Set the charging power level."""

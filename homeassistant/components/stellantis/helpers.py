@@ -5,11 +5,32 @@ from datetime import time, timedelta
 from stellantis.model import (
     ActionType,
     AirConditioningProgram,
+    Energy,
+    EnergyType,
+    Engine,
+    EngineType,
     PreconditioningProgram,
     Remote,
     RemotePreconditioning,
     RemotePreconditioningAirConditioning,
+    Status,
 )
+
+
+def get_energy(status: Status, energy_type: EnergyType) -> Energy | None:
+    """Function to get specific energy from status."""
+    for energy in status.energies or []:
+        if energy.type == energy_type:
+            return energy
+    return None
+
+
+def get_engine(status: Status, engine_type: EngineType) -> Engine | None:
+    """Function to get specific energy from status."""
+    for engine in status.engines or []:
+        if engine.type == engine_type:
+            return engine
+    return None
 
 
 def preconditioning_program_setter_body(program: PreconditioningProgram) -> Remote:

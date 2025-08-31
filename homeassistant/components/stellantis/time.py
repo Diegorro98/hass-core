@@ -8,12 +8,9 @@ from stellantis.model import EnergyType, Remote, RemoteCharging, Schedule
 
 from homeassistant.components.time import TimeEntity, TimeEntityDescription
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
-from homeassistant.helpers.typing import UNDEFINED
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN, SVE_TRANSLATION_PLACEHOLDER_SLOT
 from .coordinator import StellantisConfigEntry
 from .entity import (
     StellantisActionableEntity,
@@ -107,7 +104,7 @@ class StellantisPreconditioningProgramStartTime(
 
     def _handle_update_from_successful_remote_action(self, state: time) -> None:
         """Handle successful remote action updates."""
-        if self.program != UNDEFINED:
+        if self.program is not None:
             self._attr_native_value = state
             super()._handle_update_from_successful_remote_action(state)
 
@@ -115,23 +112,19 @@ class StellantisPreconditioningProgramStartTime(
     def _handle_coordinator_update(self) -> None:
         self._attr_native_value = (
             (datetime(1, 1, 1) + start_time).time()
-            if self.program != UNDEFINED
-            and (start_time := dt_util.parse_duration(self.program.start))
+            if (program := self.program) is not None
+            and (start_time := dt_util.parse_duration(program.start))
             else None
         )
+        super()._handle_coordinator_update()
 
     async def async_set_value(self, value: time) -> None:
         """Set the start of the preconditioning program."""
-        if self.program == UNDEFINED:
-            raise ServiceValidationError(
-                translation_domain=DOMAIN,
-                translation_key="preconditioning_program_not_defined",
-                translation_placeholders={
-                    SVE_TRANSLATION_PLACEHOLDER_SLOT: str(self.slot)
-                },
-            )
-
         program = copy.deepcopy(self.program)
+        # The program must be defined, otherwise the entity is unavailable
+        # and this method cannot be called
+        assert program is not None
+
         program.start = time_to_iso_duration(value)
         await self.async_call_remote_action(
             preconditioning_program_setter_body(program), value
@@ -153,10 +146,11 @@ class StellantisChargingTime(StellantisActionableEntity[time], TimeEntity):
     def _handle_coordinator_update(self) -> None:
         self._attr_native_value = (
             (datetime(1, 1, 1) + value).time()
-            if isinstance(self.status_value, str)
-            and (value := dt_util.parse_duration(self.status_value))
+            if isinstance((status_value := self.status_value), str)
+            and (value := dt_util.parse_duration(status_value))
             else None
         )
+        super()._handle_coordinator_update()
 
     async def async_set_value(self, value: time) -> None:
         """Set the start of the charging program."""
@@ -168,3 +162,8 @@ class StellantisChargingTime(StellantisActionableEntity[time], TimeEntity):
             ),
             value,
         )
+
+    @property
+    def available(self) -> bool:
+        """This entity is always available."""
+        return True

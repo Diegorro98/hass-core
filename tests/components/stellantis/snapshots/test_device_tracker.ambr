@@ -1,0 +1,30 @@
+# serializer version: 1
+# name: test_device_tracker_state
+  ReadOnlyDict({
+    'created_at': datetime.datetime(2019, 8, 24, 14, 15, 22, tzinfo=datetime.timezone.utc),
+    'fix_status': <FixStatus.TWO_D: '2D'>,
+    'friendly_name': 'Peugeot SUV 3008 ',
+    'gps_accuracy': 0,
+    'heading': 360,
+    'latitude': -62.536239,
+    'longitude': 5.970338,
+    'signal_quality': 0,
+    'source_type': <SourceType.GPS: 'gps'>,
+    'type': <LocationType.ESTIMATED: 'Estimated'>,
+  })
+# ---
+# name: test_device_tracker_updates
+  ReadOnlyDict({
+    'altitude': 100.0,
+    'created_at': datetime.datetime(2025, 1, 1, 0, 0),
+    'fix_status': <FixStatus.THREE_D: '3D'>,
+    'friendly_name': 'Peugeot SUV 3008 ',
+    'gps_accuracy': 0,
+    'heading': 180,
+    'latitude': 0.0,
+    'longitude': 0.0,
+    'signal_quality': 1,
+    'source_type': <SourceType.GPS: 'gps'>,
+    'type': <LocationType.ACQUIRE: 'Acquire'>,
+  })
+# ---

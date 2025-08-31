@@ -36,27 +36,6 @@
       "plugged": {
         "name": "Plugged"
       },
-      "driver_door_state": {
-        "name": "Driver door state"
-      },
-      "passenger_door_state": {
-        "name": "Passenger door state"
-      },
-      "rear_left_door_state": {
-        "name": "Rear left door state"
-      },
-      "rear_right_door_state": {
-        "name": "Rear right door state"
-      },
-      "trunk_state": {
-        "name": "Trunk state"
-      },
-      "rear_window_state": {
-        "name": "Rear window state"
-      },
-      "roof_window_state": {
-        "name": "Roof window state"
-      },
       "driver_belt_status": {
         "name": "Driver belt status",
         "state": {
@@ -77,29 +56,50 @@
       "environment_light": {
         "name": "Environment light"
       },
-      "front_turn_right_light": {
-        "name": "Front turn right light"
-      },
-      "rear_turn_right_light": {
-        "name": "Rear turn right light"
-      },
-      "front_turn_left_light": {
-        "name": "Front turn left light"
-      },
-      "rear_turn_left_light": {
-        "name": "Rear turn left light"
-      },
-      "front_right_fog_light": {
-        "name": "Front right fog light"
+      "front_left_turn_light": {
+        "name": "Front left turn light"
       },
       "front_left_fog_light": {
         "name": "Front left fog light"
       },
-      "rear_right_fog_light": {
-        "name": "Rear right fog light"
+      "front_right_turn_light": {
+        "name": "Front right turn light"
+      },
+      "front_right_fog_light": {
+        "name": "Front right fog light"
+      },
+      "rear_left_turn_light": {
+        "name": "Rear left turn light"
       },
       "rear_left_fog_light": {
         "name": "Rear left fog light"
+      },
+      "rear_right_turn_light": {
+        "name": "Rear right turn light"
+      },
+      "rear_right_fog_light": {
+        "name": "Rear right fog light"
+      },
+      "driver_door": {
+        "name": "Driver door"
+      },
+      "passenger_door": {
+        "name": "Passenger door"
+      },
+      "rear_left_door": {
+        "name": "Rear left door"
+      },
+      "rear_right_door": {
+        "name": "Rear right door"
+      },
+      "trunk_door": {
+        "name": "Trunk door"
+      },
+      "rear_window": {
+        "name": "Rear window"
+      },
+      "roof_window": {
+        "name": "Roof window"
       }
     },
     "light": {

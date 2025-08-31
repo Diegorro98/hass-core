@@ -1,14 +1,12 @@
 """Stellantis device tracker platform."""
 
-from collections.abc import Mapping
-from dataclasses import dataclass
-from typing import Any
+from dataclasses import asdict, dataclass
 
 from homeassistant.components.device_tracker.config_entry import (
     TrackerEntity,
     TrackerEntityDescription,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import StellantisConfigEntry
@@ -23,7 +21,7 @@ class StellantisTrackerEntityDescription(
 
 
 DEVICE_TRACKER_ENTITY_DESCRIPTION = StellantisTrackerEntityDescription(
-    key="device_tracker", value_fn=lambda _: None
+    key="device_tracker", name="", value_fn=lambda _: None
 )
 
 
@@ -47,33 +45,27 @@ class StellantisTrackerEntity(StellantisBaseEntity, TrackerEntity):
 
     entity_description: StellantisTrackerEntityDescription
 
-    @property
-    def longitude(self) -> float | None:
-        """Return longitude value of the vehicle."""
-        if self.vehicle_status.last_position:
-            return self.vehicle_status.last_position.geometry.coordinates[0]
-        return None
-
-    @property
-    def latitude(self) -> float | None:
-        """Return latitude value of the vehicle."""
-        if self.vehicle_status.last_position:
-            return self.vehicle_status.last_position.geometry.coordinates[1]
-        return None
-
-    @property
-    def extra_state_attributes(self) -> Mapping[str, Any] | None:
-        """Return device specific attributes."""
-        if self.vehicle_status.last_position:
-            return {
-                "altitude": self.vehicle_status.last_position.geometry.coordinates[2],
-                "heading": self.vehicle_status.last_position.properties.heading,
-                "signal_quality": self.vehicle_status.last_position.properties.signal_quality,
-                "created_at": self.vehicle_status.last_position.properties.created_at,
-            }
-        return None
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updates from the coordinator."""
+        vehicle_status = self.vehicle_status
+        self._attr_longitude = None
+        self._attr_latitude = None
+        self._attr_extra_state_attributes = {}
+        if last_position := vehicle_status.last_position:
+            coordinates = last_position.geometry.coordinates
+            if len(coordinates) >= 2:
+                self._attr_longitude = coordinates[0]
+                self._attr_latitude = coordinates[1]
+                if len(coordinates) >= 3:
+                    self._attr_extra_state_attributes["altitude"] = coordinates[2]
+            self._attr_extra_state_attributes.update(asdict(last_position.properties))
+            self._attr_available = True
+        else:
+            self._attr_available = False
+        super()._handle_coordinator_update()
 
     @property
     def available(self) -> bool:
         """Return if entity is available."""
-        return super().available and self.vehicle_status.last_position is not None
+        return super().available and self._attr_available

@@ -6,7 +6,6 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Generic, TypeVar, cast
 
-from propcache.api import cached_property
 from stellantis.model import (
     IgnitionType,
     PreconditioningProgram,
@@ -26,7 +25,7 @@ from homeassistant.helpers.entity import (
     ToggleEntity,
     ToggleEntityDescription,
 )
-from homeassistant.helpers.typing import UNDEFINED, StateType, UndefinedType
+from homeassistant.helpers.typing import StateType, UndefinedType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import CONF_CALLBACK_ID, DOMAIN, LOGGER, RemoteDoneEventStatus
@@ -43,7 +42,11 @@ class StellantisEntityDescription(EntityDescription):
     value_fn: Callable[[Status], StateType | UndefinedType]
 
 
-class StellantisBaseEntity(CoordinatorEntity[StellantisVehicleCoordinator], Entity):
+class StellantisBaseEntity(
+    CoordinatorEntity[StellantisVehicleCoordinator],
+    Entity,
+    cached_properties={"vehicle_status", "status_value"},
+):
     """Common base for Stellantis entities."""
 
     coordinator: StellantisVehicleCoordinator
@@ -65,6 +68,13 @@ class StellantisBaseEntity(CoordinatorEntity[StellantisVehicleCoordinator], Enti
         )
         self.entity_description = description
 
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updates from the coordinator."""
+        self.__dict__.pop("vehicle_status", None)
+        self.__dict__.pop("status_value", None)
+        super()._handle_coordinator_update()
+
     @property
     def vehicle(self) -> Vehicle:
         """Get the vehicle details."""
@@ -75,10 +85,10 @@ class StellantisBaseEntity(CoordinatorEntity[StellantisVehicleCoordinator], Enti
         """Get the vehicle status."""
         return self.coordinator.data
 
-    @cached_property
+    @property
     def status_value(self) -> StateType | UndefinedType:
         """Get the status value."""
-        return self.entity_description.value_fn(self.vehicle_status)
+        return self.entity_description.value_fn(self.coordinator.data)
 
     async def async_added_to_hass(self) -> None:
         """When entity is added to hass."""
@@ -193,7 +203,9 @@ class StellantisToggleEntity(StellantisActionableEntity[bool], ToggleEntity):
 
     @callback
     def _handle_coordinator_update(self) -> None:
+        """Handle updates from the coordinator."""
         self._attr_is_on = cast(bool | None, self.status_value)
+        super()._handle_coordinator_update()
 
     @property
     def available(self) -> bool:
@@ -222,9 +234,12 @@ class StellantisPreconditioningEntity(StellantisActionableEntity[T], Generic[T])
         self.slot = slot
         self._attr_translation_placeholders = {"slot": str(slot)}
 
-    @cached_property
-    def program(self) -> PreconditioningProgram | UndefinedType:
+    @property
+    def program(self) -> PreconditioningProgram | None:
         """Return the status value of the preconditioning program."""
+        if not self.coordinator.last_update_success:
+            self._attr_available = True
+            return None
         if (
             (preconditioning := self.vehicle_status.preconditioning)
             and (air_conditioning := preconditioning.air_conditioning)
@@ -232,16 +247,12 @@ class StellantisPreconditioningEntity(StellantisActionableEntity[T], Generic[T])
         ):
             for program in programs:
                 if program.slot == self.slot:
+                    self._attr_available = True
                     return program
-        return UNDEFINED
+        self._attr_available = False
+        return None
 
     @property
     def available(self) -> bool:
-        """Return available if the program exists.
-
-        Programs can be still be modified while the vehicle is in motion.
-        """
-        return (
-            StellantisActionableEntity.available.__get__(self)
-            and self.program != UNDEFINED
-        )
+        """Return available if the program exists."""
+        return self._attr_available

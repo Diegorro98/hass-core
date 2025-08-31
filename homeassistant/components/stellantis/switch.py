@@ -20,11 +20,8 @@ from stellantis.model import (
 
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
-from homeassistant.helpers.typing import UNDEFINED
 
-from .const import DOMAIN, SVE_TRANSLATION_PLACEHOLDER_SLOT
 from .coordinator import StellantisConfigEntry
 from .entity import (
     StellantisEntityDescription,
@@ -199,27 +196,33 @@ class StellantisPreconditioningSwitch(StellantisToggleEntity, SwitchEntity):
         - Enough battery
             - For plug-in hybrid cars, the electric battery must be at least 20%
             - For electric cars, the electric battery must be at least 50%
+
+        If the values cannot be determined, it will be available
         """
         if not super().available:
             return False
 
         electric_level = None
-        for energies in self.vehicle_status.energies or []:
+        vehicle_status = self.vehicle_status
+        for energies in vehicle_status.energies or []:
             if energies.type == EnergyType.ELECTRIC:
                 electric_level = energies.level
+                break
 
-        if electric_level is None:
-            return False
-
-        match self.vehicle.motorization:
-            case Motorization.HYBRID:
-                if electric_level < 20:
+        if electric_level is not None:
+            match self.vehicle.motorization:
+                case Motorization.HYBRID:
+                    if electric_level < 20:
+                        return False
+                case Motorization.ELECTRIC:
+                    if electric_level < 50:
+                        return False
+                case None:
+                    pass
+                case _:
                     return False
-            case Motorization.ELECTRIC:
-                if electric_level < 50:
-                    return False
 
-        if (doors_state := self.vehicle_status.doors_state) and (
+        if (doors_state := vehicle_status.doors_state) and (
             doors_lock_states := doors_state.locked_states
         ):
             if not (
@@ -227,7 +230,6 @@ class StellantisPreconditioningSwitch(StellantisToggleEntity, SwitchEntity):
                 or DoorLockedState.SUPER_LOCKED in doors_lock_states
             ):
                 return False
-        # If the door lock state does not exist we consider that doors are locked because we can't know the true state
 
         return True
 
@@ -244,15 +246,11 @@ class StellantisPreconditioningProgramSwitch(
 
         Because API requires the whole program to be sent, we need to copy the program and set the enabled value.
         """
-        if self.program == UNDEFINED:
-            raise ServiceValidationError(
-                translation_domain=DOMAIN,
-                translation_key="preconditioning_program_not_defined",
-                translation_placeholders={
-                    SVE_TRANSLATION_PLACEHOLDER_SLOT: str(self.slot)
-                },
-            )
         program = copy.deepcopy(self.program)
+        # The program must be defined, otherwise the entity is unavailable
+        # and async_turn_off/async_turn_on methods cannot be called
+        assert program is not None
+
         program.enabled = enabled
         await self.async_call_remote_action(
             preconditioning_program_setter_body(program), enabled
@@ -260,13 +258,16 @@ class StellantisPreconditioningProgramSwitch(
 
     def _handle_update_from_successful_remote_action(self, state: bool) -> None:
         """Handle successful remote action updates."""
-        if self.program != UNDEFINED:
+        if self.program is not None:
             self._attr_is_on = state
             super()._handle_update_from_successful_remote_action(state)
 
     @callback
     def _handle_coordinator_update(self) -> None:
-        self._attr_is_on = self.program.enabled if self.program != UNDEFINED else None
+        self._attr_is_on = (
+            program.enabled if (program := self.program) is not None else None
+        )
+        super()._handle_coordinator_update()
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Send a remote action to enable preconditioning program."""
