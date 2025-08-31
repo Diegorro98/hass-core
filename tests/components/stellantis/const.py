@@ -17,3 +17,4 @@ RESULT_FAILED = RemoteEventStatus(
     RemoteDoneEventStatus.FAILED,
     RemoteFailedEventStatus.GENERAL_ERROR,
 )
+RESULT_EXCEPTION = {"attributes": 1}

@@ -2,7 +2,7 @@
 
 from copy import deepcopy
 import time
-from typing import Any
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -29,6 +29,7 @@ from stellantis.model import (
     PreconditioningCapabilitiesParameters,
     PreconditioningProgramsCapabilities,
     RemoteEvent,
+    RemoteEventStatus,
     RemotePostResponse,
     Scopes,
     Status,
@@ -59,7 +60,7 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 
-from .const import RESULT_FAILED, RESULT_SUCCESS
+from .const import RESULT_SUCCESS
 
 from tests.common import MockConfigEntry, load_fixture
 from tests.typing import ClientSessionGenerator
@@ -263,13 +264,18 @@ def mock_client(vehicle_details: Vehicle, vehicle_status: Status) -> MagicMock:
 
 
 @pytest.fixture
-async def send_webhook_result_success(
+async def send_webhook_result(
     hass: HomeAssistant,
     config_entry: MockConfigEntry,
     hass_client_no_auth: ClientSessionGenerator,
     client: MagicMock,
+    request: pytest.FixtureRequest,
 ):
     """Fixture to return a function to send webhook results."""
+    if hasattr(request, "param"):
+        results = cast(list[RemoteEventStatus | Any], request.param)
+    else:
+        results = [RESULT_SUCCESS]
     assert await async_setup_component(hass, WEBHOOK_DOMAIN, {})
     hass_client = await hass_client_no_auth()
 
@@ -277,51 +283,21 @@ async def send_webhook_result_success(
         remote_action_id="test_remote_action_id"
     )
 
-    async def send_webhook_result(_) -> None:
-        await hass_client.post(
-            "/api/webhook/" + config_entry.data[CONF_WEBHOOK_ID],
-            json=Message(
-                remote_event=RemoteEvent(
-                    remote_action_id="test_remote_action_id",
-                    event_status=RESULT_SUCCESS,
-                )
-            ).to_dict(),
-        )
+    async def _send_webhook_result(_) -> None:
+        for result in results:
+            await hass_client.post(
+                "/api/webhook/" + config_entry.data[CONF_WEBHOOK_ID],
+                json=Message(
+                    remote_event=RemoteEvent(
+                        remote_action_id="test_remote_action_id",
+                        event_status=result,
+                    )
+                ).to_dict()
+                if isinstance(result, RemoteEventStatus)
+                else result,
+            )
 
-    hass.bus.async_listen_once(EVENT_CALL_SERVICE, send_webhook_result)
-
-    yield
-
-    await hass.async_block_till_done()
-
-
-@pytest.fixture
-async def send_webhook_result_failed(
-    hass: HomeAssistant,
-    config_entry: MockConfigEntry,
-    hass_client_no_auth: ClientSessionGenerator,
-    client: MagicMock,
-):
-    """Fixture to return a function to send webhook results."""
-    assert await async_setup_component(hass, WEBHOOK_DOMAIN, {})
-    hass_client = await hass_client_no_auth()
-
-    client.send_remote_to_vhl.return_value = RemotePostResponse(
-        remote_action_id="test_remote_action_id"
-    )
-
-    async def send_webhook_result(_) -> None:
-        await hass_client.post(
-            "/api/webhook/" + config_entry.data[CONF_WEBHOOK_ID],
-            json=Message(
-                remote_event=RemoteEvent(
-                    remote_action_id="test_remote_action_id",
-                    event_status=RESULT_FAILED,
-                )
-            ).to_dict(),
-        )
-
-    hass.bus.async_listen_once(EVENT_CALL_SERVICE, send_webhook_result)
+    hass.bus.async_listen_once(EVENT_CALL_SERVICE, _send_webhook_result)
 
     yield
 

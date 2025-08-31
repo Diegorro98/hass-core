@@ -71,18 +71,17 @@ async def _handle_webhook(
         BadDialect,
     ):
         LOGGER.exception("Received invalid webhook payload: %s", await request.text())
-        return Response(status=HTTPStatus.BAD_REQUEST)
-
-    if not (remote_event := data.remote_event) or not (
-        event_status := remote_event.event_status
-    ):
-        return Response(status=HTTPStatus.BAD_REQUEST)
-    if event_status.type == RemoteEventType.DONE:
-        handlers: dict[str, StellantisCallbackEvent] = hass.data.setdefault(DOMAIN, {})
-        remote_action_id = data.remote_event.remote_action_id
-        if remote_action_id in handlers:
-            callback_event = handlers[remote_action_id]
-            callback_event.set_result(event_status)
+    else:
+        if (
+            data.remote_event
+            and (event_status := data.remote_event.event_status)
+            and event_status.type == RemoteEventType.DONE
+        ):
+            handlers: dict[str, StellantisCallbackEvent] = hass.data.get(DOMAIN, {})
+            remote_action_id = data.remote_event.remote_action_id
+            if remote_action_id in handlers:
+                callback_event = handlers[remote_action_id]
+                callback_event.set_result(event_status)
     LOGGER.debug("Received webhook payload: %s", await request.text())
     return Response(status=HTTPStatus.OK)
 

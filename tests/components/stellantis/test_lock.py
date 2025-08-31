@@ -27,6 +27,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.setup import async_setup_component
 
+from .const import RESULT_EXCEPTION, RESULT_FAILED, RESULT_PENDING, RESULT_SUCCESS
+
 
 @pytest.fixture
 def platforms() -> list[Platform]:
@@ -187,10 +189,17 @@ async def test_availability_on_api_error(
     assert updated_state.state != STATE_UNAVAILABLE
 
 
-@pytest.mark.usefixtures("send_webhook_result_success")
-async def test_remote_action_callback_successful(
-    hass: HomeAssistant,
-    client: MagicMock,
+@pytest.mark.parametrize(
+    "send_webhook_result",
+    [
+        [RESULT_SUCCESS],
+        [RESULT_PENDING, RESULT_SUCCESS],
+        [RESULT_EXCEPTION, RESULT_SUCCESS],
+    ],
+    indirect=True,
+)
+async def test_remote_action_callback_success_result(
+    hass: HomeAssistant, send_webhook_result: None
 ) -> None:
     """Test the result of a successful remote action callback."""
     entity_id = "lock.peugeot_suv_3008_doors"
@@ -212,9 +221,13 @@ async def test_remote_action_callback_successful(
     assert state.state == LockState.UNLOCKED
 
 
-@pytest.mark.usefixtures("send_webhook_result_failed")
+@pytest.mark.parametrize(
+    ("send_webhook_result"),
+    [[RESULT_FAILED], [RESULT_PENDING, RESULT_FAILED]],
+    indirect=True,
+)
 async def test_remote_action_callback_failed_result(
-    hass: HomeAssistant, client: MagicMock
+    hass: HomeAssistant, send_webhook_result: None
 ) -> None:
     """Test the result of a failed remote action callback."""
     entity_id = "lock.peugeot_suv_3008_doors"
@@ -263,9 +276,7 @@ async def test_remote_action_callback_failed_executing(
     assert state.state == old_state
 
 
-async def test_remote_action_callback_timeout(
-    hass: HomeAssistant, client: MagicMock
-) -> None:
+async def test_remote_action_callback_timeout(hass: HomeAssistant) -> None:
     """Test the case were a "Done" response is not received within the timeout period."""
     entity_id = "lock.peugeot_suv_3008_doors"
     state = hass.states.get(entity_id)
@@ -290,7 +301,7 @@ async def test_remote_action_callback_timeout(
     assert state.state == old_state
 
 
-@pytest.mark.usefixtures("send_webhook_result_success")
+@pytest.mark.usefixtures("send_webhook_result")
 @pytest.mark.parametrize("service", [SERVICE_LOCK, SERVICE_UNLOCK])
 @pytest.mark.parametrize("entity_id", ["lock.peugeot_suv_3008_doors"])
 async def test_remote_action_payload(

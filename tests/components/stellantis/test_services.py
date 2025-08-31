@@ -5,9 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from stellantis.model import (
-    Message,
     ProgramRecurrence,
-    RemoteEvent,
     RemotePostResponse,
     Status,
     Vehicle,
@@ -29,26 +27,17 @@ from homeassistant.components.stellantis.const import (
     SERVICE_SET_PRECONDITIONING_PROGRAM,
     SERVICE_WAKE_UP,
 )
-from homeassistant.components.webhook import DOMAIN as WEBHOOK_DOMAIN
-from homeassistant.const import (
-    ATTR_DEVICE_ID,
-    ATTR_LATITUDE,
-    ATTR_LONGITUDE,
-    CONF_WEBHOOK_ID,
-    EVENT_CALL_SERVICE,
-)
+from homeassistant.const import ATTR_DEVICE_ID, ATTR_LATITUDE, ATTR_LONGITUDE
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import device_registry as dr
-from homeassistant.setup import async_setup_component
 
-from .const import RESULT_PENDING, RESULT_SUCCESS
+from .const import RESULT_EXCEPTION, RESULT_FAILED, RESULT_PENDING, RESULT_SUCCESS
 
 from tests.common import MockConfigEntry
-from tests.typing import ClientSessionGenerator
 
 
-@pytest.mark.usefixtures("send_webhook_result_success")
+@pytest.mark.usefixtures("send_webhook_result")
 @pytest.mark.parametrize(
     ("service", "service_data"),
     [
@@ -128,7 +117,7 @@ async def test_service_call_remote_action_payload(
     )
 
 
-@pytest.mark.usefixtures("send_webhook_result_success")
+@pytest.mark.usefixtures("send_webhook_result")
 async def test_fully_edit_preconditioning_program(
     hass: HomeAssistant,
     device_registry: dr.DeviceRegistry,
@@ -186,7 +175,7 @@ async def test_fully_edit_preconditioning_program(
     assert program.start != "PT0S"
 
 
-@pytest.mark.usefixtures("send_webhook_result_success")
+@pytest.mark.usefixtures("send_webhook_result")
 async def test_partailly_edit_preconditioning_program(
     hass: HomeAssistant,
     device_registry: dr.DeviceRegistry,
@@ -235,7 +224,7 @@ async def test_partailly_edit_preconditioning_program(
     assert program.start != "PT0S"
 
 
-@pytest.mark.usefixtures("send_webhook_result_success")
+@pytest.mark.usefixtures("send_webhook_result")
 async def test_create_preconditioning_program(
     hass: HomeAssistant,
     device_registry: dr.DeviceRegistry,
@@ -417,7 +406,6 @@ async def test_remote_action_callback_timeout(
     hass: HomeAssistant,
     device_registry: dr.DeviceRegistry,
     config_entry: MockConfigEntry,
-    client: MagicMock,
     vehicle_details: Vehicle,
 ) -> None:
     """Test the case were a "Done" response is not received within the timeout period."""
@@ -439,41 +427,24 @@ async def test_remote_action_callback_timeout(
         )
 
 
-async def test_remote_request_pending_and_done(
+@pytest.mark.parametrize(
+    "send_webhook_result",
+    [
+        [RESULT_SUCCESS],
+        [RESULT_PENDING, RESULT_SUCCESS],
+        [RESULT_EXCEPTION, RESULT_SUCCESS],
+    ],
+    indirect=True,
+)
+async def test_remote_request_success_result(
     hass: HomeAssistant,
     device_registry: dr.DeviceRegistry,
-    hass_client_no_auth: ClientSessionGenerator,
     config_entry: MockConfigEntry,
     client: MagicMock,
     vehicle_details: Vehicle,
+    send_webhook_result: None,
 ) -> None:
     """Test if a remote request result is pending and then is done doesn't break anything."""
-    assert await async_setup_component(hass, WEBHOOK_DOMAIN, {})
-    hass_client = await hass_client_no_auth()
-
-    async def send_webhook_result(_) -> None:
-        await hass_client.post(
-            "/api/webhook/" + config_entry.data[CONF_WEBHOOK_ID],
-            json=Message(
-                remote_event=RemoteEvent(
-                    remote_action_id="test_remote_action_id",
-                    event_status=RESULT_PENDING,
-                )
-            ).to_dict(),
-        )
-        await hass.async_block_till_done()
-        await hass_client.post(
-            "/api/webhook/" + config_entry.data[CONF_WEBHOOK_ID],
-            json=Message(
-                remote_event=RemoteEvent(
-                    remote_action_id="test_remote_action_id",
-                    event_status=RESULT_SUCCESS,
-                )
-            ).to_dict(),
-        )
-
-    hass.bus.async_listen_once(EVENT_CALL_SERVICE, send_webhook_result)
-
     client.send_remote_to_vhl.return_value = RemotePostResponse(
         remote_action_id="test_remote_action_id"
     )
@@ -492,13 +463,17 @@ async def test_remote_request_pending_and_done(
     )
 
 
-@pytest.mark.usefixtures("send_webhook_result_failed")
+@pytest.mark.parametrize(
+    "send_webhook_result",
+    [[RESULT_FAILED], [RESULT_PENDING, RESULT_FAILED]],
+    indirect=True,
+)
 async def test_remote_request_failed_result(
     hass: HomeAssistant,
     device_registry: dr.DeviceRegistry,
     config_entry: MockConfigEntry,
-    client: MagicMock,
     vehicle_details: Vehicle,
+    send_webhook_result: None,
 ) -> None:
     """Test a failed remote request raises an exception."""
 
