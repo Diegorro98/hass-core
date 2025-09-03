@@ -4,6 +4,7 @@ from asyncio import timeout
 import copy
 from typing import Any, cast
 
+from stellantis.client import Client as StellantisClient
 from stellantis.model import (
     ActionType,
     AirConditioningProgram,
@@ -36,7 +37,6 @@ from .const import (
     ATTR_PROGRAM_NUMBER,
     ATTR_RECURRENCE,
     ATTR_START,
-    CONF_CALLBACK_ID,
     DOMAIN,
     LOGGER,
     SERVICE_DELETE_PRECONDITIONING_PROGRAM,
@@ -63,9 +63,9 @@ POSITION_SCHEMA = vol.Schema(
 )
 
 
-def _get_vehicle_coordinator_and_callback_id(
+def _get_stellantis_data(
     call: ServiceCall,
-) -> tuple[StellantisVehicleCoordinator, str]:
+) -> tuple[StellantisClient, StellantisVehicleCoordinator, str]:
     hass = call.hass
     device_id = call.data[ATTR_DEVICE_ID]
     device_registry = dr.async_get(hass)
@@ -95,36 +95,47 @@ def _get_vehicle_coordinator_and_callback_id(
         (identifier[1] for identifier in device.identifiers if identifier[0] == DOMAIN),
     )
     vehicle_coordinator: StellantisVehicleCoordinator | None = None
-    for _vehicle_coordinator in config_entry.runtime_data:
+    for _vehicle_coordinator in config_entry.runtime_data.vehicle_coordinators:
         if _vehicle_coordinator.vehicle.vin == device_vin:
             vehicle_coordinator = _vehicle_coordinator
             break
     assert vehicle_coordinator
 
-    return vehicle_coordinator, config_entry.data[CONF_CALLBACK_ID]
+    if not config_entry.runtime_data.callback_id:
+        raise HomeAssistantError(
+            translation_domain=DOMAIN,
+            translation_key="remote_request_callback_id_not_found",
+        )
+
+    return (
+        config_entry.runtime_data.client,
+        vehicle_coordinator,
+        config_entry.runtime_data.callback_id,
+    )
 
 
 async def _async_send_remote_requests(
     call: ServiceCall,
     remote: Remote,
     service_name: str,
+    client: StellantisClient | None = None,
     vehicle_coordinator: StellantisVehicleCoordinator | None = None,
     callback_id: str | None = None,
 ) -> None:
     """Send a remote request to the API and wait for the confirmation."""
 
-    if not vehicle_coordinator or not callback_id:
-        _vehicle_coordinator, _callback_id = _get_vehicle_coordinator_and_callback_id(
-            call
-        )
+    if not client or not vehicle_coordinator or not callback_id:
+        _client, _vehicle_coordinator, _callback_id = _get_stellantis_data(call)
+        _vehicle_id = _vehicle_coordinator.vehicle.id
     else:
-        _vehicle_coordinator = vehicle_coordinator
+        _client = client
+        _vehicle_id = vehicle_coordinator.vehicle.id
         _callback_id = callback_id
+    assert _vehicle_id
 
     try:
-        assert _vehicle_coordinator.vehicle.id
-        response_data = await _vehicle_coordinator.client.send_remote_to_vhl(
-            _vehicle_coordinator.vehicle.id,
+        response_data = await _client.send_remote_to_vhl(
+            _vehicle_id,
             _callback_id,
             remote,
         )
@@ -213,10 +224,11 @@ async def async_set_navigation_positions_service(call: ServiceCall) -> None:
 
 async def async_set_preconditioning_program_service(call: ServiceCall) -> None:
     """Handle the service call."""
-    vehicle_coordinator, callback_id = _get_vehicle_coordinator_and_callback_id(call)
+    client, vehicle_coordinator, callback_id = _get_stellantis_data(call)
 
     if (
-        vehicle_coordinator.data.preconditioning
+        vehicle_coordinator
+        and vehicle_coordinator.data.preconditioning
         and vehicle_coordinator.data.preconditioning.air_conditioning
     ):
         programs = vehicle_coordinator.data.preconditioning.air_conditioning.programs
@@ -280,6 +292,7 @@ async def async_set_preconditioning_program_service(call: ServiceCall) -> None:
         call,
         preconditioning_program_setter_body(program_to_set),
         SERVICE_SET_PRECONDITIONING_PROGRAM,
+        client,
         vehicle_coordinator,
         callback_id,
     )

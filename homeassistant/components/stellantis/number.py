@@ -44,7 +44,7 @@ async def async_setup_entry(
         StellantisChargingPowerLevelNumber(
             hass, vehicle_coordinator, POWER_LEVEL_ENTITY_DESCRIPTION, entry
         )
-        for vehicle_coordinator in entry.runtime_data
+        for vehicle_coordinator in entry.runtime_data.vehicle_coordinators
     )
 
 

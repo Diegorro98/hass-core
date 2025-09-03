@@ -51,7 +51,7 @@ async def async_setup_entry(
         StellantisDoorsLock(
             hass, vehicle_coordinator, DOORS_LOCK_ENTITY_DESCRIPTION, entry
         )
-        for vehicle_coordinator in entry.runtime_data
+        for vehicle_coordinator in entry.runtime_data.vehicle_coordinators
     )
 
 

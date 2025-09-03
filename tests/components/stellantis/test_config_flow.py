@@ -121,6 +121,8 @@ async def test_full_flow(
     assert len(entries) == 1
     entry = entries[0]
     assert entry.state is ConfigEntryState.LOADED
+    assert CONF_BRAND in entry.data
+    assert CONF_COUNTRY in entry.data
     mock_setup_entry.assert_called_once_with(hass, entry)
 
     abstract_auth_impl = mock_client_init.call_args[0][0]

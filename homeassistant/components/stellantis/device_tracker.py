@@ -36,7 +36,7 @@ async def async_setup_entry(
             vehicle_coordinator,
             DEVICE_TRACKER_ENTITY_DESCRIPTION,
         )
-        for vehicle_coordinator in entry.runtime_data
+        for vehicle_coordinator in entry.runtime_data.vehicle_coordinators
     )
 
 

@@ -4,7 +4,6 @@ from enum import StrEnum
 import logging
 
 CONF_BRAND = "brand"
-CONF_CALLBACK_ID = "callback_id"
 CONF_CLOUDHOOK_URL = "cloudhook_url"
 
 ATTR_ENABLED = "enabled"

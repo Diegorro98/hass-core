@@ -2,48 +2,25 @@
 
 from collections.abc import Mapping
 import logging
-import secrets
 from typing import Any, cast
 
 import pycountry
-from stellantis.client import AbstractAuth, Client as StellantisClient
-from stellantis.const import API_ENDPOINT
+from stellantis.client import Client as StellantisClient
 from stellantis.model.error import StellantisError
 import voluptuous as vol
 from yarl import URL
 
 from homeassistant.config_entries import SOURCE_REAUTH, ConfigFlowResult
-from homeassistant.const import CONF_COUNTRY, CONF_URL, CONF_WEBHOOK_ID
-from homeassistant.core import HomeAssistant
+from homeassistant.const import CONF_COUNTRY, CONF_URL
 from homeassistant.helpers.config_entry_oauth2_flow import (
     AbstractOAuth2FlowHandler,
     _decode_jwt,
 )
-from homeassistant.helpers.httpx_client import get_async_client
 from homeassistant.helpers.selector import CountrySelector, CountrySelectorConfig
 
+from .api import OneShotAuth
 from .const import CONF_BRAND, DOMAIN, Brand
 from .oauth import StellantisOauth2Implementation
-
-
-class _OneShotAuth(AbstractAuth):
-    """Provide Stellantis authentication tied to an OAuth2 based config entry."""
-
-    def __init__(
-        self, hass: HomeAssistant, token: str, client_id: str, realm: str
-    ) -> None:
-        """Initialize Stellantis one shot auth."""
-        self.token = token
-        super().__init__(
-            get_async_client(hass),
-            API_ENDPOINT,
-            client_id,
-            realm,
-        )
-
-    async def async_get_access_token(self) -> str:
-        """Return a valid access token."""
-        return self.token
 
 
 class StellantisConfigFlow(AbstractOAuth2FlowHandler, domain=DOMAIN):
@@ -160,7 +137,7 @@ class StellantisConfigFlow(AbstractOAuth2FlowHandler, domain=DOMAIN):
     async def async_oauth_create_entry(self, data: dict) -> ConfigFlowResult:
         """Create an entry for the flow."""
         stellantis_client = StellantisClient(
-            _OneShotAuth(
+            OneShotAuth(
                 self.hass,
                 data["token"]["access_token"],
                 self.flow_impl.client_id,
@@ -191,7 +168,6 @@ class StellantisConfigFlow(AbstractOAuth2FlowHandler, domain=DOMAIN):
             {
                 CONF_BRAND: self.brand,
                 CONF_COUNTRY: self.country_code,
-                CONF_WEBHOOK_ID: secrets.token_hex(),
             }
         )
         return self.async_create_entry(title=f"{self.brand}: {email}", data=data)

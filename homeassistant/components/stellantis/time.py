@@ -55,7 +55,7 @@ async def async_setup_entry(
 ) -> None:
     """Set up the Stellantis switches."""
     entities: list[TimeEntity] = []
-    for vehicle_coordinator in entry.runtime_data:
+    for vehicle_coordinator in entry.runtime_data.vehicle_coordinators:
         if (
             vehicle_coordinator.data.preconditioning
             and vehicle_coordinator.data.preconditioning.air_conditioning

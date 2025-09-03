@@ -32,3 +32,23 @@ class AsyncConfigEntryAuth(AbstractAuth):
         await self.session.async_ensure_token_valid()
 
         return cast(str, self.session.token["access_token"])
+
+
+class OneShotAuth(AbstractAuth):
+    """Provide Stellantis authentication tied to an OAuth2 based config entry."""
+
+    def __init__(
+        self, hass: HomeAssistant, access_token: str, client_id: str, realm: str
+    ) -> None:
+        """Initialize Stellantis one shot auth."""
+        self.access_token = access_token
+        super().__init__(
+            get_async_client(hass),
+            API_ENDPOINT,
+            client_id,
+            realm,
+        )
+
+    async def async_get_access_token(self) -> str:
+        """Return a valid access access token."""
+        return self.access_token

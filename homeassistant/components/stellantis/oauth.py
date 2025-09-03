@@ -155,15 +155,3 @@ class StellantisOAuth2Session(OAuth2Session):
     """OAuth2Session for Stellantis."""
 
     implementation: StellantisOauth2Implementation
-
-    async def async_revoke_token(self) -> None:
-        """Revoke the token."""
-        async with self._token_lock:
-            if self.valid_token:
-                return
-
-            await self.implementation.async_revoke_token(self.token)
-
-            self.hass.config_entries.async_update_entry(
-                self.config_entry, data={**self.config_entry.data, "token": None}
-            )

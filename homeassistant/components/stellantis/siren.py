@@ -41,7 +41,7 @@ async def async_setup_entry(
 
     async_add_entities(
         StellantisHorn(hass, vehicle_coordinator, HORN_ENTITY_DESCRIPTION, entry)
-        for vehicle_coordinator in entry.runtime_data
+        for vehicle_coordinator in entry.runtime_data.vehicle_coordinators
     )
 
 

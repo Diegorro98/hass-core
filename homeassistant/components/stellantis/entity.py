@@ -28,7 +28,7 @@ from homeassistant.helpers.entity import (
 from homeassistant.helpers.typing import StateType, UndefinedType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import CONF_CALLBACK_ID, DOMAIN, LOGGER, RemoteDoneEventStatus
+from .const import DOMAIN, LOGGER, RemoteDoneEventStatus
 from .coordinator import StellantisConfigEntry, StellantisVehicleCoordinator
 from .webhook import StellantisCallbackEvent
 
@@ -121,10 +121,17 @@ class StellantisActionableEntity(StellantisBaseEntity, Generic[T]):
     ) -> None:
         """Call a remote action and handle the response."""
         assert self.vehicle.id
+        entry_runtime_data = self.entry.runtime_data
+        if not entry_runtime_data.callback_id:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="remote_request_callback_id_not_found",
+            )
+
         try:
-            response_data = await self.coordinator.client.send_remote_to_vhl(
+            response_data = await entry_runtime_data.client.send_remote_to_vhl(
                 self.vehicle.id,
-                self.entry.data[CONF_CALLBACK_ID],
+                entry_runtime_data.callback_id,
                 remote,
             )
         except StellantisError as e:

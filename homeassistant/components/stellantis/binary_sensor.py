@@ -178,7 +178,7 @@ async def async_setup_entry(
     """Set up the Stellantis sensors."""
 
     entities: list[StellantisBinarySensor] = []
-    for vehicle_coordinator in entry.runtime_data:
+    for vehicle_coordinator in entry.runtime_data.vehicle_coordinators:
         sensors: list[StellantisBinarySensorEntityDescription] = []
 
         if vehicle_coordinator.vehicle.motorization in (

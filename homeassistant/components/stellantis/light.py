@@ -41,7 +41,7 @@ async def async_setup_entry(
     """Set up the Stellantis switches."""
     async_add_entities(
         StellantisLights(hass, vehicle_coordinator, LIGHTS_ENTITY_DESCRIPTION, entry)
-        for vehicle_coordinator in entry.runtime_data
+        for vehicle_coordinator in entry.runtime_data.vehicle_coordinators
     )
 
 

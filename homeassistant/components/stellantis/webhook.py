@@ -1,10 +1,11 @@
 """Webhook handler for Stellantis integration."""
 
-import asyncio
 from asyncio import Future
+import contextlib
 from http import HTTPStatus
 from json.decoder import JSONDecodeError
-from typing import Any, cast
+import secrets
+from typing import Any
 
 from aiohttp.web import Request, Response
 from mashumaro.exceptions import (
@@ -22,7 +23,6 @@ from mashumaro.exceptions import (
     UnsupportedDeserializationEngine,
     UnsupportedSerializationEngine,
 )
-from stellantis.client import Client as StellantisClient
 from stellantis.model import (
     Attribute,
     AttributeType,
@@ -34,18 +34,21 @@ from stellantis.model import (
     RemoteEventType,
     Webhook,
 )
-from stellantis.model.error import StellantisApiError
+from stellantis.model.error import StellantisError
 
 from homeassistant.components import cloud
-from homeassistant.components.webhook import async_register as webhook_register
-from homeassistant.const import CONF_WEBHOOK_ID
+from homeassistant.components.webhook import (
+    async_generate_url as webhook_generate_url,
+    async_register as webhook_register,
+    async_unregister as webhook_unregister,
+)
+from homeassistant.const import CONF_WEBHOOK_ID, EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.network import NoURLAvailableError, get_url
+from homeassistant.helpers.network import NoURLAvailableError
+from homeassistant.helpers.start import async_at_started
 
-from .const import CONF_CALLBACK_ID, CONF_CLOUDHOOK_URL, DOMAIN, LOGGER
+from .const import CONF_CLOUDHOOK_URL, DOMAIN, LOGGER
 from .coordinator import StellantisConfigEntry
-
-_CLOUD_HOOK_LOCK = asyncio.Lock()
 
 
 async def _handle_webhook(
@@ -107,66 +110,88 @@ class StellantisCallbackEvent(Future[RemoteEventStatus]):
         handlers.pop(self.remote_action_id, None)
 
 
-async def _async_create_cloud_hook_url(
-    hass: HomeAssistant, entry: StellantisConfigEntry, webhook_id: str
-) -> str:
-    async with _CLOUD_HOOK_LOCK:
-        cloudhook_url = await cloud.async_get_or_create_cloudhook(hass, webhook_id)
-        hass.config_entries.async_update_entry(
-            entry, data={**entry.data, CONF_CLOUDHOOK_URL: cloudhook_url}
-        )
-        return cloudhook_url
-
-
-async def _async_create_or_update_callback(
-    webhook_url: str, entry: StellantisConfigEntry, client: StellantisClient
+async def async_setup_webhook(
+    hass: HomeAssistant, entry: StellantisConfigEntry
 ) -> None:
-    if CONF_CALLBACK_ID in entry.data:
-        callback_id = entry.data[CONF_CALLBACK_ID]
-        user_callback = await client.get_user_remote_by_id(
-            callback_id,
-        )
-        if (
-            user_callback.subscribe
-            and user_callback.subscribe.callback.webhook
-            and user_callback.subscribe.callback.webhook.target != webhook_url
-            and user_callback.subscribe.type
-            and CallbackType.REMOTE in user_callback.subscribe.type
-        ):
-            return
+    """Set up the webhook for the Stellantis integration."""
 
-        try:
-            await client.set_user_vehicle_remote_by_id(
-                "/user/callbacks/" + callback_id,
-                _create_callback_data(webhook_url),
-            )
-        except StellantisApiError as err:
-            if err.code == HTTPStatus.NOT_FOUND:
-                LOGGER.info(
-                    "Callback with id %s not found, creating a new one",
-                    callback_id,
+    stellantis_client = entry.runtime_data.client
+
+    async def unregister_webhook(
+        _: Any,
+    ) -> None:
+        LOGGER.debug("Unregister webhook (%s)", entry.data[CONF_WEBHOOK_ID])
+        webhook_unregister(hass, entry.data[CONF_WEBHOOK_ID])
+        if entry.runtime_data.callback_id:
+            try:
+                await stellantis_client.delete_user_remote(
+                    entry.runtime_data.callback_id
                 )
-            else:
+            except StellantisError:
                 LOGGER.exception(
-                    "Failed to update callback with id %s, some functionalities will be limited",
-                    callback_id,
+                    "Error while trying to drop webhook %s at callback %s",
+                    entry.data[CONF_WEBHOOK_ID],
+                    entry.runtime_data.callback_id,
                 )
+
+    async def register_webhook(
+        _: Any,
+    ) -> None:
+        if CONF_WEBHOOK_ID not in entry.data:
+            data = {**entry.data, CONF_WEBHOOK_ID: secrets.token_hex()}
+            hass.config_entries.async_update_entry(entry, data=data)
+
+        if cloud.async_active_subscription(hass) and cloud.async_is_connected(hass):
+            webhook_url = await _async_cloudhook_generate_url(hass, entry)
+        else:
+            await _async_delete_cloudhook(hass, entry)
+            try:
+                webhook_url = webhook_generate_url(
+                    hass, entry.data[CONF_WEBHOOK_ID], False, True, False
+                )
+            except NoURLAvailableError as err:
+                LOGGER.debug("Error generating webhook URL", exc_info=err)
                 return
 
+        with contextlib.suppress(ValueError):
+            webhook_register(
+                hass,
+                DOMAIN,
+                "Stellantis",
+                entry.data[CONF_WEBHOOK_ID],
+                _handle_webhook,
+            )
 
-async def _async_manage_cloudhook(
-    hass: HomeAssistant,
-    state: cloud.CloudConnectionState,
-    entry: StellantisConfigEntry,
-    client: StellantisClient,
-    webhook_id: str,
-) -> None:
-    if (
-        state is cloud.CloudConnectionState.CLOUD_CONNECTED
-        and CONF_CLOUDHOOK_URL not in entry.data
-    ):
-        cloudhook_url = await _async_create_cloud_hook_url(hass, entry, webhook_id)
-        await _async_create_or_update_callback(cloudhook_url, entry, client)
+        try:
+            LOGGER.debug("Register Stellantis webhook: %s", webhook_url)
+            if entry.runtime_data.callback_id:
+                callback = await stellantis_client.set_user_vehicle_remote_by_id(
+                    entry.runtime_data.callback_id, _create_callback_data(webhook_url)
+                )
+            else:
+                callback = await stellantis_client.set_user_vehicle_remote(
+                    _create_callback_data(webhook_url)
+                )
+        except StellantisError as err:
+            LOGGER.error("Error during webhook registration: %s", err)
+            entry.runtime_data.callback_id = None
+        else:
+            entry.runtime_data.callback_id = callback.callback_id
+            entry.async_on_unload(
+                hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, unregister_webhook)
+            )
+
+    if cloud.async_active_subscription(hass):
+        entry.async_on_unload(
+            cloud.async_listen_connection_change(hass, register_webhook)
+        )
+        if cloud.async_is_connected(hass):
+            await register_webhook(None)
+            return
+
+    entry.async_on_unload(async_at_started(hass, register_webhook))
+
+    return
 
 
 def _create_callback_data(webhook_url: str) -> CallbackSubscribe:
@@ -188,69 +213,27 @@ def _create_callback_data(webhook_url: str) -> CallbackSubscribe:
     )
 
 
-async def async_ensure_reusable_callback_created(
-    hass: HomeAssistant, entry: StellantisConfigEntry, client: StellantisClient
-) -> None:
-    """Get or create a callback on Stellantis server."""
-    webhook_id = cast(str, entry.data[CONF_WEBHOOK_ID])
-    webhook_register(hass, entry.domain, entry.title, webhook_id, _handle_webhook)
-    webhook_url: str | None = None
-    use_cloudhook = False
-
-    if cloud.async_is_logged_in(hass):
-        if (
-            CONF_CLOUDHOOK_URL not in entry.data
-            and cloud.async_active_subscription(hass)
-            and cloud.async_is_connected(hass)
-        ):
-            async with _CLOUD_HOOK_LOCK:
-                webhook_url = await _async_create_cloud_hook_url(
-                    hass, entry, webhook_id
-                )
-                use_cloudhook = True
-    elif CONF_CLOUDHOOK_URL in entry.data:
-        data = dict(entry.data)
-        data.pop(CONF_CLOUDHOOK_URL)
-        hass.config_entries.async_update_entry(entry, data=data)
-
-    if webhook_url is None:
-        try:
-            webhook_url = (
-                get_url(hass, allow_internal=False) + "/api/webhook/" + webhook_id
-            )
-        except NoURLAvailableError:
-            LOGGER.debug(
-                "No external URL available, the integration will not receive callbacks",
-            )
-            webhook_url = "none"
-
-        try:
-            callback = await client.set_user_vehicle_remote(
-                _create_callback_data(webhook_url)
-            )
-            if callback.callback_id is None:
-                LOGGER.error(
-                    "Callback created without ID so it cannot be identified, some functionalities will be limited"
-                )
-                return
-            hass.config_entries.async_update_entry(
-                entry,
-                data={**entry.data, CONF_CALLBACK_ID: callback.callback_id},
-            )
-            LOGGER.debug("Callback created with id %s", callback.callback_id)
-        except StellantisApiError:
-            LOGGER.exception(
-                "Failed to create callback, some functionalities will be limited"
-            )
-
-    if not use_cloudhook:
-        await _async_create_or_update_callback(webhook_url, entry, client)
-
-    entry.async_on_unload(
-        cloud.async_listen_connection_change(
-            hass,
-            lambda state: _async_manage_cloudhook(
-                hass, state, entry, client, webhook_id
-            ),
+async def _async_cloudhook_generate_url(
+    hass: HomeAssistant, entry: StellantisConfigEntry
+) -> str:
+    """Generate the full URL for a webhook_id."""
+    if CONF_CLOUDHOOK_URL not in entry.data:
+        webhook_url = await cloud.async_create_cloudhook(
+            hass, entry.data[CONF_WEBHOOK_ID]
         )
-    )
+        data = {**entry.data, CONF_CLOUDHOOK_URL: webhook_url}
+        hass.config_entries.async_update_entry(entry, data=data)
+        return webhook_url
+    return str(entry.data[CONF_CLOUDHOOK_URL])
+
+
+async def _async_delete_cloudhook(
+    hass: HomeAssistant, entry: StellantisConfigEntry
+) -> None:
+    """Delete the cloudhook for a webhook_id."""
+    if CONF_CLOUDHOOK_URL not in entry.data:
+        return
+    await cloud.async_delete_cloudhook(hass, entry.data[CONF_WEBHOOK_ID])
+    data = dict(entry.data)
+    data.pop(CONF_CLOUDHOOK_URL)
+    hass.config_entries.async_update_entry(entry, data=data)

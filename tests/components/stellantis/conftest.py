@@ -43,12 +43,7 @@ from stellantis.model import (
     Webhook,
 )
 
-from homeassistant.components.stellantis.const import (
-    CONF_BRAND,
-    CONF_CALLBACK_ID,
-    DOMAIN,
-    Brand,
-)
+from homeassistant.components.stellantis.const import CONF_BRAND, DOMAIN, Brand
 from homeassistant.components.webhook import DOMAIN as WEBHOOK_DOMAIN
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import (
@@ -175,7 +170,6 @@ def mock_config_entry(token_entry: dict[str, Any]) -> MockConfigEntry:
             CONF_BRAND: Brand.PEUGEOT.value,
             CONF_COUNTRY: "ES",
             CONF_WEBHOOK_ID: "mock-webhook-id",
-            CONF_CALLBACK_ID: "mock-callback-id",
             "token": token_entry,
         },
         unique_id="example@domain.com",
@@ -197,6 +191,7 @@ async def setup_integration(
 ) -> bool:
     """Fixture to setup the integration."""
     config_entry.add_to_hass(hass)
+    hass.config.external_url = "https://example.com"
     assert config_entry.state is ConfigEntryState.NOT_LOADED
     with (
         patch("homeassistant.components.stellantis.PLATFORMS", platforms),
@@ -259,6 +254,7 @@ def mock_client(vehicle_details: Vehicle, vehicle_status: Status) -> MagicMock:
     mock.set_user_vehicle_remote = AsyncMock(
         return_value=CallbackRef(callback_id="mock-callback-id")
     )
+    mock.delete_user_remote = AsyncMock()
 
     return mock
 
