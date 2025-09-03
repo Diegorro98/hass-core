@@ -162,8 +162,16 @@ def mock_token_entry(token_expiration_time: float) -> dict[str, Any]:
 
 
 @pytest.fixture(name="config_entry")
-def mock_config_entry(token_entry: dict[str, Any]) -> MockConfigEntry:
+def mock_config_entry(
+    token_entry: dict[str, Any], request: pytest.FixtureRequest
+) -> MockConfigEntry:
     """Fixture for a config entry."""
+
+    if hasattr(request, "param"):
+        overwriting_data = cast(dict, request.param)
+    else:
+        overwriting_data = {}
+
     return MockConfigEntry(
         domain=DOMAIN,
         data={
@@ -171,6 +179,7 @@ def mock_config_entry(token_entry: dict[str, Any]) -> MockConfigEntry:
             CONF_COUNTRY: "ES",
             CONF_WEBHOOK_ID: "mock-webhook-id",
             "token": token_entry,
+            **overwriting_data,
         },
         unique_id="example@domain.com",
     )

@@ -378,6 +378,31 @@ async def test_remote_request_failed_execution(
         )
 
 
+async def test_remote_request_missing_callback_id_error(
+    hass: HomeAssistant,
+    device_registry: dr.DeviceRegistry,
+    config_entry: MockConfigEntry,
+    client: MagicMock,
+    vehicle_details: Vehicle,
+) -> None:
+    """Test a remote post response without remote action id does simply end the service call."""
+    config_entry.runtime_data.callback_id = None
+
+    assert vehicle_details.vin
+    device_entry = device_registry.async_get_or_create(
+        config_entry_id=config_entry.entry_id,
+        identifiers={(DOMAIN, vehicle_details.vin)},
+    )
+    with pytest.raises(HomeAssistantError, match=r"Callback.*not found"):
+        await hass.services.async_call(
+            DOMAIN,
+            SERVICE_WAKE_UP,
+            {ATTR_DEVICE_ID: device_entry.id},
+            blocking=True,
+        )
+    client.send_remote_to_vhl.assert_not_awaited()
+
+
 async def test_remote_request_missing_remote_action_id(
     hass: HomeAssistant,
     device_registry: dr.DeviceRegistry,

@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 from copy import deepcopy
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from stellantis.model import (
@@ -12,6 +12,7 @@ from stellantis.model import (
     DoorLockedState,
     IgnitionType,
     Motorization,
+    RemotePostResponse,
     Status,
     Vehicle,
 )
@@ -37,6 +38,8 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.setup import async_setup_component
 
 from .const import RESULT_EXCEPTION, RESULT_FAILED, RESULT_PENDING, RESULT_SUCCESS
+
+from tests.common import MockConfigEntry
 
 
 @pytest.fixture
@@ -403,7 +406,7 @@ async def test_remote_action_callback_failed_result(
     assert state
     old_state = state.state
 
-    with pytest.raises(HomeAssistantError):
+    with pytest.raises(HomeAssistantError, match=r"Remote action.*failed"):
         await hass.services.async_call(
             Platform.SWITCH,
             SERVICE_TURN_ON,
@@ -429,7 +432,7 @@ async def test_remote_action_callback_failed_executing(
     assert state
     old_state = state.state
 
-    with pytest.raises(HomeAssistantError):
+    with pytest.raises(HomeAssistantError, match=r"Execution.*remote action.*failed"):
         await hass.services.async_call(
             Platform.SWITCH,
             SERVICE_TURN_ON,
@@ -438,6 +441,59 @@ async def test_remote_action_callback_failed_executing(
             },
             blocking=True,
         )
+
+    state = hass.states.get(entity_id)
+    assert state
+    assert state.state == old_state
+
+
+async def test_remote_action_missing_callback_id(
+    hass: HomeAssistant, config_entry: MockConfigEntry, client: MagicMock
+) -> None:
+    """Test the result of a failed remote action callback."""
+    entity_id = "switch.peugeot_suv_3008_preconditioning"
+    config_entry.runtime_data.callback_id = None
+
+    state = hass.states.get(entity_id)
+    assert state
+    old_state = state.state
+
+    with pytest.raises(HomeAssistantError, match=r"Callback.*not found"):
+        await hass.services.async_call(
+            Platform.SWITCH,
+            SERVICE_TURN_ON,
+            {
+                ATTR_ENTITY_ID: entity_id,
+            },
+            blocking=True,
+        )
+
+    client.send_remote_to_vhl.assert_not_awaited()
+
+    state = hass.states.get(entity_id)
+    assert state
+    assert state.state == old_state
+
+
+async def test_remote_action_missing_remote_action_id(
+    hass: HomeAssistant, client: MagicMock
+) -> None:
+    """Test the result of a failed remote action callback."""
+    client.send_remote_to_vhl = AsyncMock(return_value=RemotePostResponse())
+    entity_id = "switch.peugeot_suv_3008_preconditioning"
+
+    state = hass.states.get(entity_id)
+    assert state
+    old_state = state.state
+
+    await hass.services.async_call(
+        Platform.SWITCH,
+        SERVICE_TURN_ON,
+        {
+            ATTR_ENTITY_ID: entity_id,
+        },
+        blocking=True,
+    )
 
     state = hass.states.get(entity_id)
     assert state

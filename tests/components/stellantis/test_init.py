@@ -1,5 +1,6 @@
 """Test the Stellantis integration init functionality."""
 
+from collections.abc import Callable
 from http import HTTPStatus
 from time import time
 from typing import Any, cast
@@ -8,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import aiohttp
 import pytest
 from stellantis.client import Client as StellantisClient
-from stellantis.model import CallbackSubscribe, CallbackType
+from stellantis.model import CallbackSubscribe, CallbackType, Vehicle
 from stellantis.model.error import StellantisApiError, StellantisError
 
 from homeassistant.components import cloud
@@ -63,16 +64,29 @@ async def test_entry_setup(
     assert config_entry.state is ConfigEntryState.LOADED
 
 
+@pytest.mark.parametrize(
+    ("config_entry", "brand_tld"),
+    [
+        ({CONF_BRAND: brand}, brand_tld)
+        for brand, brand_tld in zip(
+            Brand.__members__.values(),
+            ("citroen.com", "driveds.com", "opel.com", "peugeot.com", "vauxhall.co.uk"),
+            strict=True,
+        )
+    ],
+    indirect=["config_entry"],
+)
 async def test_token_refresh_on_expired_token(
     hass: HomeAssistant,
     aioclient_mock: AiohttpClientMocker,
     config_entry: MockConfigEntry,
     client: MagicMock,
+    brand_tld: str,
 ) -> None:
     """Test that the token is correctly refreshed when expired."""
     config_entry.data["token"]["expires_at"] = time() - 60
     aioclient_mock.post(
-        "https://idpcvs.peugeot.com/am/oauth2/access_token",
+        f"https://idpcvs.{brand_tld}/am/oauth2/access_token",
         data={
             "grant_type": "refresh_token",
             "scope": "openid profile",
@@ -259,14 +273,35 @@ async def test_entry_unload(
     assert client.delete_user_remote.awaited_once_with("mock-callback-id")
 
 
+@pytest.mark.parametrize(
+    ("config_entry", "brand_tld", "realm"),
+    [
+        ({CONF_BRAND: brand}, brand_tld, realm)
+        for brand, brand_tld, realm in zip(
+            Brand.__members__.values(),
+            ("citroen.com", "driveds.com", "opel.com", "peugeot.com", "vauxhall.co.uk"),
+            (
+                "clientsB2CCitroen",
+                "clientsB2CDriveds",
+                "clientsB2COpel",
+                "clientsB2CPeugeot",
+                "clientsB2CVauxhall",
+            ),
+            strict=True,
+        )
+    ],
+    indirect=["config_entry"],
+)
 async def test_entry_removal(
     hass: HomeAssistant,
     aioclient_mock: AiohttpClientMocker,
     config_entry: MockConfigEntry,
+    brand_tld: str,
+    realm: str,
 ) -> None:
     """Test entry removal."""
     aioclient_mock.post(
-        "https://idpcvs.peugeot.com/am/oauth2/access_token",
+        f"https://idpcvs.{brand_tld}/am/oauth2/access_token",
         data={
             "grant_type": "refresh_token",
             "scope": "openid profile",
@@ -280,9 +315,9 @@ async def test_entry_removal(
         },
     )
     aioclient_mock.post(
-        "https://idpcvs.peugeot.com/am/oauth2/token/revoke",
+        f"https://idpcvs.{brand_tld}/am/oauth2/token/revoke",
         data={
-            "realm": "clientsB2CPeugeot",
+            "realm": realm,
             "token": "mock-refreshed-refresh-token",
         },
     )
@@ -738,3 +773,38 @@ async def test_error_on_updating_remote(
         async_mock_cloud_connection_status(hass, True)
 
     assert config_entry.runtime_data.callback_id is None
+
+
+@pytest.mark.parametrize(
+    "config_entry",
+    [{CONF_BRAND: brand} for brand in Brand.__members__.values()],
+    indirect=True,
+)
+@pytest.mark.parametrize(
+    "vehicle_details_modification_function",
+    [
+        lambda vehicle_details: setattr(
+            vehicle_details.embedded.extension.branding, "brand", None
+        ),
+        lambda vehicle_details: setattr(vehicle_details, "embedded", None),
+    ],
+)
+async def test_conf_brand_in_device_if_not_provided(
+    hass: HomeAssistant,
+    device_registry: dr.DeviceRegistry,
+    config_entry: MockConfigEntry,
+    client: MagicMock,
+    vehicle_details: Vehicle,
+    vehicle_details_modification_function: Callable[[Vehicle], None],
+) -> None:
+    """Test that if the API does not provide the brand, the device manufacturer is the same than the config entry brand."""
+    vehicle_details_modification_function(vehicle_details)
+
+    await _setup_integration(hass, config_entry, client)
+
+    assert vehicle_details.vin
+    device = device_registry.async_get_device(
+        identifiers={(DOMAIN, vehicle_details.vin)}
+    )
+    assert device
+    assert device.manufacturer == config_entry.data[CONF_BRAND]

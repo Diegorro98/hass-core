@@ -9,7 +9,7 @@ from stellantis.model.error import StellantisError
 from yarl import URL
 
 from homeassistant import config_entries
-from homeassistant.components.stellantis.const import CONF_BRAND, DOMAIN
+from homeassistant.components.stellantis.const import CONF_BRAND, DOMAIN, Brand
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import CONF_COUNTRY, CONF_URL
 from homeassistant.core import HomeAssistant
@@ -43,9 +43,37 @@ async def setup_integration_override(
         return await hass.config_entries.async_setup(config_entry.entry_id)
 
 
+@pytest.mark.parametrize(
+    ("brand", "brand_tld", "client_id", "redirect_scheme", "realm"),
+    zip(
+        Brand.__members__.values(),
+        ("citroen.com", "driveds.com", "opel.com", "peugeot.com", "vauxhall.co.uk"),
+        (
+            "5364defc-80e6-447b-bec6-4af8d1542cae",
+            "cbf74ee7-a303-4c3d-aba3-29f5994e2dfa",
+            "07364655-93cb-4194-8158-6b035ac2c24c",
+            "1eebc2d5-5df3-459b-a624-20abfcf82530",
+            "122f3511-4f74-4a0c-bcda-af2f3b2e3a65",
+        ),
+        ("mymacsdk", "mymdssdk", "mymopsdk", "mymap", "mymvxsdk"),
+        (
+            "clientsB2CCitroen",
+            "clientsB2CDS",
+            "clientsB2COpel",
+            "clientsB2CPeugeot",
+            "clientsB2CVauxhall",
+        ),
+        strict=True,
+    ),
+)
 async def test_full_flow(
     hass: HomeAssistant,
     aioclient_mock: AiohttpClientMocker,
+    brand: Brand,
+    brand_tld: str,
+    client_id: str,
+    redirect_scheme: str,
+    realm: str,
 ) -> None:
     """Check full flow."""
     result = await hass.config_entries.flow.async_init(
@@ -58,7 +86,7 @@ async def test_full_flow(
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         {
-            CONF_BRAND: "Peugeot",
+            CONF_BRAND: brand,
             CONF_COUNTRY: "ES",
         },
     )
@@ -66,19 +94,19 @@ async def test_full_flow(
     assert result["step_id"] == "login"
     oauth_url = result["description_placeholders"]["oauth_url"]
 
-    assert oauth_url.startswith("https://idpcvs.peugeot.com/am/oauth2/authorize")
+    assert oauth_url.startswith(f"https://idpcvs.{brand_tld}/am/oauth2/authorize")
 
     oauth_url = URL(oauth_url)
-    redirect_uri = "mymap://oauth2redirect/es"
+    redirect_uri = f"{redirect_scheme}://oauth2redirect/es"
     assert oauth_url.query["redirect_uri"] == redirect_uri
     state = oauth_url.query["state"]
     assert oauth_url.query["response_type"] == "code"
-    assert oauth_url.query["client_id"] == "1eebc2d5-5df3-459b-a624-20abfcf82530"
+    assert oauth_url.query["client_id"] == client_id
     assert oauth_url.query["scope"] == "openid profile"
 
     auth_code = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
     aioclient_mock.post(
-        "https://idpcvs.peugeot.com/am/oauth2/access_token",
+        f"https://idpcvs.{brand_tld}/am/oauth2/access_token",
         data={
             "grant_type": "authorization",
             "code": auth_code,
@@ -121,13 +149,14 @@ async def test_full_flow(
     assert len(entries) == 1
     entry = entries[0]
     assert entry.state is ConfigEntryState.LOADED
-    assert CONF_BRAND in entry.data
+    assert entry.data[CONF_BRAND] == brand
     assert CONF_COUNTRY in entry.data
     mock_setup_entry.assert_called_once_with(hass, entry)
 
     abstract_auth_impl = mock_client_init.call_args[0][0]
     assert isinstance(abstract_auth_impl, AbstractAuth)
     assert await abstract_auth_impl.async_get_access_token() == "mock-access-token"
+    assert abstract_auth_impl.realm == realm
 
 
 @pytest.mark.usefixtures("setup_integration_override")

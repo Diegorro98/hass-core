@@ -329,6 +329,9 @@
     "preconditioning_program_not_defined": {
       "message": "Preconditioning program {slot} is not defined, define it first using \"stellantis.set_preconditioning_program\" action"
     },
+    "remote_request_callback_id_not_found": {
+      "message": "Callback ID not found"
+    },
     "action_device_not_found": {
       "message": "Device with ID \"{device_id}\" not found"
     },

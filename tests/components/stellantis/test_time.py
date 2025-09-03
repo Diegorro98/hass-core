@@ -185,7 +185,7 @@ async def test_remote_action_callback_failed_result(
     assert state
     old_state = state.state
 
-    with pytest.raises(HomeAssistantError):
+    with pytest.raises(HomeAssistantError, match=r"Remote action.*failed"):
         await hass.services.async_call(
             Platform.TIME,
             SERVICE_SET_VALUE,
@@ -209,7 +209,7 @@ async def test_remote_action_callback_failed_executing(
     assert state
     old_state = state.state
 
-    with pytest.raises(HomeAssistantError):
+    with pytest.raises(HomeAssistantError, match=r"Execution.*remote action.*failed"):
         await hass.services.async_call(
             Platform.TIME,
             SERVICE_SET_VALUE,

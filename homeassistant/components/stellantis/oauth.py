@@ -73,8 +73,6 @@ class StellantisOauth2Implementation(AuthImplementation):
                 brand_tld = "vauxhall.co.uk"
                 self.realm = "clientsB2CVauxhall"
                 self.redirect_scheme = "mymvxsdk"
-            case _:
-                raise ValueError(f"Invalid brand: {brand}")
         super().__init__(
             hass=hass,
             auth_domain=domain,
