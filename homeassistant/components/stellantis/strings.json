@@ -152,7 +152,7 @@
         "name": "Charging status",
         "state": {
           "disconnected": "[%key:common::state::disconnected%]",
-          "in_progress": "In Progress",
+          "inprogress": "In Progress",
           "failure": "Failure",
           "stopped": "Stopped",
           "finished": "Finished"
@@ -207,7 +207,7 @@
         "name": "Ignition",
         "state": {
           "stop": "[%key:common::action::stop%]",
-          "start_up": "Start Up",
+          "startup": "Start Up",
           "start": "[%key:common::action::start%]"
         }
       },
@@ -247,9 +247,9 @@
       "auto_e_call_triggering": {
         "name": "Auto E-Call triggering",
         "state": {
-          "not_detected": "Not detected",
+          "notdetected": "Not detected",
           "detected": "[%key:component::binary_sensor::entity_component::gas::state::on%]",
-          "shock_detection_unabled": "Shock detection unabled"
+          "shockdetectionunabled": "Shock detection unabled"
         }
       },
       "mileage": {
@@ -274,14 +274,14 @@
           "sand": "Sand",
           "mud": "Mud",
           "snow": "Snow",
-          "z_e_v": "ZEV",
+          "zev": "ZEV",
           "hybrid": "Hybrid",
-          "z_e_v_eco": "ZEVEco",
-          "hybrid_eco": "HybridEco",
-          "eco_plus": "EcoPlus",
-          "e_a_w_d": "eAWD",
-          "4_a_w_d": "4AWD",
-          "reinforced_load": "Reinforced load"
+          "zeveco": "ZEVEco",
+          "hybrideco": "HybridEco",
+          "ecoplus": "EcoPlus",
+          "eawd": "eAWD",
+          "4awd": "4AWD",
+          "reinforcedload": "Reinforced load"
         }
       }
     },

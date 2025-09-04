@@ -1,26 +1,26 @@
 {
   "entity": {
     "binary_sensor": {
-      "driver_door_state": {
+      "driver_door": {
         "default": "mdi:car-door"
       },
-      "passenger_door_state": {
+      "passenger_door": {
         "default": "mdi:car-door"
       },
-      "rear_left_door_state": {
+      "rear_left_door": {
         "default": "mdi:car-door"
       },
-      "rear_right_door_state": {
+      "rear_right_door": {
         "default": "mdi:car-door"
       },
-      "rear_window_state": {
+      "rear_window": {
         "default": "mdi:mdi:window-closed",
         "state": {
           "on": "mdi:window-open",
           "off": "mdi:window-closed"
         }
       },
-      "roof_window_state": {
+      "roof_window": {
         "default": "mdi:car-select"
       },
       "driver_belt_status": {
@@ -32,28 +32,28 @@
       "moving": {
         "default": "mdi:motion"
       },
-      "front_turn_right_light": {
-        "default": "mdi:arrow-right-bold"
-      },
-      "rear_turn_right_light": {
-        "default": "mdi:arrow-right-bold"
-      },
-      "front_turn_left_light": {
+      "front_left_turn_light": {
         "default": "mdi:arrow-left-bold"
-      },
-      "rear_turn_left_light": {
-        "default": "mdi:arrow-left-bold"
-      },
-      "front_right_fog_light": {
-        "default": "mdi:car-light-fog"
       },
       "front_left_fog_light": {
         "default": "mdi:car-light-fog"
       },
-      "rear_right_fog_light": {
+      "front_right_turn_light": {
+        "default": "mdi:arrow-right-bold"
+      },
+      "front_right_fog_light": {
         "default": "mdi:car-light-fog"
       },
+      "rear_left_turn_light": {
+        "default": "mdi:arrow-left-bold"
+      },
       "rear_left_fog_light": {
+        "default": "mdi:car-light-fog"
+      },
+      "rear_right_turn_light": {
+        "default": "mdi:arrow-right-bold"
+      },
+      "rear_right_fog_light": {
         "default": "mdi:car-light-fog"
       }
     },
@@ -152,16 +152,7 @@
       "preconditioning_status": {
         "default": "mdi:air-conditioner"
       },
-      "preconditioning_program_1": {
-        "default": "mdi:air-conditioner"
-      },
-      "preconditioning_program_2": {
-        "default": "mdi:air-conditioner"
-      },
-      "preconditioning_program_3": {
-        "default": "mdi:air-conditioner"
-      },
-      "preconditioning_program_4": {
+      "preconditioning_program": {
         "default": "mdi:air-conditioner"
       },
       "powertrain_status": {
@@ -223,16 +214,7 @@
       "preconditioning": {
         "default": "mdi:air-conditioner"
       },
-      "preconditioning_program_1": {
-        "default": "mdi:air-conditioner"
-      },
-      "preconditioning_program_2": {
-        "default": "mdi:air-conditioner"
-      },
-      "preconditioning_program_3": {
-        "default": "mdi:air-conditioner"
-      },
-      "preconditioning_program_4": {
+      "preconditioning_program": {
         "default": "mdi:air-conditioner"
       }
     },
@@ -240,16 +222,7 @@
       "charging_time": {
         "default": "mdi:battery-clock"
       },
-      "preconditioning_program_1_start_time": {
-        "default": "mdi:air-conditioner"
-      },
-      "preconditioning_program_2_start_time": {
-        "default": "mdi:air-conditioner"
-      },
-      "preconditioning_program_3_start_time": {
-        "default": "mdi:air-conditioner"
-      },
-      "preconditioning_program_4_start_time": {
+      "preconditioning_program": {
         "default": "mdi:air-conditioner"
       }
     }
