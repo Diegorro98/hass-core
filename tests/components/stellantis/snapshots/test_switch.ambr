@@ -1,5 +1,5 @@
 # serializer version: 1
-# name: test_remote_action_payload[switch.peugeot_suv_3008_delayed_charge-turn_off]
+# name: test_remote_action_payload[switch.peugeot_suv_3008_charge-turn_off]
   dict({
     'attributes': None,
     'callback_attributes': None,
@@ -18,7 +18,7 @@
     'wake_up': None,
   })
 # ---
-# name: test_remote_action_payload[switch.peugeot_suv_3008_delayed_charge-turn_on]
+# name: test_remote_action_payload[switch.peugeot_suv_3008_charge-turn_on]
   dict({
     'attributes': None,
     'callback_attributes': None,

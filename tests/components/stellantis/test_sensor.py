@@ -50,21 +50,21 @@ def platforms() -> list[Platform]:
     ("entity_id", "expected_updated_state", "update_status_value_fn"),
     [
         (
-            "sensor.peugeot_suv_3008_fuel_consumption",
+            "sensor.peugeot_suv_3008_fuel_total_consumption",
             "1773.3019",
             lambda status: setattr(
                 status.energies[0].extension.fuel.consumptions, "total", 177330.19
             ),
         ),
         (
-            "sensor.peugeot_suv_3008_fuel_consumption",
+            "sensor.peugeot_suv_3008_fuel_total_consumption",
             STATE_UNKNOWN,
             lambda status: setattr(
                 status.energies[0].extension.fuel.consumptions, "total", None
             ),
         ),
         (
-            "sensor.peugeot_suv_3008_fuel_consumption",
+            "sensor.peugeot_suv_3008_fuel_total_consumption",
             STATE_UNAVAILABLE,
             lambda status: setattr(
                 status.energies[0].extension.fuel, "consumptions", None
@@ -719,7 +719,7 @@ async def test_sensor_state_and_updates(
 @pytest.mark.parametrize(
     "entity_id",
     [
-        "sensor.peugeot_suv_3008_fuel_consumption",
+        "sensor.peugeot_suv_3008_fuel_total_consumption",
         "sensor.peugeot_suv_3008_battery_total_capacity",
         "sensor.peugeot_suv_3008_residual_electric_energy",
         "sensor.peugeot_suv_3008_battery_capacity",

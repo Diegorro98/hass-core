@@ -82,7 +82,7 @@
       "fuel_energy_autonomy": {
         "default": "mdi:fuel"
       },
-      "fuel_consumption": {
+      "fuel_total_consumption": {
         "default": "mdi:fuel"
       },
       "fuel_instant_consumption": {
@@ -201,7 +201,7 @@
           "off": "mdi:battery"
         }
       },
-      "delayed_charge": {
+      "charge": {
         "default": "mdi:battery-clock"
       },
       "partial_charge": {

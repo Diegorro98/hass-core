@@ -56,8 +56,8 @@ class StellantisSensorEntityDescription(
 
 FUEL_ENERGY_EXTENSION_SENSORS = (
     StellantisSensorEntityDescription(
-        key="fuel_consumption",
-        translation_key="fuel_consumption",
+        key="fuel_total_consumption",
+        translation_key="fuel_total_consumption",
         state_class=SensorStateClass.TOTAL_INCREASING,
         device_class=SensorDeviceClass.VOLUME,
         native_unit_of_measurement=UnitOfVolume.LITERS,
@@ -567,7 +567,7 @@ class StellantisSensor(StellantisBaseEntity, SensorEntity):
                 self._attr_available = False
             return
 
-        if self.entity_description.key == "fuel_consumption":
+        if self.entity_description.key == "fuel_total_consumption":
             assert isinstance(status_value, float)
             # Fuel consumption is in centiliters, convert it to liters
             self._attr_native_value = status_value / 100

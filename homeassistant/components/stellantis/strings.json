@@ -124,8 +124,8 @@
       "fuel_energy_autonomy": {
         "name": "Fuel energy autonomy"
       },
-      "fuel_consumption": {
-        "name": "Fuel consumption"
+      "fuel_total_consumption": {
+        "name": "Fuel total consumption"
       },
       "fuel_instant_consumption": {
         "name": "Fuel instant consumption"
@@ -295,11 +295,11 @@
       }
     },
     "switch": {
-      "delayed_charge": {
-        "name": "Delayed charge",
+      "charge": {
+        "name": "Charge",
         "state": {
-          "off": "Charging",
-          "on": "Stopped and delayed"
+          "on": "[%key:common::state::charging%]",
+          "off": "Delayed"
         }
       },
       "partial_charge": {

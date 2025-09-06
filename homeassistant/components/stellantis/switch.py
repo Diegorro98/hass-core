@@ -59,9 +59,9 @@ PRECONDITIONING_SWITCH_ENTITY_DESCRIPTION = StellantisSwitchEntityDescription(
     else None,
 )
 
-DELAYED_CHARGE_SWITCH_ENTITY_DESCRIPTION = StellantisSwitchEntityDescription(
-    key="delayed_charge",
-    translation_key="delayed_charge",
+CHARGE_SWITCH_ENTITY_DESCRIPTION = StellantisSwitchEntityDescription(
+    key="charge",
+    translation_key="charge",
     remote_request_on=Remote(charging=RemoteCharging(immediate=True)),
     remote_request_off=Remote(charging=RemoteCharging(immediate=False)),
     value_fn=lambda status: charging_status == ChargingStatusEnum.IN_PROGRESS
@@ -191,7 +191,7 @@ async def async_setup_entry(
                     StellantisChargeRelatedSwitch(
                         hass,
                         vehicle_coordinator,
-                        DELAYED_CHARGE_SWITCH_ENTITY_DESCRIPTION,
+                        CHARGE_SWITCH_ENTITY_DESCRIPTION,
                         entry,
                         remote is None or charging_immediate is None,
                     )

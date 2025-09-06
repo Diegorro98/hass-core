@@ -97,7 +97,7 @@ def platforms() -> list[Platform]:
             ),
         ),
         (
-            "switch.peugeot_suv_3008_delayed_charge",
+            "switch.peugeot_suv_3008_charge",
             STATE_ON,
             lambda status: setattr(
                 status.energies[1].extension.electric.charging,
@@ -106,7 +106,7 @@ def platforms() -> list[Platform]:
             ),
         ),
         (
-            "switch.peugeot_suv_3008_delayed_charge",
+            "switch.peugeot_suv_3008_charge",
             STATE_OFF,
             lambda status: setattr(
                 status.energies[1].extension.electric.charging,
@@ -115,7 +115,7 @@ def platforms() -> list[Platform]:
             ),
         ),
         (
-            "switch.peugeot_suv_3008_delayed_charge",
+            "switch.peugeot_suv_3008_charge",
             STATE_UNKNOWN,
             lambda status: setattr(
                 status.energies[1].extension.electric.charging,
@@ -124,7 +124,7 @@ def platforms() -> list[Platform]:
             ),
         ),
         (
-            "switch.peugeot_suv_3008_delayed_charge",
+            "switch.peugeot_suv_3008_charge",
             STATE_UNAVAILABLE,
             lambda status: setattr(
                 status.energies[1].extension.electric.charging,
@@ -133,7 +133,7 @@ def platforms() -> list[Platform]:
             ),
         ),
         (
-            "switch.peugeot_suv_3008_delayed_charge",
+            "switch.peugeot_suv_3008_charge",
             STATE_UNAVAILABLE,
             lambda status: setattr(
                 status.energies[1].extension.electric.charging,
@@ -142,7 +142,7 @@ def platforms() -> list[Platform]:
             ),
         ),
         (
-            "switch.peugeot_suv_3008_delayed_charge",
+            "switch.peugeot_suv_3008_charge",
             STATE_UNAVAILABLE,
             lambda status: setattr(
                 status.energies[1].extension.electric.charging,
@@ -151,7 +151,7 @@ def platforms() -> list[Platform]:
             ),
         ),
         (
-            "switch.peugeot_suv_3008_delayed_charge",
+            "switch.peugeot_suv_3008_charge",
             STATE_UNKNOWN,
             lambda status: setattr(
                 status.energies[1].extension.electric,
@@ -334,7 +334,7 @@ async def test_preconditioning_switch_unavailability_conditions(
     [
         "switch.peugeot_suv_3008_preconditioning",
         "switch.peugeot_suv_3008_preconditioning_program_1",
-        "switch.peugeot_suv_3008_delayed_charge",
+        "switch.peugeot_suv_3008_charge",
         "switch.peugeot_suv_3008_partial_charge",
     ],
 )
@@ -532,7 +532,7 @@ async def test_remote_action_callback_timeout(hass: HomeAssistant) -> None:
     "entity_id",
     [
         "switch.peugeot_suv_3008_preconditioning",
-        "switch.peugeot_suv_3008_delayed_charge",
+        "switch.peugeot_suv_3008_charge",
         "switch.peugeot_suv_3008_partial_charge",
         "switch.peugeot_suv_3008_preconditioning_program_1",
     ],
@@ -612,7 +612,7 @@ async def test_remote_action_payload(
             ),
         ),
         (
-            "switch.peugeot_suv_3008_delayed_charge",
+            "switch.peugeot_suv_3008_charge",
             lambda vehicle_details: setattr(
                 vehicle_details.embedded.extension.onboard_capabilities.remote.charging,
                 "supported",
@@ -620,7 +620,7 @@ async def test_remote_action_payload(
             ),
         ),
         (
-            "switch.peugeot_suv_3008_delayed_charge",
+            "switch.peugeot_suv_3008_charge",
             lambda vehicle_details: (
                 setattr(
                     vehicle_details.embedded.extension.onboard_capabilities.remote.charging.parameters.immediate,
@@ -692,7 +692,7 @@ async def test_no_actionable_entity_if_not_supported(
             ),
         ),
         (
-            "switch.peugeot_suv_3008_delayed_charge",
+            "switch.peugeot_suv_3008_charge",
             lambda vehicle_details: setattr(
                 vehicle_details.embedded.extension.onboard_capabilities.remote.charging.parameters,
                 "immediate",
@@ -700,7 +700,7 @@ async def test_no_actionable_entity_if_not_supported(
             ),
         ),
         (
-            "switch.peugeot_suv_3008_delayed_charge",
+            "switch.peugeot_suv_3008_charge",
             lambda vehicle_details: setattr(
                 vehicle_details.embedded.extension,
                 "onboard_capabilities",
