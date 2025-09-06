@@ -35,6 +35,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import entity_registry as er
 from homeassistant.setup import async_setup_component
 
 from .const import RESULT_EXCEPTION, RESULT_FAILED, RESULT_PENDING, RESULT_SUCCESS
@@ -557,3 +558,179 @@ async def test_remote_action_payload(
     client.send_remote_to_vhl.assert_called_once_with(
         vehicle_details.id, "mock-callback-id", snapshot
     )
+
+
+@pytest.mark.parametrize(
+    ("entity_id", "vehicle_details_mod_fn"),
+    [
+        (
+            "switch.peugeot_suv_3008_preconditioning",
+            lambda vehicle_details: setattr(
+                vehicle_details.embedded.extension.onboard_capabilities.remote.preconditioning,
+                "supported",
+                False,
+            ),
+        ),
+        (
+            "switch.peugeot_suv_3008_preconditioning",
+            lambda vehicle_details: setattr(
+                vehicle_details.embedded.extension.onboard_capabilities.remote.preconditioning.parameters,
+                "immediate",
+                False,
+            ),
+        ),
+        (
+            "switch,peugeot_suv_3008_preconditioning_program_1",
+            lambda vehicle_details: setattr(
+                vehicle_details.embedded.extension.onboard_capabilities.remote.preconditioning,
+                "supported",
+                False,
+            ),
+        ),
+        (
+            "switch,peugeot_suv_3008_preconditioning_program_1",
+            lambda vehicle_details: setattr(
+                vehicle_details.embedded.extension.onboard_capabilities.remote.preconditioning.parameters.programs,
+                "size",
+                0,
+            ),
+        ),
+        (
+            "switch,peugeot_suv_3008_preconditioning_program_4",
+            lambda vehicle_details: setattr(
+                vehicle_details.embedded.extension.onboard_capabilities.remote.preconditioning.parameters.programs,
+                "size",
+                2,
+            ),
+        ),
+        (
+            "switch,peugeot_suv_3008_preconditioning_program_5",
+            lambda vehicle_details: setattr(
+                vehicle_details.embedded.extension.onboard_capabilities.remote.preconditioning.parameters.programs,
+                "size",
+                None,
+            ),
+        ),
+        (
+            "switch.peugeot_suv_3008_delayed_charge",
+            lambda vehicle_details: setattr(
+                vehicle_details.embedded.extension.onboard_capabilities.remote.charging,
+                "supported",
+                False,
+            ),
+        ),
+        (
+            "switch.peugeot_suv_3008_delayed_charge",
+            lambda vehicle_details: (
+                setattr(
+                    vehicle_details.embedded.extension.onboard_capabilities.remote.charging.parameters.immediate,
+                    "start",
+                    False,
+                ),
+                setattr(
+                    vehicle_details.embedded.extension.onboard_capabilities.remote.charging.parameters.immediate,
+                    "stop",
+                    False,
+                ),
+            ),
+        ),
+        (
+            "switch.peugeot_suv_3008_partial_charge",
+            lambda vehicle_details: setattr(
+                vehicle_details.embedded.extension.onboard_capabilities.remote.charging,
+                "supported",
+                False,
+            ),
+        ),
+        (
+            "switch.peugeot_suv_3008_partial_charge",
+            lambda vehicle_details: setattr(
+                vehicle_details.embedded.extension.onboard_capabilities.remote.charging.parameters.preferences,
+                "type",
+                False,
+            ),
+        ),
+    ],
+    indirect=["vehicle_details_mod_fn"],
+)
+async def test_no_actionable_entity_if_not_supported(
+    entity_registry: er.EntityRegistry, entity_id: str
+) -> None:
+    """Test that no actionable switch entities are created for a vehicle that does not support it."""
+    assert not entity_registry.async_get(entity_id)
+
+
+@pytest.mark.parametrize(
+    ("entity_id", "vehicle_details_mod_fn"),
+    [
+        (
+            "switch.peugeot_suv_3008_preconditioning",
+            lambda vehicle_details: setattr(
+                vehicle_details.embedded.extension.onboard_capabilities.remote.preconditioning.parameters,
+                "immediate",
+                None,
+            ),
+        ),
+        (
+            "switch.peugeot_suv_3008_preconditioning",
+            lambda vehicle_details: setattr(
+                vehicle_details.embedded.extension, "onboard_capabilities", None
+            ),
+        ),
+        (
+            "switch.peugeot_suv_3008_preconditioning_program_1",
+            lambda vehicle_details: setattr(
+                vehicle_details.embedded.extension.onboard_capabilities.remote.preconditioning.parameters.programs,
+                "size",
+                None,
+            ),
+        ),
+        (
+            "switch.peugeot_suv_3008_preconditioning_program_1",
+            lambda vehicle_details: setattr(
+                vehicle_details.embedded.extension, "onboard_capabilities", None
+            ),
+        ),
+        (
+            "switch.peugeot_suv_3008_delayed_charge",
+            lambda vehicle_details: setattr(
+                vehicle_details.embedded.extension.onboard_capabilities.remote.charging.parameters,
+                "immediate",
+                None,
+            ),
+        ),
+        (
+            "switch.peugeot_suv_3008_delayed_charge",
+            lambda vehicle_details: setattr(
+                vehicle_details.embedded.extension,
+                "onboard_capabilities",
+                None,
+            ),
+        ),
+        (
+            "switch.peugeot_suv_3008_partial_charge",
+            lambda vehicle_details: setattr(
+                vehicle_details.embedded.extension.onboard_capabilities.remote.charging.parameters.preferences,
+                "type",
+                None,
+            ),
+        ),
+        (
+            "switch.peugeot_suv_3008_partial_charge",
+            lambda vehicle_details: setattr(
+                vehicle_details.embedded.extension,
+                "onboard_capabilities",
+                None,
+            ),
+        ),
+    ],
+    indirect=["vehicle_details_mod_fn"],
+)
+async def test_actionable_entity_unknown_supported_disabled(
+    entity_registry: er.EntityRegistry, entity_id: str
+) -> None:
+    """Test that actionable switch entities are created but it is disabled if the support is unknown."""
+    entity = entity_registry.async_get(entity_id)
+    assert entity
+    assert entity.disabled
+    assert entity.disabled_by is er.RegistryEntryDisabler.INTEGRATION

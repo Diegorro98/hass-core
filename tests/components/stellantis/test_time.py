@@ -23,6 +23,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import entity_registry as er
 from homeassistant.setup import async_setup_component
 
 from .const import RESULT_EXCEPTION, RESULT_FAILED, RESULT_PENDING, RESULT_SUCCESS
@@ -277,3 +278,92 @@ async def test_remote_action_payload(
     client.send_remote_to_vhl.assert_called_once_with(
         vehicle_details.id, "mock-callback-id", snapshot
     )
+
+
+@pytest.mark.parametrize(
+    ("entity_id", "vehicle_details_mod_fn"),
+    [
+        (
+            "time.peugeot_suv_3008_preconditioning_program_1_start_time",
+            lambda vehicle_details: setattr(
+                vehicle_details.embedded.extension.onboard_capabilities.remote.preconditioning.parameters.programs,
+                "size",
+                0,
+            ),
+        ),
+        (
+            "time.peugeot_suv_3008_preconditioning_program_4_start_time",
+            lambda vehicle_details: setattr(
+                vehicle_details.embedded.extension.onboard_capabilities.remote.preconditioning.parameters.programs,
+                "size",
+                2,
+            ),
+        ),
+        (
+            "time.peugeot_suv_3008_preconditioning_program_5_start_time",
+            lambda vehicle_details: setattr(
+                vehicle_details.embedded.extension.onboard_capabilities.remote.preconditioning.parameters.programs,
+                "size",
+                None,
+            ),
+        ),
+        (
+            "time.peugeot_suv_3008_charging_time",
+            lambda vehicle_details: setattr(
+                vehicle_details.embedded.extension.onboard_capabilities.remote.charging.parameters.schedule,
+                "next_delayed_time",
+                False,
+            ),
+        ),
+    ],
+    indirect=["vehicle_details_mod_fn"],
+)
+async def test_no_actionable_entity_if_not_supported(
+    entity_registry: er.EntityRegistry, entity_id: str
+) -> None:
+    """Test that no actionable time entities are created for a vehicle that does not support it."""
+    assert not entity_registry.async_get(entity_id)
+
+
+@pytest.mark.parametrize(
+    ("entity_id", "vehicle_details_mod_fn"),
+    [
+        (
+            "time.peugeot_suv_3008_preconditioning_program_1_start_time",
+            lambda vehicle_details: setattr(
+                vehicle_details.embedded.extension.onboard_capabilities.remote.preconditioning.parameters.programs,
+                "size",
+                None,
+            ),
+        ),
+        (
+            "time.peugeot_suv_3008_preconditioning_program_1_start_time",
+            lambda vehicle_details: setattr(
+                vehicle_details.embedded.extension, "onboard_capabilities", None
+            ),
+        ),
+        (
+            "time.peugeot_suv_3008_charging_time",
+            lambda vehicle_details: setattr(
+                vehicle_details.embedded.extension.onboard_capabilities.remote.charging.parameters.schedule,
+                "next_delayed_time",
+                None,
+            ),
+        ),
+        (
+            "time.peugeot_suv_3008_charging_time",
+            lambda vehicle_details: setattr(
+                vehicle_details.embedded.extension, "onboard_capabilities", None
+            ),
+        ),
+    ],
+    indirect=["vehicle_details_mod_fn"],
+)
+async def test_actionable_entity_unknown_supported_disabled(
+    entity_registry: er.EntityRegistry, entity_id: str
+) -> None:
+    """Test that actionable time entities are created but it is disabled if the support is unknown."""
+    entity = entity_registry.async_get(entity_id)
+    assert entity
+    assert entity.disabled
+    assert entity.disabled_by is er.RegistryEntryDisabler.INTEGRATION

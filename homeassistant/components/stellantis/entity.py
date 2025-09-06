@@ -105,11 +105,13 @@ class StellantisActionableEntity(StellantisBaseEntity, Generic[T]):
         coordinator: StellantisVehicleCoordinator,
         description: StellantisEntityDescription,
         entry: StellantisConfigEntry,
+        unknown_supported: bool = True,
     ) -> None:
         """Initialize entity."""
         super().__init__(coordinator, description)
         self.hass = hass
         self.entry = entry
+        self._attr_entity_registry_enabled_default = not unknown_supported
 
     @abstractmethod
     def _handle_update_from_successful_remote_action(self, state: T) -> None:
@@ -235,9 +237,10 @@ class StellantisPreconditioningEntity(StellantisActionableEntity[T], Generic[T])
         description: StellantisEntityDescription,
         entry: StellantisConfigEntry,
         slot: int,
+        unknown_supported: bool = False,
     ) -> None:
         """Initialize entity."""
-        super().__init__(hass, coordinator, description, entry)
+        super().__init__(hass, coordinator, description, entry, unknown_supported)
         self.slot = slot
         self._attr_translation_placeholders = {"slot": str(slot)}
 

@@ -23,6 +23,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import entity_registry as er
 from homeassistant.setup import async_setup_component
 
 from .const import RESULT_EXCEPTION, RESULT_FAILED, RESULT_PENDING, RESULT_SUCCESS
@@ -276,3 +277,45 @@ async def test_remote_action_payload(
     client.send_remote_to_vhl.assert_called_once_with(
         vehicle_details.id, "mock-callback-id", snapshot
     )
+
+
+@pytest.mark.parametrize(
+    "vehicle_details_mod_fn",
+    [
+        lambda vehicle_details: setattr(
+            vehicle_details.embedded.extension.onboard_capabilities.remote.horn,
+            "supported",
+            False,
+        )
+    ],
+    indirect=True,
+)
+async def test_no_actionable_entity_if_not_supported(
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test that no horn entity is created for a vehicle that does not support it."""
+    assert not entity_registry.async_get("siren.peugeot_suv_3008_horn")
+
+
+@pytest.mark.parametrize(
+    "vehicle_details_mod_fn",
+    [
+        lambda vehicle_details: setattr(
+            vehicle_details.embedded.extension.onboard_capabilities.remote.horn,
+            "supported",
+            None,
+        ),
+        lambda vehicle_details: setattr(
+            vehicle_details.embedded.extension, "onboard_capabilities", None
+        ),
+    ],
+    indirect=True,
+)
+async def test_actionable_entity_unknown_supported_disabled(
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test that horn entity is created but it is disabled if the support is unknown."""
+    entity = entity_registry.async_get("siren.peugeot_suv_3008_horn")
+    assert entity
+    assert entity.disabled
+    assert entity.disabled_by is er.RegistryEntryDisabler.INTEGRATION

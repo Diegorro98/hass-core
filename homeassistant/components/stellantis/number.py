@@ -42,9 +42,35 @@ async def async_setup_entry(
     """Set up the Stellantis switches."""
     async_add_entities(
         StellantisChargingPowerLevelNumber(
-            hass, vehicle_coordinator, POWER_LEVEL_ENTITY_DESCRIPTION, entry
+            hass,
+            vehicle_coordinator,
+            POWER_LEVEL_ENTITY_DESCRIPTION,
+            entry,
+            remote is None or level is None,
         )
         for vehicle_coordinator in entry.runtime_data.vehicle_coordinators
+        if (
+            remote := (
+                embedded.extension.onboard_capabilities.remote
+                if (embedded := vehicle_coordinator.vehicle.embedded)
+                and embedded.extension
+                and embedded.extension.onboard_capabilities
+                else None
+            )
+        )
+        is None
+        or (
+            remote.charging.supported is True
+            and (
+                level := (
+                    remote.charging.parameters.preferences.level
+                    if remote.charging.parameters
+                    and remote.charging.parameters.preferences
+                    else None
+                )
+            )
+            is not False
+        )
     )
 
 

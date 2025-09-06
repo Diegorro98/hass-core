@@ -122,20 +122,44 @@ async def async_setup_entry(
     """Set up the Stellantis switches."""
     entities: list[SwitchEntity] = []
     for vehicle_coordinator in entry.runtime_data.vehicle_coordinators:
-        if (
-            vehicle_coordinator.data.preconditioning
-            and vehicle_coordinator.data.preconditioning.air_conditioning
-        ):
-            entities.extend(
-                [
+        remote = (
+            embedded.extension.onboard_capabilities.remote
+            if (embedded := vehicle_coordinator.vehicle.embedded)
+            and embedded.extension
+            and embedded.extension.onboard_capabilities
+            else None
+        )
+        if remote is None or (remote.preconditioning.supported is True):
+            if (
+                remote is None
+                or (
+                    preconditioning_immediate
+                    := remote.preconditioning.parameters.immediate
+                )
+                is not False
+            ):
+                entities.append(
                     StellantisPreconditioningSwitch(
                         hass,
                         vehicle_coordinator,
                         PRECONDITIONING_SWITCH_ENTITY_DESCRIPTION,
                         entry,
+                        remote is None or preconditioning_immediate is None,
                     )
-                ]
-                + [
+                )
+            if (
+                remote is None
+                or (
+                    size := (
+                        remote.preconditioning.parameters.programs.size
+                        if remote.preconditioning.parameters
+                        and remote.preconditioning.parameters.programs
+                        else None
+                    )
+                )
+                != 0
+            ):
+                entities.extend(
                     StellantisPreconditioningProgramSwitch(
                         hass,
                         vehicle_coordinator,
@@ -147,35 +171,51 @@ async def async_setup_entry(
                         ),
                         entry,
                         slot,
+                        remote is None or size is None,
                     )
-                    for slot in range(1, 5)
-                ]
-            )
+                    for slot in range(
+                        1,
+                        5 if remote is None or size is None else size + 1,
+                    )
+                )
 
-        if next(
-            (
-                energy
-                for energy in vehicle_coordinator.data.energies or []
-                if energy.type == EnergyType.ELECTRIC
-            ),
-            None,
-        ):
-            entities.extend(
-                [
+        if remote is None or (remote.charging.supported is True):
+            if (
+                remote is None
+                or (charging_immediate := (remote.charging.parameters.immediate))
+                is None
+                or charging_immediate.start
+                or charging_immediate.stop
+            ):
+                entities.append(
                     StellantisChargeRelatedSwitch(
                         hass,
                         vehicle_coordinator,
                         DELAYED_CHARGE_SWITCH_ENTITY_DESCRIPTION,
                         entry,
-                    ),
+                        remote is None or charging_immediate is None,
+                    )
+                )
+            if (
+                remote is None
+                or (
+                    charging_type := (
+                        remote.charging.parameters.preferences.type
+                        if remote.charging.parameters.preferences
+                        else None
+                    )
+                )
+                is not False
+            ):
+                entities.append(
                     StellantisChargeRelatedSwitch(
                         hass,
                         vehicle_coordinator,
                         PARTIAL_CHARGE_SWITCH_ENTITY_DESCRIPTION,
                         entry,
-                    ),
-                ]
-            )
+                        remote is None or charging_type is None,
+                    )
+                )
 
     async_add_entities(entities)
 

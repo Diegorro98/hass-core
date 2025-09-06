@@ -56,9 +56,24 @@ async def async_setup_entry(
     """Set up the Stellantis switches."""
     entities: list[TimeEntity] = []
     for vehicle_coordinator in entry.runtime_data.vehicle_coordinators:
-        if (
-            vehicle_coordinator.data.preconditioning
-            and vehicle_coordinator.data.preconditioning.air_conditioning
+        remote = (
+            embedded.extension.onboard_capabilities.remote
+            if (embedded := vehicle_coordinator.vehicle.embedded)
+            and embedded.extension
+            and embedded.extension.onboard_capabilities
+            else None
+        )
+        if remote is None or (
+            remote.preconditioning.supported is True
+            and (
+                size := (
+                    remote.preconditioning.parameters.programs.size
+                    if remote.preconditioning.parameters
+                    and remote.preconditioning.parameters.programs
+                    else None
+                )
+            )
+            != 0
         ):
             entities.extend(
                 StellantisPreconditioningProgramStartTime(
@@ -72,17 +87,24 @@ async def async_setup_entry(
                     ),
                     entry,
                     slot,
+                    remote is None or size is None,
                 )
-                for slot in range(1, 5)
+                for slot in range(
+                    1,
+                    5 if remote is None or size is None else size + 1,
+                )
             )
 
-        if next(
-            (
-                energy
-                for energy in vehicle_coordinator.data.energies or []
-                if energy.type == EnergyType.ELECTRIC
-            ),
-            None,
+        if remote is None or (
+            remote.preconditioning.supported is True
+            and (
+                next_delayed_time_supported := (
+                    remote.charging.parameters.schedule.next_delayed_time
+                    if remote.charging.parameters.schedule
+                    else None
+                )
+            )
+            is not False
         ):
             entities.append(
                 StellantisChargingTime(
@@ -90,8 +112,10 @@ async def async_setup_entry(
                     vehicle_coordinator,
                     CHARGING_TIME_ENTITY_DESCRIPTION,
                     entry,
+                    remote is None or next_delayed_time_supported is None,
                 )
             )
+
     async_add_entities(entities)
 
 

@@ -40,8 +40,25 @@ async def async_setup_entry(
 ) -> None:
     """Set up the Stellantis switches."""
     async_add_entities(
-        StellantisLights(hass, vehicle_coordinator, LIGHTS_ENTITY_DESCRIPTION, entry)
+        StellantisLights(
+            hass,
+            vehicle_coordinator,
+            LIGHTS_ENTITY_DESCRIPTION,
+            entry,
+            lights_supported is None,
+        )
         for vehicle_coordinator in entry.runtime_data.vehicle_coordinators
+        if (
+            lights_supported := (
+                embedded.extension.onboard_capabilities.remote.lights.supported
+                if (embedded := vehicle_coordinator.vehicle.embedded)
+                and embedded.extension
+                and embedded.extension.onboard_capabilities
+                and embedded.extension.onboard_capabilities.remote
+                else None
+            )
+        )
+        is not False
     )
 
 

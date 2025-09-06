@@ -49,9 +49,24 @@ async def async_setup_entry(
     """Set up the Stellantis locks."""
     async_add_entities(
         StellantisDoorsLock(
-            hass, vehicle_coordinator, DOORS_LOCK_ENTITY_DESCRIPTION, entry
+            hass,
+            vehicle_coordinator,
+            DOORS_LOCK_ENTITY_DESCRIPTION,
+            entry,
+            lock_supported is None,
         )
         for vehicle_coordinator in entry.runtime_data.vehicle_coordinators
+        if (
+            lock_supported := (
+                embedded.extension.onboard_capabilities.remote.door.supported
+                if (embedded := vehicle_coordinator.vehicle.embedded)
+                and embedded.extension
+                and embedded.extension.onboard_capabilities
+                and embedded.extension.onboard_capabilities.remote
+                else None
+            )
+        )
+        is not False
     )
 
 

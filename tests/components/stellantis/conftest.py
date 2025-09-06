@@ -1,5 +1,6 @@
 """Tests for the Stellantis integration."""
 
+from collections.abc import Callable
 from copy import deepcopy
 import time
 from typing import Any, cast
@@ -144,6 +145,23 @@ FIXTURE_VEHICLE_STATUS = Status.from_json(
 )
 
 
+@pytest.fixture
+def entity_registry_enabled_by_default_with_param(request: pytest.FixtureRequest):
+    """Test fixture that ensures all entities are enabled in the registry if set to True."""
+    return_value = cast(bool, getattr(request, "param", True))
+    with (
+        patch(
+            "homeassistant.helpers.entity.Entity.entity_registry_enabled_default",
+            return_value=return_value,
+        ),
+        patch(
+            "homeassistant.components.device_tracker.config_entry.ScannerEntity.entity_registry_enabled_default",
+            return_value=return_value,
+        ),
+    ):
+        yield
+
+
 @pytest.fixture(name="token_expiration_time")
 def mock_token_expiration_time() -> float:
     """Fixture for expiration time of the config entry auth token."""
@@ -212,9 +230,24 @@ async def setup_integration(
 
 
 @pytest.fixture(name="vehicle_details")
-def vehicle_fixture() -> Vehicle:
+def vehicle_fixture(
+    vehicle_details_mod_fn: Callable[[Vehicle], None] | None,
+) -> Vehicle:
     """Define a vehicle fixture."""
-    return deepcopy(FIXTURE_VEHICLE_DETAILS)
+    vehicle_details = deepcopy(FIXTURE_VEHICLE_DETAILS)
+    if vehicle_details_mod_fn:
+        vehicle_details_mod_fn(vehicle_details)
+    return vehicle_details
+
+
+@pytest.fixture(name="vehicle_details_mod_fn")
+def vehicle_mod_fixture(
+    request: pytest.FixtureRequest,
+) -> Callable[[Vehicle], None] | None:
+    """Define a vehicle fixture modifier function."""
+    if hasattr(request, "param"):
+        return cast(Callable[[Vehicle], None], request.param)
+    return None
 
 
 @pytest.fixture(name="vehicle_status")

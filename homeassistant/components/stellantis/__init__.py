@@ -73,15 +73,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: StellantisConfigEntry) -
     stellantis_client = StellantisClient(config_entry_auth)
     entry.runtime_data = StellantisRuntimeData(stellantis_client)
 
-    try:
-        vehicles_response = await stellantis_client.get_vehicles_by_device(
-            extension=[VehicleExtensionType.BRANDING]
+    for attempt, extension in enumerate(
+        (
+            [VehicleExtensionType.BRANDING, VehicleExtensionType.ONBOARD_CAPABILITIES],
+            [VehicleExtensionType.BRANDING],
         )
-    except StellantisError as err:
-        if isinstance(err, StellantisApiError):
-            if err.code in (401, 403):
-                raise ConfigEntryAuthFailed from err
-        raise ConfigEntryError from err
+    ):
+        try:
+            vehicles_response = await stellantis_client.get_vehicles_by_device(
+                extension=extension
+            )
+            break
+        except StellantisError as err:
+            if isinstance(err, StellantisApiError):
+                if err.code in (401, 403):
+                    raise ConfigEntryAuthFailed from err
+                if err.code == 50055 and attempt == 0:
+                    # Retry without ONBOARD_CAPABILITIES extension
+                    continue
+            raise ConfigEntryError from err
 
     if vehicles_response.embedded and (vehicles := vehicles_response.embedded.vehicles):
         for vehicle in vehicles:

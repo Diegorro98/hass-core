@@ -9,7 +9,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import aiohttp
 import pytest
 from stellantis.client import Client as StellantisClient
-from stellantis.model import CallbackSubscribe, CallbackType, Vehicle
+from stellantis.model import (
+    CallbackSubscribe,
+    CallbackType,
+    Vehicle,
+    VehicleExtensionType,
+)
 from stellantis.model.error import StellantisApiError, StellantisError
 
 from homeassistant.components import cloud
@@ -198,6 +203,31 @@ async def test_setup_entry_get_vehicles_error(
     assert config_entry.state == ConfigEntryState.SETUP_ERROR
     assert config_entry.reason
     assert reason_match in config_entry.reason
+
+
+async def test_setup_entry_get_vehicles_on_boarding_capabilities_error(
+    hass: HomeAssistant,
+    client: MagicMock,
+    config_entry: MockConfigEntry,
+) -> None:
+    """Test the setup entry when the call to obtain the vehicles fails."""
+    client.get_vehicles_by_device.side_effect = [
+        StellantisApiError(HTTPStatus.INTERNAL_SERVER_ERROR),
+        client.get_vehicles_by_device.return_value,
+    ]
+    client.get_vehicles_by_device.return_value = None
+
+    assert config_entry.state is ConfigEntryState.NOT_LOADED
+    assert await _setup_integration(hass, config_entry, client)
+    assert config_entry.state == ConfigEntryState.LOADED
+
+    assert client.get_vehicles_by_device.call_count == 2
+    call_args_list = client.get_vehicles_by_device.call_args_list
+    assert call_args_list[0][1]["extension"] == [
+        VehicleExtensionType.BRANDING,
+        VehicleExtensionType.ONBOARD_CAPABILITIES,
+    ]
+    assert call_args_list[1][1]["extension"] == [VehicleExtensionType.BRANDING]
 
 
 @pytest.mark.parametrize(

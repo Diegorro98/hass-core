@@ -31,6 +31,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import entity_registry as er
 from homeassistant.setup import async_setup_component
 
 from .const import RESULT_EXCEPTION, RESULT_FAILED, RESULT_PENDING, RESULT_SUCCESS
@@ -386,3 +387,44 @@ async def test_remote_action_payload(
     client.send_remote_to_vhl.assert_called_once_with(
         vehicle_details.id, "mock-callback-id", snapshot
     )
+
+
+@pytest.mark.parametrize(
+    "vehicle_details_mod_fn",
+    [
+        lambda vehicle_details: setattr(
+            vehicle_details.embedded.extension.onboard_capabilities.remote.door,
+            "supported",
+            False,
+        )
+    ],
+    indirect=True,
+)
+async def test_no_actionable_entity_if_not_supported(
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test that no doors lock entity is created for a vehicle that does not support it."""
+    assert not entity_registry.async_get("lock.peugeot_suv_3008_doors")
+
+
+@pytest.mark.parametrize(
+    "vehicle_details_mod_fn",
+    [
+        lambda vehicle_details: setattr(
+            vehicle_details.embedded.extension.onboard_capabilities.remote.door,
+            "supported",
+            None,
+        ),
+        lambda vehicle_details: setattr(
+            vehicle_details.embedded.extension, "onboard_capabilities", None
+        ),
+    ],
+    indirect=True,
+)
+async def test_actionable_entity_unknown_supported_disabled(
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test that doors lock entity is created but it is disabled if the support is unknown."""
+    entity = entity_registry.async_get("lock.peugeot_suv_3008_doors")
+    assert entity
+    assert entity.disabled
