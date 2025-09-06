@@ -152,9 +152,6 @@
       "preconditioning_status": {
         "default": "mdi:air-conditioner"
       },
-      "preconditioning_program": {
-        "default": "mdi:air-conditioner"
-      },
       "powertrain_status": {
         "default": "mdi:car-info"
       },

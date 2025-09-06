@@ -497,31 +497,6 @@ async def async_setup_entry(
         ):
             sensors += PRECONDITIONING_SENSORS
 
-            slots = 4  # By default, we assume 4 slots
-            if (
-                (embedded := vehicle_coordinator.vehicle.embedded)
-                and embedded.extension
-                and embedded.extension.onboard_capabilities
-                and (remote := embedded.extension.onboard_capabilities.remote)
-                and remote.preconditioning.supported
-                and (programs := remote.preconditioning.parameters.programs)
-            ):
-                slots = programs.size
-            entities.extend(
-                StellantisPreconditioningProgramSensor(
-                    vehicle_coordinator,
-                    StellantisSensorEntityDescription(
-                        key=f"preconditioning_program_{slot}",
-                        translation_key="preconditioning_program",
-                        translation_placeholders={"slot": str(slot)},
-                        device_class=SensorDeviceClass.TIMESTAMP,
-                        value_fn=lambda _: None,
-                    ),
-                    slot,
-                )
-                for slot in range(1, slots + 1)
-            )
-
         for energy in vehicle_coordinator.data.energies or []:
             if energy.type:
                 sensors.extend(COMMON_ENERGY_SENSORS[energy.type])
@@ -588,55 +563,6 @@ class StellantisSensor(StellantisBaseEntity, SensorEntity):
                 self._attr_native_value = slugify(status_value)
             case _:
                 self._attr_native_value = status_value
-        super()._handle_coordinator_update()
-
-    @property
-    def available(self) -> bool:
-        """Return if entity is available."""
-        return self._attr_available and super().available
-
-
-class StellantisPreconditioningProgramSensor(StellantisBaseEntity, SensorEntity):
-    """Representation of a Stellantis preconditioning sensor."""
-
-    entity_description: StellantisSensorEntityDescription
-
-    def __init__(
-        self, coordinator, description: StellantisSensorEntityDescription, slot: int
-    ) -> None:
-        """Initialize the Stellantis sensor."""
-        super().__init__(coordinator, description)
-        self.slot = slot
-
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        program = None
-        self._attr_available = False
-        self._attr_native_value = None
-        self._attr_extra_state_attributes = {}
-        if (
-            (preconditioning := self.vehicle_status.preconditioning)
-            and (air_conditioning := preconditioning.air_conditioning)
-            and (programs := air_conditioning.programs)
-        ):
-            for _program in programs:
-                if _program.slot == self.slot:
-                    self._attr_available = True
-                    program = _program
-                    break
-        if program:
-            self._attr_native_value = _get_next_timestamp_on_weekdays(
-                program.start,
-                program.occurence.day  # codespell:ignore occurence
-                if program.occurence  # codespell:ignore occurence
-                else None,
-            )
-            self._attr_extra_state_attributes.update(
-                {
-                    "recurrence": program.recurrence,
-                    "occurrence": program.occurence,  # codespell:ignore occurence
-                }
-            )
         super()._handle_coordinator_update()
 
     @property

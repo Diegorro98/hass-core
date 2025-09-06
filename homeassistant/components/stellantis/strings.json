@@ -220,9 +220,6 @@
           "failure": "Failure"
         }
       },
-      "preconditioning_program": {
-        "name": "Preconditioning program {slot}"
-      },
       "powertrain_status": {
         "name": "Powertrain status",
         "state": {
@@ -309,7 +306,7 @@
         "name": "Preconditioning"
       },
       "preconditioning_program": {
-        "name": "[%key:component::stellantis::entity::sensor::preconditioning_program::name%]",
+        "name": "Preconditioning program {slot}",
         "state": {
           "on": "[%key:common::state::enabled%]",
           "off": "[%key:common::state::disabled%]"

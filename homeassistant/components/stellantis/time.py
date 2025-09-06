@@ -134,12 +134,21 @@ class StellantisPreconditioningProgramStartTime(
 
     @callback
     def _handle_coordinator_update(self) -> None:
-        self._attr_native_value = (
-            (datetime(1, 1, 1) + start_time).time()
-            if (program := self.program) is not None
-            and (start_time := dt_util.parse_duration(program.start))
-            else None
-        )
+        self._attr_native_value = None
+        self._attr_extra_state_attributes = {}
+        if program := self.program:
+            self._attr_native_value = (
+                (datetime(1, 1, 1) + start_time).time()
+                if (start_time := dt_util.parse_duration(program.start))
+                else None
+            )
+            self._attr_extra_state_attributes.update(
+                {
+                    "recurrence": program.recurrence,
+                    "occurrence": program.occurence,  # codespell:ignore occurence
+                }
+            )
+
         super()._handle_coordinator_update()
 
     async def async_set_value(self, value: time) -> None:

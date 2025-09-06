@@ -17,7 +17,6 @@ from stellantis.model import (
     PowertrainStatus,
     PrivacyState,
     Status,
-    WeekDays,
 )
 from stellantis.model.error import StellantisError
 
@@ -627,64 +626,6 @@ def platforms() -> list[Platform]:
             STATE_UNAVAILABLE,
             lambda status: setattr(status, "engines", None),
         ),
-        (
-            "sensor.peugeot_suv_3008_preconditioning_program_1",
-            datetime(2025, 9, 1, 15, 0, tzinfo=TEST_TIMEZONE)
-            .astimezone(UTC)
-            .isoformat(),
-            lambda status: setattr(
-                status.preconditioning.air_conditioning.programs[0], "start", "PT15H"
-            ),
-        ),
-        (
-            "sensor.peugeot_suv_3008_preconditioning_program_1",
-            datetime(2025, 9, 8, 9, 30, tzinfo=TEST_TIMEZONE)
-            .astimezone(UTC)
-            .isoformat(),
-            lambda status: setattr(
-                status.preconditioning.air_conditioning.programs[0], "start", "PT9H30M"
-            ),
-        ),
-        (
-            "sensor.peugeot_suv_3008_preconditioning_program_1",
-            STATE_UNKNOWN,
-            lambda status: setattr(
-                status.preconditioning.air_conditioning.programs[0],
-                "start",
-                "BAD_FORMAT",
-            ),
-        ),
-        (
-            "sensor.peugeot_suv_3008_preconditioning_program_1",
-            datetime(2025, 9, 2, 14, 30, tzinfo=TEST_TIMEZONE)
-            .astimezone(UTC)
-            .isoformat(),
-            lambda status: setattr(
-                status.preconditioning.air_conditioning.programs[
-                    0
-                ].occurence,  # codespell:ignore occurence
-                "day",
-                [WeekDays.TUESDAY],
-            ),
-        ),
-        (
-            "sensor.peugeot_suv_3008_preconditioning_program_1",
-            STATE_UNKNOWN,
-            lambda status: setattr(
-                status.preconditioning.air_conditioning.programs[
-                    0
-                ].occurence,  # codespell:ignore occurence
-                "day",
-                None,
-            ),
-        ),
-        (
-            "sensor.peugeot_suv_3008_preconditioning_program_1",
-            STATE_UNAVAILABLE,
-            lambda status: setattr(
-                status.preconditioning.air_conditioning, "programs", None
-            ),
-        ),
     ],
 )
 async def test_sensor_state_and_updates(
@@ -748,7 +689,6 @@ async def test_sensor_state_and_updates(
         "sensor.peugeot_suv_3008_fuel_energy_level",
         "sensor.peugeot_suv_3008_fuel_instant_consumption",
         "sensor.peugeot_suv_3008_thermic_engine_speed",
-        "sensor.peugeot_suv_3008_preconditioning_program_1",
     ],
 )
 async def test_unavailability_on_api_error(
