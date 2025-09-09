@@ -212,7 +212,7 @@ async def test_setup_entry_get_vehicles_on_boarding_capabilities_error(
 ) -> None:
     """Test the setup entry when the call to obtain the vehicles fails."""
     client.get_vehicles_by_device.side_effect = [
-        StellantisApiError(HTTPStatus.INTERNAL_SERVER_ERROR),
+        StellantisApiError(50055),
         client.get_vehicles_by_device.return_value,
     ]
     client.get_vehicles_by_device.return_value = None
