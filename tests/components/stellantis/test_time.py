@@ -79,6 +79,60 @@ def platforms() -> list[Platform]:
                 status.preconditioning.air_conditioning, "programs", None
             ),
         ),
+        (
+            "time.peugeot_suv_3008_charging_program_1_start_time",
+            "22:00:00",
+            lambda status: setattr(
+                status.energies[1].extension.electric.charging.schedule.programs[0],
+                "start",
+                "PT22H",
+            ),
+        ),
+        (
+            "time.peugeot_suv_3008_charging_program_1_start_time",
+            STATE_UNKNOWN,
+            lambda status: setattr(
+                status.energies[1].extension.electric.charging.schedule.programs[0],
+                "start",
+                "BAD_FORMAT",
+            ),
+        ),
+        (
+            "time.peugeot_suv_3008_charging_program_1_start_time",
+            STATE_UNAVAILABLE,
+            lambda status: setattr(
+                status.energies[1].extension.electric.charging.schedule,
+                "programs",
+                None,
+            ),
+        ),
+        (
+            "time.peugeot_suv_3008_charging_program_1_end_time",
+            "22:00:00",
+            lambda status: setattr(
+                status.energies[1].extension.electric.charging.schedule.programs[0],
+                "end",
+                "PT22H",
+            ),
+        ),
+        (
+            "time.peugeot_suv_3008_charging_program_1_end_time",
+            STATE_UNKNOWN,
+            lambda status: setattr(
+                status.energies[1].extension.electric.charging.schedule.programs[0],
+                "end",
+                "BAD_FORMAT",
+            ),
+        ),
+        (
+            "time.peugeot_suv_3008_charging_program_1_end_time",
+            STATE_UNAVAILABLE,
+            lambda status: setattr(
+                status.energies[1].extension.electric.charging.schedule,
+                "programs",
+                None,
+            ),
+        ),
     ],
 )
 async def test_time_state_and_updates(
@@ -256,6 +310,8 @@ async def test_remote_action_callback_timeout(hass: HomeAssistant) -> None:
     [
         "time.peugeot_suv_3008_charging_time",
         "time.peugeot_suv_3008_preconditioning_program_1_start_time",
+        "time.peugeot_suv_3008_charging_program_1_start_time",
+        "time.peugeot_suv_3008_charging_program_1_end_time",
     ],
 )
 async def test_remote_action_payload(
@@ -286,6 +342,14 @@ async def test_remote_action_payload(
         (
             "time.peugeot_suv_3008_preconditioning_program_1_start_time",
             lambda vehicle_details: setattr(
+                vehicle_details.embedded.extension.onboard_capabilities.remote.preconditioning,
+                "supported",
+                False,
+            ),
+        ),
+        (
+            "time.peugeot_suv_3008_preconditioning_program_1_start_time",
+            lambda vehicle_details: setattr(
                 vehicle_details.embedded.extension.onboard_capabilities.remote.preconditioning.parameters.programs,
                 "size",
                 0,
@@ -310,11 +374,65 @@ async def test_remote_action_payload(
         (
             "time.peugeot_suv_3008_charging_time",
             lambda vehicle_details: setattr(
+                vehicle_details.embedded.extension.onboard_capabilities.remote.charging,
+                "supported",
+                False,
+            ),
+        ),
+        (
+            "time.peugeot_suv_3008_charging_time",
+            lambda vehicle_details: setattr(
                 vehicle_details.embedded.extension.onboard_capabilities.remote.charging.parameters.schedule,
                 "next_delayed_time",
                 False,
             ),
         ),
+        *[
+            test
+            for attribute in ("start", "end")
+            for test in (
+                (
+                    "time.peugeot_suv_3008_charging_time",
+                    lambda vehicle_details: setattr(
+                        vehicle_details.embedded.extension.onboard_capabilities.remote.charging,
+                        "supported",
+                        False,
+                    ),
+                ),
+                (
+                    f"time.peugeot_suv_3008_charging_program_5_{attribute}_time",
+                    lambda vehicle_details: setattr(
+                        vehicle_details.embedded.extension.onboard_capabilities.remote.charging.parameters.schedule.programs,
+                        "supported",
+                        False,
+                    ),
+                ),
+                (
+                    f"time.peugeot_suv_3008_charging_program_1_{attribute}_time",
+                    lambda vehicle_details: setattr(
+                        vehicle_details.embedded.extension.onboard_capabilities.remote.charging.parameters.schedule.programs,
+                        "size",
+                        0,
+                    ),
+                ),
+                (
+                    f"time.peugeot_suv_3008_charging_program_4_{attribute}_time",
+                    lambda vehicle_details: setattr(
+                        vehicle_details.embedded.extension.onboard_capabilities.remote.charging.parameters.schedule.programs,
+                        "size",
+                        2,
+                    ),
+                ),
+                (
+                    f"time.peugeot_suv_3008_charging_program_5_{attribute}_time",
+                    lambda vehicle_details: setattr(
+                        vehicle_details.embedded.extension.onboard_capabilities.remote.charging.parameters.schedule.programs,
+                        "size",
+                        None,
+                    ),
+                ),
+            )
+        ],
     ],
     indirect=["vehicle_details_mod_fn"],
 )
@@ -356,6 +474,26 @@ async def test_no_actionable_entity_if_not_supported(
                 vehicle_details.embedded.extension, "onboard_capabilities", None
             ),
         ),
+        *[
+            test
+            for attribute in ("start", "end")
+            for test in (
+                (
+                    f"time.peugeot_suv_3008_charging_program_1_{attribute}_time",
+                    lambda vehicle_details: setattr(
+                        vehicle_details.embedded.extension.onboard_capabilities.remote.charging.parameters.schedule.programs,
+                        "size",
+                        None,
+                    ),
+                ),
+                (
+                    f"time.peugeot_suv_3008_charging_program_1_{attribute}_time",
+                    lambda vehicle_details: setattr(
+                        vehicle_details.embedded.extension, "onboard_capabilities", None
+                    ),
+                ),
+            )
+        ],
     ],
     indirect=["vehicle_details_mod_fn"],
 )

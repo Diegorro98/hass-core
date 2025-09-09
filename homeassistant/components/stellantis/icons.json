@@ -216,11 +216,17 @@
       }
     },
     "time": {
-      "charging_time": {
+      "next_delayed_time": {
         "default": "mdi:battery-clock"
       },
       "preconditioning_program": {
         "default": "mdi:air-conditioner"
+      },
+      "charging_program_start": {
+        "default": "mdi:battery-clock"
+      },
+      "charging_program_end": {
+        "default": "mdi:battery-clock"
       }
     }
   },
@@ -230,6 +236,9 @@
     },
     "send_navigation_positions": {
       "service": "mdi:map-marker-multiple"
+    },
+    "set_charging_program": {
+      "service": "mdi:battery-clock"
     },
     "set_preconditioning_program": {
       "service": "mdi:air-conditioner"

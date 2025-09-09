@@ -311,6 +311,16 @@
           "on": "[%key:common::state::enabled%]",
           "off": "[%key:common::state::disabled%]"
         }
+      },
+      "charging_program": {
+        "name": "Charging program {slot}",
+        "state": {
+          "on": "[%key:common::state::enabled%]",
+          "off": "[%key:common::state::disabled%]"
+        }
+      },
+      "charging_program_charge_until_full": {
+        "name": "Charging program {slot} charge until full"
       }
     },
     "time": {
@@ -319,6 +329,12 @@
       },
       "preconditioning_program": {
         "name": "Preconditioning program {slot} start time"
+      },
+      "charging_program_start": {
+        "name": "Charging program {slot} start time"
+      },
+      "charging_program_end": {
+        "name": "Charging program {slot} end time"
       }
     }
   },
@@ -338,8 +354,11 @@
     "action_new_preconditioning_program_missing_fields": {
       "message": "To define a new program, all fields are required"
     },
+    "action_new_charging_program_missing_fields": {
+      "message": "To define a new program, 'start' field is required"
+    },
     "action_program_not_found": {
-      "message": "Preconditioning program {slot} not found, so it cannot be edited"
+      "message": "Program {slot} not found, so it cannot be edited"
     },
     "executing_remote_request_failed": {
       "message": "Execution of the remote action failed. Cause: {failure_cause}"
@@ -429,6 +448,36 @@
         "position_9": {
           "name": "[%key:component::stellantis::services::send_navigation_positions::fields::position::name%]",
           "description": "[%key:component::stellantis::services::send_navigation_positions::fields::position_1::description%]"
+        }
+      }
+    },
+    "set_charging_program": {
+      "name": "Set charging program",
+      "description": "Add or adjust a charging program for in the vehicle. The fields that are not set will be kept unchanged.",
+      "fields": {
+        "device_id": {
+          "name": "[%key:component::stellantis::services::delete_preconditioning_program::fields::device_id::name%]",
+          "description": "[%key:component::stellantis::services::delete_preconditioning_program::fields::device_id::description%]"
+        },
+        "program_number": {
+          "name": "[%key:component::stellantis::services::delete_preconditioning_program::fields::program_number::name%]",
+          "description": "Number of the charging program to modify"
+        },
+        "enabled": {
+          "name": "[%key:component::stellantis::services::set_preconditioning_program::fields::enabled::name%]",
+          "description": "[%key:component::stellantis::services::set_preconditioning_program::fields::enabled::description%]"
+        },
+        "start": {
+          "name": "[%key:component::stellantis::services::set_preconditioning_program::fields::start::name%]",
+          "description": "[%key:component::stellantis::services::set_preconditioning_program::fields::start::description%]"
+        },
+        "end": {
+          "name": "End",
+          "description": "Time to end the program (Seconds are ignored)."
+        },
+        "occurrence": {
+          "name": "[%key:component::stellantis::services::set_preconditioning_program::fields::occurrence::name%]",
+          "description": "[%key:component::stellantis::services::set_preconditioning_program::fields::occurrence::description%]"
         }
       }
     },

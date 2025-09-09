@@ -7,6 +7,7 @@ CONF_BRAND = "brand"
 CONF_CLOUDHOOK_URL = "cloudhook_url"
 
 ATTR_ENABLED = "enabled"
+ATTR_END = "end"
 ATTR_OCCURRENCE = "occurrence"
 ATTR_POSITION = "position"
 ATTR_PROGRAM_NUMBER = "program_number"
@@ -16,6 +17,7 @@ DOMAIN = "stellantis"
 
 SERVICE_DELETE_PRECONDITIONING_PROGRAM = "delete_preconditioning_program"
 SERVICE_SEND_NAVIGATION_POSITIONS = "send_navigation_positions"
+SERVICE_SET_CHARGING_PROGRAM = "set_charging_program"
 SERVICE_SET_PRECONDITIONING_PROGRAM = "set_preconditioning_program"
 SERVICE_WAKE_UP = "wake_up"
 

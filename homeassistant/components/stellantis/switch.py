@@ -16,6 +16,8 @@ from stellantis.model import (
     RemoteChargingPreferences,
     RemotePreconditioning,
     RemotePreconditioningAirConditioning,
+    Schedule,
+    ScheduleProgram,
 )
 
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
@@ -24,6 +26,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import StellantisConfigEntry
 from .entity import (
+    StellantisChargingProgramEntity,
     StellantisEntityDescription,
     StellantisPreconditioningEntity,
     StellantisToggleEntity,
@@ -57,6 +60,12 @@ PRECONDITIONING_SWITCH_ENTITY_DESCRIPTION = StellantisSwitchEntityDescription(
     and (air_conditioning := preconditioning.air_conditioning)
     and (air_conditioning_status := air_conditioning.status)
     else None,
+)
+
+PRECONDITIONING_PROGRAM_ENABLED_SWITCH_ENTITY_DESCRIPTION = StellantisEntityDescription(
+    key="preconditioning_program",
+    translation_key="preconditioning_program",
+    value_fn=lambda _: None,
 )
 
 CHARGE_SWITCH_ENTITY_DESCRIPTION = StellantisSwitchEntityDescription(
@@ -113,6 +122,18 @@ PARTIAL_CHARGE_SWITCH_ENTITY_DESCRIPTION = StellantisSwitchEntityDescription(
     else None,
 )
 
+CHARGING_PROGRAM_ENABLED_SWITCH_ENTITY_DESCRIPTION = StellantisEntityDescription(
+    key="charging_program",
+    translation_key="charging_program",
+    value_fn=lambda _: None,
+)
+
+CHARGING_PROGRAM_UNTIL_FULL_SWITCH_ENTITY_DESCRIPTION = StellantisEntityDescription(
+    key="charging_program_charge_until_full",
+    translation_key="charging_program_charge_until_full",
+    value_fn=lambda _: None,
+)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -163,12 +184,7 @@ async def async_setup_entry(
                     StellantisPreconditioningProgramSwitch(
                         hass,
                         vehicle_coordinator,
-                        StellantisEntityDescription(
-                            key=f"preconditioning_program_{slot}",
-                            translation_key="preconditioning_program",
-                            value_fn=lambda _: None,
-                            translation_placeholders={"slot": str(slot)},
-                        ),
+                        PRECONDITIONING_PROGRAM_ENABLED_SWITCH_ENTITY_DESCRIPTION,
                         entry,
                         slot,
                         remote is None or size is None,
@@ -214,6 +230,41 @@ async def async_setup_entry(
                         PARTIAL_CHARGE_SWITCH_ENTITY_DESCRIPTION,
                         entry,
                         remote is None or charging_type is None,
+                    )
+                )
+            if (
+                remote is None
+                or (
+                    charging_programs_support := (
+                        remote.charging.parameters.schedule.programs
+                        if remote.charging.parameters.schedule
+                        else None
+                    )
+                )
+                is None
+                or (
+                    charging_programs_support.supported is True
+                    and (num_charging_programs := charging_programs_support.size) != 0
+                )
+            ):
+                entities.extend(
+                    StellantisChargingProgramEnabledSwitch(
+                        hass,
+                        vehicle_coordinator,
+                        CHARGING_PROGRAM_ENABLED_SWITCH_ENTITY_DESCRIPTION,
+                        entry,
+                        slot,
+                        remote is None
+                        or charging_programs_support is None
+                        or num_charging_programs is None,
+                    )
+                    for slot in range(
+                        1,
+                        5
+                        if remote is None
+                        or charging_programs_support is None
+                        or num_charging_programs is None
+                        else num_charging_programs + 1,
                     )
                 )
 
@@ -348,3 +399,61 @@ class StellantisChargeRelatedSwitch(StellantisToggleEntity, SwitchEntity):
             ChargingStatusEnum.IN_PROGRESS,
             None,
         )
+
+
+class StellantisChargingProgramEnabledSwitch(
+    StellantisChargingProgramEntity[bool], SwitchEntity
+):
+    """Representation of a Stellantis charging program time entity."""
+
+    entity_description: StellantisSwitchEntityDescription
+
+    def _handle_update_from_successful_remote_action(self, state: bool) -> None:
+        """Handle successful remote action updates."""
+        if self.program is not None:
+            self._attr_is_on = state
+            super()._handle_update_from_successful_remote_action(state)
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        self._attr_available = False
+        self._attr_is_on = None
+        self._attr_extra_state_attributes = {}
+
+        if program := self.program:
+            self._attr_available = True
+            self._attr_is_on = program.enabled
+
+        super()._handle_coordinator_update()
+
+    async def _enable_or_disable_program(self, value: bool) -> None:
+        programs = [
+            ScheduleProgram(
+                start=program.start,
+                end=program.end,
+                enabled=program.enabled,
+                occurence=copy.deepcopy(  # codespell:ignore occurence
+                    program.occurence  # codespell:ignore occurence
+                ),
+            )
+            for program in self.programs or []
+        ]
+        assert programs is not None
+        assert self.slot - 1 < len(programs)
+        # The program must be defined, otherwise the entity is unavailable
+        # and this method cannot be called
+        program = programs[self.slot - 1]
+
+        program.enabled = value
+        await self.async_call_remote_action(
+            Remote(charging=RemoteCharging(schedule=Schedule(programs=programs))),
+            value,
+        )
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Send a remote action to enable charging program."""
+        await self._enable_or_disable_program(True)
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Send a remote action to disable charging program."""
+        await self._enable_or_disable_program(False)

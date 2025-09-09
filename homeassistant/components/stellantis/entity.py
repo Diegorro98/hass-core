@@ -7,6 +7,9 @@ from dataclasses import dataclass
 from typing import Any, Generic, TypeVar, cast
 
 from stellantis.model import (
+    ArrayOfChargingSchedules,
+    ChargeScheduleProgram,
+    EnergyType,
     IgnitionType,
     PreconditioningProgram,
     Remote,
@@ -227,8 +230,8 @@ class StellantisToggleEntity(StellantisActionableEntity[bool], ToggleEntity):
         ) is None or ignition.type == IgnitionType.STOP
 
 
-class StellantisPreconditioningEntity(StellantisActionableEntity[T], Generic[T]):
-    """Common base class for Stellantis preconditioning related entities."""
+class StellantisProgramEntity(StellantisActionableEntity[T], Generic[T]):
+    """Common base class for Stellantis program related entities."""
 
     def __init__(
         self,
@@ -241,8 +244,19 @@ class StellantisPreconditioningEntity(StellantisActionableEntity[T], Generic[T])
     ) -> None:
         """Initialize entity."""
         super().__init__(hass, coordinator, description, entry, unknown_supported)
+        assert self._attr_unique_id
+        self._attr_unique_id += f"_{slot}"
         self.slot = slot
         self._attr_translation_placeholders = {"slot": str(slot)}
+
+    @property
+    def available(self) -> bool:
+        """Return available if the program exists."""
+        return self._attr_available
+
+
+class StellantisPreconditioningEntity(StellantisProgramEntity[T], Generic[T]):
+    """Common base class for Stellantis preconditioning related entities."""
 
     @property
     def program(self) -> PreconditioningProgram | None:
@@ -262,7 +276,33 @@ class StellantisPreconditioningEntity(StellantisActionableEntity[T], Generic[T])
         self._attr_available = False
         return None
 
+
+class StellantisChargingProgramEntity(StellantisProgramEntity[T], Generic[T]):
+    """Common base class for Stellantis charging program related entities."""
+
     @property
-    def available(self) -> bool:
-        """Return available if the program exists."""
-        return self._attr_available
+    def programs(self) -> list[ChargeScheduleProgram] | None:
+        """Return the charging programs."""
+        for energy in self.vehicle_status.energies or []:
+            if (
+                energy.type == EnergyType.ELECTRIC
+                and energy.extension
+                and energy.extension.electric
+                and energy.extension.electric.charging
+            ):
+                charging_schedule = energy.extension.electric.charging.schedule
+                return (
+                    charging_schedule.programs
+                    if isinstance(charging_schedule, ArrayOfChargingSchedules)
+                    else charging_schedule
+                )
+
+        return None
+
+    @property
+    def program(self) -> ChargeScheduleProgram | None:
+        """Return the charging program."""
+        programs = self.programs
+        if programs and self.slot <= len(programs):
+            return programs[self.slot - 1]
+        return None

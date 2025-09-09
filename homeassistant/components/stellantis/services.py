@@ -8,15 +8,20 @@ from stellantis.client import Client as StellantisClient
 from stellantis.model import (
     ActionType,
     AirConditioningProgram,
+    ArrayOfChargingSchedules,
+    EnergyType,
     Point,
     PreconditioningProgram,
     ProgramRecurrence,
     Remote,
+    RemoteCharging,
     RemoteEventType,
     RemoteNavigation,
     RemotePreconditioning,
     RemotePreconditioningAirConditioning,
     RemoteWakeUp,
+    Schedule,
+    ScheduleProgram,
     WeekDays,
     WeekOccurrence,
 )
@@ -32,6 +37,7 @@ from homeassistant.util import slugify
 
 from .const import (
     ATTR_ENABLED,
+    ATTR_END,
     ATTR_OCCURRENCE,
     ATTR_POSITION,
     ATTR_PROGRAM_NUMBER,
@@ -41,6 +47,7 @@ from .const import (
     LOGGER,
     SERVICE_DELETE_PRECONDITIONING_PROGRAM,
     SERVICE_SEND_NAVIGATION_POSITIONS,
+    SERVICE_SET_CHARGING_PROGRAM,
     SERVICE_SET_PRECONDITIONING_PROGRAM,
     SERVICE_WAKE_UP,
     RemoteDoneEventStatus,
@@ -222,6 +229,80 @@ async def async_set_navigation_positions_service(call: ServiceCall) -> None:
     )
 
 
+async def async_set_charging_program_service(call: ServiceCall) -> None:
+    """Handle the service call."""
+    client, vehicle_coordinator, callback_id = _get_stellantis_data(call)
+
+    programs = []
+
+    for energy in vehicle_coordinator.data.energies or []:
+        if (
+            energy.type == EnergyType.ELECTRIC
+            and energy.extension
+            and energy.extension.electric
+            and energy.extension.electric.charging
+        ):
+            charging_schedule = energy.extension.electric.charging.schedule
+            programs = [
+                ScheduleProgram(
+                    start=program.start,
+                    end=program.end,
+                    enabled=program.enabled,
+                    occurence=copy.deepcopy(  # codespell:ignore occurence
+                        program.occurence  # codespell:ignore occurence
+                    ),
+                )
+                for program in (
+                    charging_schedule.programs
+                    if isinstance(charging_schedule, ArrayOfChargingSchedules)
+                    else charging_schedule
+                )
+                or []
+            ]
+
+    program_to_set = None
+    program_number = call.data.get(ATTR_PROGRAM_NUMBER)
+    if program_number is None:
+        if ATTR_START not in call.data:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="action_new_charging_program_missing_fields",
+            )
+        program_to_set = ScheduleProgram(
+            start=time_to_iso_duration(call.data[ATTR_START]),
+        )
+        programs.append(program_to_set)
+    else:
+        # Find the existing program to update
+        if not programs or len(programs) < program_number:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="action_program_not_found",
+                translation_placeholders={"slot": str(program_number)},
+            )
+        program_to_set = programs[program_number - 1]
+
+        if (start := call.data.get(ATTR_START)) is not None:
+            program_to_set.start = time_to_iso_duration(start)
+    if (end := call.data.get(ATTR_END)) is not None:
+        program_to_set.end = time_to_iso_duration(end)
+    if (enabled := call.data.get(ATTR_ENABLED)) is not None:
+        program_to_set.enabled = enabled
+    if occurrence := call.data.get(ATTR_OCCURRENCE):
+        program_to_set.occurence = WeekOccurrence(  # codespell:ignore occurence
+            day=[WeekDays(day.capitalize()) for day in cast(list[str], occurrence)]
+        )
+
+    await _async_send_remote_requests(
+        call,
+        Remote(charging=RemoteCharging(schedule=Schedule(programs=programs))),
+        SERVICE_SET_CHARGING_PROGRAM,
+        client,
+        vehicle_coordinator,
+        callback_id,
+    )
+
+
 async def async_set_preconditioning_program_service(call: ServiceCall) -> None:
     """Handle the service call."""
     client, vehicle_coordinator, callback_id = _get_stellantis_data(call)
@@ -272,20 +353,17 @@ async def async_set_preconditioning_program_service(call: ServiceCall) -> None:
                 translation_key="action_program_not_found",
                 translation_placeholders={"slot": str(slot)},
             )
-        if ATTR_START in call.data:
-            program_to_set.start = time_to_iso_duration(call.data[ATTR_START])
-        if ATTR_ENABLED in call.data:
-            program_to_set.enabled = call.data[ATTR_ENABLED]
-    if ATTR_OCCURRENCE in call.data:
+        if (start := call.data.get(ATTR_START)) is not None:
+            program_to_set.start = time_to_iso_duration(start)
+        if (enabled := call.data.get(ATTR_ENABLED)) is not None:
+            program_to_set.enabled = enabled
+    if occurrence := call.data.get(ATTR_OCCURRENCE):
         program_to_set.occurence = WeekOccurrence(  # codespell:ignore occurence
-            day=[
-                WeekDays(day.capitalize())
-                for day in cast(list[str], call.data[ATTR_OCCURRENCE])
-            ]
+            day=[WeekDays(day.capitalize()) for day in cast(list[str], occurrence)]
         )
-    if ATTR_RECURRENCE in call.data:
+    if recurrence := call.data.get(ATTR_RECURRENCE):
         program_to_set.recurrence = ProgramRecurrence(
-            cast(str, call.data[ATTR_RECURRENCE]).capitalize()
+            cast(str, recurrence).capitalize()
         )
 
     await _async_send_remote_requests(
@@ -351,6 +429,20 @@ async def async_setup_hass_services(hass: HomeAssistant) -> None:
                 vol.Optional(ATTR_RECURRENCE): vol.In(
                     [slugify(val) for val in ProgramRecurrence.__members__.values()]
                 ),
+            }
+        ),
+    )
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SET_CHARGING_PROGRAM,
+        async_set_charging_program_service,
+        vol.Schema(
+            {
+                vol.Required(ATTR_DEVICE_ID): cv.string,
+                vol.Optional(ATTR_PROGRAM_NUMBER): vol.In(range(1, 5)),
+                **SCHEDULE_SCHEMA,
+                vol.Optional(ATTR_END): cv.time_period_str,
             }
         ),
     )

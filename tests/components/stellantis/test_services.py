@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from stellantis.model import (
+    ArrayOfChargingSchedules,
     ProgramRecurrence,
     RemotePostResponse,
     Status,
@@ -16,6 +17,7 @@ from syrupy.assertion import SnapshotAssertion
 
 from homeassistant.components.stellantis.const import (
     ATTR_ENABLED,
+    ATTR_END,
     ATTR_OCCURRENCE,
     ATTR_POSITION,
     ATTR_PROGRAM_NUMBER,
@@ -24,6 +26,7 @@ from homeassistant.components.stellantis.const import (
     DOMAIN,
     SERVICE_DELETE_PRECONDITIONING_PROGRAM,
     SERVICE_SEND_NAVIGATION_POSITIONS,
+    SERVICE_SET_CHARGING_PROGRAM,
     SERVICE_SET_PRECONDITIONING_PROGRAM,
     SERVICE_WAKE_UP,
 )
@@ -115,6 +118,52 @@ async def test_service_call_remote_action_payload(
     client.send_remote_to_vhl.assert_called_once_with(
         vehicle_details.id, "mock-callback-id", snapshot
     )
+
+
+@pytest.mark.usefixtures("send_webhook_result")
+async def test_partailly_edit_charging_program(
+    hass: HomeAssistant,
+    device_registry: dr.DeviceRegistry,
+    config_entry: MockConfigEntry,
+    client: MagicMock,
+    vehicle_details: Vehicle,
+    vehicle_status: Status,
+    snapshot: SnapshotAssertion,
+) -> None:
+    """Test the partial edit of a charging program."""
+    slot = 1
+    array_of_programs = vehicle_status.energies[1].extension.electric.charging.schedule
+    assert isinstance(array_of_programs, ArrayOfChargingSchedules)
+    assert array_of_programs.programs
+
+    program = array_of_programs.programs[0]
+    assert program
+    assert program.start != "PT0S"
+
+    assert vehicle_details.vin
+    device_entry = device_registry.async_get_or_create(
+        config_entry_id=config_entry.entry_id,
+        identifiers={(DOMAIN, vehicle_details.vin)},
+    )
+
+    await hass.services.async_call(
+        DOMAIN,
+        SERVICE_SET_CHARGING_PROGRAM,
+        {
+            ATTR_DEVICE_ID: device_entry.id,
+            ATTR_PROGRAM_NUMBER: slot,
+            ATTR_START: "00:00",
+            ATTR_ENABLED: False,
+        },
+        blocking=True,
+    )
+
+    client.send_remote_to_vhl.assert_called_once_with(
+        vehicle_details.id, "mock-callback-id", snapshot
+    )
+
+    # assert that the service hasn't overwritten any data
+    assert program.start != "PT0S"
 
 
 @pytest.mark.usefixtures("send_webhook_result")
@@ -225,6 +274,40 @@ async def test_partailly_edit_preconditioning_program(
 
 
 @pytest.mark.usefixtures("send_webhook_result")
+async def test_create_charging_program(
+    hass: HomeAssistant,
+    device_registry: dr.DeviceRegistry,
+    config_entry: MockConfigEntry,
+    client: MagicMock,
+    vehicle_details: Vehicle,
+    snapshot: SnapshotAssertion,
+) -> None:
+    """Test create a charging program."""
+    assert vehicle_details.vin
+    device_entry = device_registry.async_get_or_create(
+        config_entry_id=config_entry.entry_id,
+        identifiers={(DOMAIN, vehicle_details.vin)},
+    )
+
+    await hass.services.async_call(
+        DOMAIN,
+        SERVICE_SET_CHARGING_PROGRAM,
+        {
+            ATTR_DEVICE_ID: device_entry.id,
+            ATTR_START: "00:00",
+            ATTR_OCCURRENCE: ["mon", "wed"],
+            ATTR_END: "02:00",
+            ATTR_ENABLED: False,
+        },
+        blocking=True,
+    )
+
+    client.send_remote_to_vhl.assert_called_once_with(
+        vehicle_details.id, "mock-callback-id", snapshot
+    )
+
+
+@pytest.mark.usefixtures("send_webhook_result")
 async def test_create_preconditioning_program(
     hass: HomeAssistant,
     device_registry: dr.DeviceRegistry,
@@ -294,6 +377,32 @@ async def test_different_domain_device_exception(
         )
 
 
+async def test_create_charging_program_missing_fields(
+    hass: HomeAssistant,
+    device_registry: dr.DeviceRegistry,
+    config_entry: MockConfigEntry,
+    vehicle_details: Vehicle,
+) -> None:
+    """Test that trying to create a charging program with missing fields raises an exception."""
+    assert vehicle_details.vin
+    device_entry = device_registry.async_get_or_create(
+        config_entry_id=config_entry.entry_id,
+        identifiers={(DOMAIN, vehicle_details.vin)},
+    )
+
+    with pytest.raises(ServiceValidationError, match=r"start.*field.*required"):
+        await hass.services.async_call(
+            DOMAIN,
+            SERVICE_SET_CHARGING_PROGRAM,
+            {
+                ATTR_DEVICE_ID: device_entry.id,
+                ATTR_OCCURRENCE: ["mon", "wed"],
+                ATTR_ENABLED: False,
+            },
+            blocking=True,
+        )
+
+
 async def test_create_preconditioning_program_missing_fields(
     hass: HomeAssistant,
     device_registry: dr.DeviceRegistry,
@@ -321,6 +430,33 @@ async def test_create_preconditioning_program_missing_fields(
         )
 
 
+async def test_edit_charging_program_missing_program(
+    hass: HomeAssistant,
+    device_registry: dr.DeviceRegistry,
+    config_entry: MockConfigEntry,
+    vehicle_details: Vehicle,
+) -> None:
+    """Test that trying to edit a program raises an exception."""
+    assert vehicle_details.vin
+    device_entry = device_registry.async_get_or_create(
+        config_entry_id=config_entry.entry_id,
+        identifiers={(DOMAIN, vehicle_details.vin)},
+    )
+
+    with pytest.raises(ServiceValidationError, match=r"Program.*not found"):
+        await hass.services.async_call(
+            DOMAIN,
+            SERVICE_SET_CHARGING_PROGRAM,
+            {
+                ATTR_PROGRAM_NUMBER: 2,
+                ATTR_DEVICE_ID: device_entry.id,
+                ATTR_OCCURRENCE: ["mon", "wed"],
+                ATTR_ENABLED: False,
+            },
+            blocking=True,
+        )
+
+
 async def test_edit_preconditioning_program_missing_program(
     hass: HomeAssistant,
     device_registry: dr.DeviceRegistry,
@@ -334,9 +470,7 @@ async def test_edit_preconditioning_program_missing_program(
         identifiers={(DOMAIN, vehicle_details.vin)},
     )
 
-    with pytest.raises(
-        ServiceValidationError, match=r"Preconditioning program.*not found"
-    ):
+    with pytest.raises(ServiceValidationError, match=r"Program.*not found"):
         await hass.services.async_call(
             DOMAIN,
             SERVICE_SET_PRECONDITIONING_PROGRAM,

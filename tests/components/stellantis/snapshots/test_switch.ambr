@@ -37,6 +37,140 @@
     'wake_up': None,
   })
 # ---
+# name: test_remote_action_payload[switch.peugeot_suv_3008_charging_program_1-turn_off]
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': dict({
+      '_next_delayed_time': None,
+      'immediate': None,
+      'preferences': None,
+      'schedule': dict({
+        'next_delayed_time': None,
+        'programs': list([
+          dict({
+            'enabled': False,
+            'end': 'PT14H30M',
+            'occurence': dict({
+              'day': list([
+                <WeekDays.MONDAY: 'Mon'>,
+              ]),
+            }),
+            'start': 'PT14H30M',
+          }),
+        ]),
+      }),
+    }),
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': None,
+    'preconditioning': None,
+    'wake_up': None,
+  })
+# ---
+# name: test_remote_action_payload[switch.peugeot_suv_3008_charging_program_1-turn_on]
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': dict({
+      '_next_delayed_time': None,
+      'immediate': None,
+      'preferences': None,
+      'schedule': dict({
+        'next_delayed_time': None,
+        'programs': list([
+          dict({
+            'enabled': True,
+            'end': 'PT14H30M',
+            'occurence': dict({
+              'day': list([
+                <WeekDays.MONDAY: 'Mon'>,
+              ]),
+            }),
+            'start': 'PT14H30M',
+          }),
+        ]),
+      }),
+    }),
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': None,
+    'preconditioning': None,
+    'wake_up': None,
+  })
+# ---
+# name: test_remote_action_payload[switch.peugeot_suv_3008_charging_program_1_charge_until_full-turn_off]
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': dict({
+      '_next_delayed_time': None,
+      'immediate': None,
+      'preferences': None,
+      'schedule': dict({
+        'next_delayed_time': None,
+        'programs': list([
+          dict({
+            'charge_until_full': False,
+            'enabled': True,
+            'end': 'PT14H30M',
+            'occurence': dict({
+              'day': list([
+                <WeekDays.MONDAY: 'Mon'>,
+              ]),
+            }),
+            'start': 'PT14H30M',
+          }),
+        ]),
+      }),
+    }),
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': None,
+    'preconditioning': None,
+    'wake_up': None,
+  })
+# ---
+# name: test_remote_action_payload[switch.peugeot_suv_3008_charging_program_1_charge_until_full-turn_on]
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': dict({
+      '_next_delayed_time': None,
+      'immediate': None,
+      'preferences': None,
+      'schedule': dict({
+        'next_delayed_time': None,
+        'programs': list([
+          dict({
+            'charge_until_full': True,
+            'enabled': True,
+            'end': 'PT14H30M',
+            'occurence': dict({
+              'day': list([
+                <WeekDays.MONDAY: 'Mon'>,
+              ]),
+            }),
+            'start': 'PT14H30M',
+          }),
+        ]),
+      }),
+    }),
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': None,
+    'preconditioning': None,
+    'wake_up': None,
+  })
+# ---
 # name: test_remote_action_payload[switch.peugeot_suv_3008_partial_charge-turn_off]
   dict({
     'attributes': None,

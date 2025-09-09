@@ -1,4 +1,48 @@
 # serializer version: 1
+# name: test_create_charging_program
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': dict({
+      '_next_delayed_time': None,
+      'immediate': None,
+      'preferences': None,
+      'schedule': dict({
+        'next_delayed_time': None,
+        'programs': list([
+          dict({
+            'enabled': True,
+            'end': 'PT14H30M',
+            'occurence': dict({
+              'day': list([
+                <WeekDays.MONDAY: 'Mon'>,
+              ]),
+            }),
+            'start': 'PT14H30M',
+          }),
+          dict({
+            'enabled': False,
+            'end': 'PT2H',
+            'occurence': dict({
+              'day': list([
+                <WeekDays.MONDAY: 'Mon'>,
+                <WeekDays.WEDNESDAY: 'Wed'>,
+              ]),
+            }),
+            'start': 'PT0S',
+          }),
+        ]),
+      }),
+    }),
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': None,
+    'preconditioning': None,
+    'wake_up': None,
+  })
+# ---
 # name: test_create_preconditioning_program
   dict({
     'attributes': None,
@@ -62,6 +106,39 @@
         ]),
       }),
     }),
+    'wake_up': None,
+  })
+# ---
+# name: test_partailly_edit_charging_program
+  dict({
+    'attributes': None,
+    'callback_attributes': None,
+    'charging': dict({
+      '_next_delayed_time': None,
+      'immediate': None,
+      'preferences': None,
+      'schedule': dict({
+        'next_delayed_time': None,
+        'programs': list([
+          dict({
+            'enabled': False,
+            'end': 'PT14H30M',
+            'occurence': dict({
+              'day': list([
+                <WeekDays.MONDAY: 'Mon'>,
+              ]),
+            }),
+            'start': 'PT0S',
+          }),
+        ]),
+      }),
+    }),
+    'door': None,
+    'horn': None,
+    'label': None,
+    'lights': None,
+    'navigation': None,
+    'preconditioning': None,
     'wake_up': None,
   })
 # ---
