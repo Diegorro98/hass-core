@@ -540,29 +540,28 @@ class StellantisSensor(StellantisBaseEntity, SensorEntity):
             self._attr_native_value = None
             if status_value == UNDEFINED:
                 self._attr_available = False
-            return
 
-        if self.entity_description.key == "fuel_total_consumption":
+        elif self.entity_description.key == "fuel_total_consumption":
             assert isinstance(status_value, float)
             # Fuel consumption is in centiliters, convert it to liters
             self._attr_native_value = status_value / 100
-            return
 
-        match self.entity_description.device_class:
-            case SensorDeviceClass.TIMESTAMP:
-                assert isinstance(status_value, str)
-                self._attr_native_value = get_next_timestamp(status_value)
-            case SensorDeviceClass.DURATION:
-                assert isinstance(status_value, str)
-                duration = dt_util.parse_duration(status_value)
-                self._attr_native_value = (
-                    duration.total_seconds() if duration is not None else None
-                )
-            case SensorDeviceClass.ENUM:
-                assert isinstance(status_value, str)
-                self._attr_native_value = slugify(status_value)
-            case _:
-                self._attr_native_value = status_value
+        else:
+            match self.entity_description.device_class:
+                case SensorDeviceClass.TIMESTAMP:
+                    assert isinstance(status_value, str)
+                    self._attr_native_value = get_next_timestamp(status_value)
+                case SensorDeviceClass.DURATION:
+                    assert isinstance(status_value, str)
+                    duration = dt_util.parse_duration(status_value)
+                    self._attr_native_value = (
+                        duration.total_seconds() if duration is not None else None
+                    )
+                case SensorDeviceClass.ENUM:
+                    assert isinstance(status_value, str)
+                    self._attr_native_value = slugify(status_value)
+                case _:
+                    self._attr_native_value = status_value
         super()._handle_coordinator_update()
 
     @property
@@ -584,31 +583,3 @@ def get_next_timestamp(time_on_day: str) -> datetime | None:
         next_time = next_time + timedelta(days=1)
 
     return next_time
-
-
-def _get_next_timestamp_on_weekdays(
-    time_on_day: str, weekdays: list[WeekDays] | None
-) -> datetime | None:
-    """Get the nearest timestamp for the given weekdays and time that is in the future."""
-    if not weekdays:
-        return None
-
-    weekdays_numbers = [WEEK_DAYS_LIST.index(day) for day in weekdays]
-    now = dt_util.now()
-    current_day = now.weekday()
-
-    if (duration := dt_util.parse_duration(time_on_day)) is None:
-        return None
-
-    if current_day in weekdays_numbers:
-        next_time = dt_util.start_of_local_day() + duration
-        if now < next_time:
-            return next_time
-
-        if len(weekdays_numbers) == 1:
-            return next_time + timedelta(days=7)
-
-    days_until_next = min(
-        ((day - current_day) % 7 for day in weekdays_numbers if day != current_day),
-    )
-    return dt_util.start_of_local_day() + timedelta(days=days_until_next) + duration

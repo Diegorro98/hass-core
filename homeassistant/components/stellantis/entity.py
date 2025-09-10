@@ -71,13 +71,6 @@ class StellantisBaseEntity(
         )
         self.entity_description = description
 
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        """Handle updates from the coordinator."""
-        self.__dict__.pop("vehicle_status", None)
-        self.__dict__.pop("status_value", None)
-        super()._handle_coordinator_update()
-
     @property
     def vehicle(self) -> Vehicle:
         """Get the vehicle details."""

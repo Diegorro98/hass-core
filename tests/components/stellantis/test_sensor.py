@@ -20,18 +20,12 @@ from stellantis.model import (
 )
 from stellantis.model.error import StellantisError
 
-from homeassistant.components.homeassistant import (
-    DOMAIN as HA_DOMAIN,
-    SERVICE_UPDATE_ENTITY,
-)
-from homeassistant.const import (
-    ATTR_ENTITY_ID,
-    STATE_UNAVAILABLE,
-    STATE_UNKNOWN,
-    Platform,
-)
+from homeassistant.components.stellantis.const import UPDATE_INTERVAL
+from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN, Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.setup import async_setup_component
+from homeassistant.util import dt as dt_util
+
+from tests.common import async_fire_time_changed
 
 TEST_TIMEZONE = ZoneInfo("US/Pacific")
 
@@ -644,13 +638,8 @@ async def test_sensor_state_and_updates(
     new_vehicle_status = deepcopy(vehicle_status)
     update_status_value_fn(new_vehicle_status)
     client.get_vehicle_status.return_value = new_vehicle_status
-    await async_setup_component(hass, HA_DOMAIN, {})
-    await hass.services.async_call(
-        HA_DOMAIN,
-        SERVICE_UPDATE_ENTITY,
-        {ATTR_ENTITY_ID: entity_id},
-        blocking=True,
-    )
+    async_fire_time_changed(hass, dt_util.utcnow() + UPDATE_INTERVAL)
+    await hass.async_block_till_done()
 
     updated_state = hass.states.get(entity_id)
     assert updated_state
@@ -701,13 +690,8 @@ async def test_unavailability_on_api_error(
 
     client.get_vehicle_status.return_value = None
     client.get_vehicle_status.side_effect = StellantisError
-    await async_setup_component(hass, HA_DOMAIN, {})
-    await hass.services.async_call(
-        HA_DOMAIN,
-        SERVICE_UPDATE_ENTITY,
-        {ATTR_ENTITY_ID: entity_id},
-        blocking=True,
-    )
+    async_fire_time_changed(hass, dt_util.utcnow() + UPDATE_INTERVAL)
+    await hass.async_block_till_done()
 
     updated_state = hass.states.get(entity_id)
     assert updated_state

@@ -1,7 +1,10 @@
 """Stellantis constants."""
 
+from datetime import timedelta
 from enum import StrEnum
 import logging
+
+UPDATE_INTERVAL = timedelta(seconds=60)
 
 CONF_BRAND = "brand"
 CONF_CLOUDHOOK_URL = "cloudhook_url"

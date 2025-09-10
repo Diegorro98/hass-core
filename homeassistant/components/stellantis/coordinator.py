@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
 from http import HTTPStatus
 from typing import cast
 
@@ -16,7 +15,7 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import CONF_BRAND, DOMAIN, LOGGER
+from .const import CONF_BRAND, DOMAIN, LOGGER, UPDATE_INTERVAL
 
 type StellantisConfigEntry = ConfigEntry[StellantisRuntimeData]
 
@@ -48,7 +47,7 @@ class StellantisVehicleCoordinator(DataUpdateCoordinator[Status]):
             LOGGER,
             config_entry=config_entry,
             name=f"{DOMAIN}-{config_entry.title.replace(': ', '_')}",
-            update_interval=timedelta(seconds=60),
+            update_interval=UPDATE_INTERVAL,
         )
         self.vehicle = vehicle
 

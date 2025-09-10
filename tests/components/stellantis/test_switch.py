@@ -20,10 +20,7 @@ from stellantis.model import (
 from stellantis.model.error import StellantisError
 from syrupy.assertion import SnapshotAssertion
 
-from homeassistant.components.homeassistant import (
-    DOMAIN as HA_DOMAIN,
-    SERVICE_UPDATE_ENTITY,
-)
+from homeassistant.components.stellantis.const import UPDATE_INTERVAL
 from homeassistant.const import (
     ATTR_ENTITY_ID,
     SERVICE_TURN_OFF,
@@ -37,11 +34,11 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
-from homeassistant.setup import async_setup_component
+from homeassistant.util import dt as dt_util
 
 from .const import RESULT_EXCEPTION, RESULT_FAILED, RESULT_PENDING, RESULT_SUCCESS
 
-from tests.common import MockConfigEntry
+from tests.common import MockConfigEntry, async_fire_time_changed
 
 
 @pytest.fixture
@@ -309,13 +306,8 @@ async def test_switch_state_and_updates(
     new_vehicle_status = deepcopy(vehicle_status)
     update_status_value_fn(new_vehicle_status)
     client.get_vehicle_status.return_value = new_vehicle_status
-    await async_setup_component(hass, HA_DOMAIN, {})
-    await hass.services.async_call(
-        HA_DOMAIN,
-        SERVICE_UPDATE_ENTITY,
-        {ATTR_ENTITY_ID: entity_id},
-        blocking=True,
-    )
+    async_fire_time_changed(hass, dt_util.utcnow() + UPDATE_INTERVAL)
+    await hass.async_block_till_done()
 
     updated_state = hass.states.get(entity_id)
     assert updated_state
@@ -386,13 +378,8 @@ async def test_preconditioning_switch_unavailability_conditions(
     new_vehicle_status.energies[1].level = battery_level
     client.get_vehicle_status.return_value = new_vehicle_status
 
-    await async_setup_component(hass, HA_DOMAIN, {})
-    await hass.services.async_call(
-        HA_DOMAIN,
-        SERVICE_UPDATE_ENTITY,
-        {ATTR_ENTITY_ID: entity_id},
-        blocking=True,
-    )
+    async_fire_time_changed(hass, dt_util.utcnow() + UPDATE_INTERVAL)
+    await hass.async_block_till_done()
 
     updated_state = hass.states.get(entity_id)
     assert updated_state
@@ -421,13 +408,8 @@ async def test_availability_on_api_error(
 
     client.get_vehicle_status.return_value = None
     client.get_vehicle_status.side_effect = StellantisError
-    await async_setup_component(hass, HA_DOMAIN, {})
-    await hass.services.async_call(
-        HA_DOMAIN,
-        SERVICE_UPDATE_ENTITY,
-        {ATTR_ENTITY_ID: entity_id},
-        blocking=True,
-    )
+    async_fire_time_changed(hass, dt_util.utcnow() + UPDATE_INTERVAL)
+    await hass.async_block_till_done()
 
     updated_state = hass.states.get(entity_id)
     assert updated_state

@@ -13,13 +13,12 @@ from homeassistant.components.device_tracker.config_entry import (
     ATTR_LATITUDE,
     ATTR_LONGITUDE,
 )
-from homeassistant.components.homeassistant import (
-    DOMAIN as HA_DOMAIN,
-    SERVICE_UPDATE_ENTITY,
-)
-from homeassistant.const import ATTR_ENTITY_ID, STATE_UNAVAILABLE, Platform
+from homeassistant.components.stellantis.const import UPDATE_INTERVAL
+from homeassistant.const import STATE_UNAVAILABLE, Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.setup import async_setup_component
+from homeassistant.util import dt as dt_util
+
+from tests.common import async_fire_time_changed
 
 
 @pytest.fixture
@@ -59,13 +58,8 @@ async def test_device_tracker_updates(
     new_vehicle_status.last_position.properties.type = LocationType.ACQUIRE
 
     client.get_vehicle_status.return_value = new_vehicle_status
-    await async_setup_component(hass, HA_DOMAIN, {})
-    await hass.services.async_call(
-        HA_DOMAIN,
-        SERVICE_UPDATE_ENTITY,
-        {ATTR_ENTITY_ID: entity_id},
-        blocking=True,
-    )
+    async_fire_time_changed(hass, dt_util.utcnow() + UPDATE_INTERVAL)
+    await hass.async_block_till_done()
 
     state = hass.states.get(entity_id)
     assert state
@@ -94,13 +88,8 @@ async def test_unavailability_on_api_error(
 
     client.get_vehicle_status.return_value = None
     client.get_vehicle_status.side_effect = StellantisError
-    await async_setup_component(hass, HA_DOMAIN, {})
-    await hass.services.async_call(
-        HA_DOMAIN,
-        SERVICE_UPDATE_ENTITY,
-        {ATTR_ENTITY_ID: entity_id},
-        blocking=True,
-    )
+    async_fire_time_changed(hass, dt_util.utcnow() + UPDATE_INTERVAL)
+    await hass.async_block_till_done()
 
     updated_state = hass.states.get(entity_id)
     assert updated_state
@@ -123,13 +112,8 @@ async def test_device_tracker_availability_position_none(
     new_vehicle_status.last_position = None
 
     client.get_vehicle_status.return_value = new_vehicle_status
-    await async_setup_component(hass, HA_DOMAIN, {})
-    await hass.services.async_call(
-        HA_DOMAIN,
-        SERVICE_UPDATE_ENTITY,
-        {ATTR_ENTITY_ID: entity_id},
-        blocking=True,
-    )
+    async_fire_time_changed(hass, dt_util.utcnow() + UPDATE_INTERVAL)
+    await hass.async_block_till_done()
 
     state = hass.states.get(entity_id)
     assert state
@@ -147,13 +131,8 @@ async def test_device_tracker_availability_update_failed(
     assert initial_state.state != STATE_UNAVAILABLE
 
     client.get_vehicle_status = AsyncMock(side_effect=StellantisError())
-    await async_setup_component(hass, HA_DOMAIN, {})
-    await hass.services.async_call(
-        HA_DOMAIN,
-        SERVICE_UPDATE_ENTITY,
-        {ATTR_ENTITY_ID: entity_id},
-        blocking=True,
-    )
+    async_fire_time_changed(hass, dt_util.utcnow() + UPDATE_INTERVAL)
+    await hass.async_block_till_done()
 
     state = hass.states.get(entity_id)
     assert state
