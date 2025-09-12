@@ -631,9 +631,7 @@ async def test_sensor_state_and_updates(
     update_status_value_fn: Callable[[Status], None],
 ) -> None:
     """Test Stellantis sensor states and updates."""
-    initial_state = hass.states.get(entity_id)
-    assert initial_state
-    assert initial_state.state != expected_updated_state
+    assert not hass.states.is_state(entity_id, expected_updated_state)
 
     new_vehicle_status = deepcopy(vehicle_status)
     update_status_value_fn(new_vehicle_status)
@@ -641,9 +639,7 @@ async def test_sensor_state_and_updates(
     async_fire_time_changed(hass, dt_util.utcnow() + UPDATE_INTERVAL)
     await hass.async_block_till_done()
 
-    updated_state = hass.states.get(entity_id)
-    assert updated_state
-    assert updated_state.state == expected_updated_state
+    assert hass.states.is_state(entity_id, expected_updated_state)
 
 
 @pytest.mark.parametrize(

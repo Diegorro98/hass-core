@@ -73,9 +73,7 @@ async def test_lock_states_and_updates(
     async_fire_time_changed(hass, dt_util.utcnow() + UPDATE_INTERVAL)
     await hass.async_block_till_done()
 
-    updated_state = hass.states.get(entity_id)
-    assert updated_state
-    assert updated_state.state == expected_updated_state
+    assert hass.states.is_state(entity_id, expected_updated_state)
 
 
 @pytest.mark.parametrize(
