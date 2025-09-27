@@ -42,10 +42,8 @@ async def async_setup_entry(
     """Set up the Stellantis switches."""
     async_add_entities(
         StellantisChargingPowerLevelNumber(
-            hass,
             vehicle_coordinator,
             POWER_LEVEL_ENTITY_DESCRIPTION,
-            entry,
             remote is None or level is None,
         )
         for vehicle_coordinator in entry.runtime_data.vehicle_coordinators

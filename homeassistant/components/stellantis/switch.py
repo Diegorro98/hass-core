@@ -161,10 +161,8 @@ async def async_setup_entry(
             ):
                 entities.append(
                     StellantisPreconditioningSwitch(
-                        hass,
                         vehicle_coordinator,
                         PRECONDITIONING_SWITCH_ENTITY_DESCRIPTION,
-                        entry,
                         remote is None or preconditioning_immediate is None,
                     )
                 )
@@ -182,10 +180,8 @@ async def async_setup_entry(
             ):
                 entities.extend(
                     StellantisPreconditioningProgramSwitch(
-                        hass,
                         vehicle_coordinator,
                         PRECONDITIONING_PROGRAM_ENABLED_SWITCH_ENTITY_DESCRIPTION,
-                        entry,
                         slot,
                         remote is None or size is None,
                     )
@@ -205,10 +201,8 @@ async def async_setup_entry(
             ):
                 entities.append(
                     StellantisChargeRelatedSwitch(
-                        hass,
                         vehicle_coordinator,
                         CHARGE_SWITCH_ENTITY_DESCRIPTION,
-                        entry,
                         remote is None or charging_immediate is None,
                     )
                 )
@@ -225,10 +219,8 @@ async def async_setup_entry(
             ):
                 entities.append(
                     StellantisChargeRelatedSwitch(
-                        hass,
                         vehicle_coordinator,
                         PARTIAL_CHARGE_SWITCH_ENTITY_DESCRIPTION,
-                        entry,
                         remote is None or charging_type is None,
                     )
                 )
@@ -249,10 +241,8 @@ async def async_setup_entry(
             ):
                 entities.extend(
                     StellantisChargingProgramEnabledSwitch(
-                        hass,
                         vehicle_coordinator,
                         CHARGING_PROGRAM_ENABLED_SWITCH_ENTITY_DESCRIPTION,
-                        entry,
                         slot,
                         remote is None
                         or charging_programs_support is None

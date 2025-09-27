@@ -49,10 +49,8 @@ async def async_setup_entry(
     """Set up the Stellantis locks."""
     async_add_entities(
         StellantisDoorsLock(
-            hass,
             vehicle_coordinator,
             DOORS_LOCK_ENTITY_DESCRIPTION,
-            entry,
             lock_supported is None,
         )
         for vehicle_coordinator in entry.runtime_data.vehicle_coordinators

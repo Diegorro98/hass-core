@@ -19,7 +19,7 @@ from stellantis.model import (
 )
 from stellantis.model.error import StellantisError
 
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import (
@@ -32,7 +32,7 @@ from homeassistant.helpers.typing import StateType, UndefinedType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, LOGGER, RemoteDoneEventStatus
-from .coordinator import StellantisConfigEntry, StellantisVehicleCoordinator
+from .coordinator import StellantisVehicleCoordinator
 from .webhook import StellantisCallbackEvent
 
 T = TypeVar("T")
@@ -97,19 +97,6 @@ class StellantisBaseEntity(
 class StellantisActionableEntity(StellantisBaseEntity, Generic[T]):
     """Common base for Stellantis entities that can call remote actions."""
 
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        coordinator: StellantisVehicleCoordinator,
-        description: StellantisEntityDescription,
-        entry: StellantisConfigEntry,
-        unknown_supported: bool = True,
-    ) -> None:
-        """Initialize entity."""
-        super().__init__(coordinator, description, unknown_supported)
-        self.hass = hass
-        self.entry = entry
-
     @abstractmethod
     def _handle_update_from_successful_remote_action(self, state: T) -> None:
         """Handle successful remote action updates."""
@@ -120,7 +107,7 @@ class StellantisActionableEntity(StellantisBaseEntity, Generic[T]):
     ) -> None:
         """Call a remote action and handle the response."""
         assert self.vehicle.id
-        entry_runtime_data = self.entry.runtime_data
+        entry_runtime_data = self.coordinator.config_entry.runtime_data
         if not entry_runtime_data.callback_id:
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
@@ -150,7 +137,7 @@ class StellantisActionableEntity(StellantisBaseEntity, Generic[T]):
             async with timeout(10):
                 while True:
                     with StellantisCallbackEvent(
-                        self.hass, response_data.remote_action_id
+                        self.coordinator.hass, response_data.remote_action_id
                     ) as callback_event:
                         event_status = await callback_event
                         assert event_status.type == RemoteEventType.DONE
@@ -229,15 +216,13 @@ class StellantisProgramEntity(StellantisActionableEntity[T], Generic[T]):
 
     def __init__(
         self,
-        hass: HomeAssistant,
         coordinator: StellantisVehicleCoordinator,
         description: StellantisEntityDescription,
-        entry: StellantisConfigEntry,
         slot: int,
         unknown_supported: bool = False,
     ) -> None:
         """Initialize entity."""
-        super().__init__(hass, coordinator, description, entry, unknown_supported)
+        super().__init__(coordinator, description, unknown_supported)
         assert self._attr_unique_id
         self._attr_unique_id += f"_{slot}"
         self.slot = slot

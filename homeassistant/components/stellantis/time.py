@@ -103,10 +103,8 @@ async def async_setup_entry(
         ):
             entities.extend(
                 StellantisPreconditioningProgramStartTime(
-                    hass,
                     vehicle_coordinator,
                     PRECONDITIONING_PROGRAM_TIME_ENTITY_DESCRIPTION,
-                    entry,
                     slot,
                     remote is None or size is None,
                 )
@@ -130,10 +128,8 @@ async def async_setup_entry(
             ):
                 entities.append(
                     StellantisChargingTime(
-                        hass,
                         vehicle_coordinator,
                         CHARGING_TIME_ENTITY_DESCRIPTION,
-                        entry,
                         remote is None or next_delayed_time_supported is None,
                     )
                 )
@@ -154,10 +150,8 @@ async def async_setup_entry(
             ):
                 entities.extend(
                     StellantisChargingProgramTime(
-                        hass,
                         vehicle_coordinator,
                         CHARGING_PROGRAM_TIME_ENTITY_DESCRIPTIONS[attribute],
-                        entry,
                         slot,
                         attribute,
                         remote is None
@@ -268,16 +262,14 @@ class StellantisChargingProgramTime(StellantisChargingProgramEntity[time], TimeE
 
     def __init__(
         self,
-        hass: HomeAssistant,
         coordinator: StellantisVehicleCoordinator,
         description: StellantisTimeEntityDescription,
-        entry: StellantisConfigEntry,
         slot: int,
         attribute: str,
         unknown_supported=True,
     ) -> None:
         """Initialize the charging program start/end time entity."""
-        super().__init__(hass, coordinator, description, entry, slot, unknown_supported)
+        super().__init__(coordinator, description, slot, unknown_supported)
         self.attribute = attribute
         assert attribute in ("start", "end")
 
