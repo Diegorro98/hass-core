@@ -15,6 +15,7 @@ from stellantis.model import (
     LightPosition,
     LightStatus,
     Motorization,
+    OnboardCapabilitiesEnum,
     SeatId,
     Status,
 )
@@ -50,6 +51,7 @@ class StellantisBinarySensorEntityDescription(
     """Describes Stellantis sensor entity."""
 
     value_fn: Callable[[Status], bool | None | UndefinedType]
+    scope: OnboardCapabilitiesEnum
 
 
 def _get_belt_value_fn(
@@ -105,6 +107,7 @@ ELECTRIC_ENERGY_BINARY_SENSORS = (
         key="plugged",
         translation_key="plugged",
         device_class=BinarySensorDeviceClass.PLUG,
+        scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ENERGIES,
         value_fn=lambda status: charging.plugged
         if (energy := get_energy(status, EnergyType.ELECTRIC))
         and (extension := energy.extension)
@@ -120,6 +123,7 @@ BINARY_SENSORS = (
         StellantisBinarySensorEntityDescription(
             key=(key := f"{seat_name.lower()}_belt_status"),
             translation_key=key,
+            scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_SAFETY,
             value_fn=_get_belt_value_fn(seat_id),
         )
         for seat_name, seat_id in SeatId.__members__.items()
@@ -128,12 +132,14 @@ BINARY_SENSORS = (
         key="moving",
         translation_key="moving",
         device_class=BinarySensorDeviceClass.MOVING,
+        scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_KINETIC,
         value_fn=lambda status: status.kinetic.moving if status.kinetic else UNDEFINED,
     ),
     StellantisBinarySensorEntityDescription(
         key="environment_light",
         translation_key="environment_light",
         device_class=BinarySensorDeviceClass.LIGHT,
+        scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_ENVIRONMENT,
         value_fn=lambda status: luminosity.day
         if (environment := status.environment)
         and (luminosity := environment.luminosity)
@@ -147,6 +153,7 @@ BINARY_SENSORS = (
             ),
             translation_key=key,
             device_class=BinarySensorDeviceClass.LIGHT,
+            scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_LIGHTING_SYSTEM,
             value_fn=_get_light_value_fn(position, direction, _type),
         )
         for _type_name, _type in LightTypes.__members__.items()
@@ -163,6 +170,7 @@ BINARY_SENSORS = (
             else BinarySensorDeviceClass.WINDOW,
             key=(key := f"{door_identifier_name.lower()}{'_door' if is_door else ''}"),
             translation_key=key,
+            scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_DOORS_STATE,
             value_fn=_get_door_value_fn(door_identifier),
         )
         for door_identifier_name, door_identifier in DoorIdentifier.__members__.items()
@@ -180,6 +188,13 @@ async def async_setup_entry(
     entities: list[StellantisBinarySensor] = []
     for vehicle_coordinator in entry.runtime_data.vehicle_coordinators:
         sensors: list[StellantisBinarySensorEntityDescription] = []
+        onboard_capabilities_data = (
+            vehicle_coordinator.vehicle.embedded.extension.onboard_capabilities.data
+            if vehicle_coordinator.vehicle.embedded
+            and vehicle_coordinator.vehicle.embedded.extension
+            and vehicle_coordinator.vehicle.embedded.extension.onboard_capabilities
+            else None
+        )
 
         if vehicle_coordinator.vehicle.motorization in (
             Motorization.ELECTRIC,
@@ -191,8 +206,11 @@ async def async_setup_entry(
             StellantisBinarySensor(
                 vehicle_coordinator,
                 description,
+                onboard_capabilities_data is None,
             )
             for description in list(BINARY_SENSORS) + sensors
+            if onboard_capabilities_data is None
+            or description.scope in onboard_capabilities_data
         )
 
     async_add_entities(entities)

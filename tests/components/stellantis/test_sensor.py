@@ -14,6 +14,7 @@ from stellantis.model import (
     ChargingStatusEnum,
     DrivingMode,
     IgnitionType,
+    OnboardCapabilitiesEnum,
     PowertrainStatus,
     PrivacyState,
     Status,
@@ -23,11 +24,72 @@ from stellantis.model.error import StellantisError
 from homeassistant.components.stellantis.const import UPDATE_INTERVAL
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN, Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
 
 from tests.common import async_fire_time_changed
 
 TEST_TIMEZONE = ZoneInfo("US/Pacific")
+
+
+SCOPE_RELATED_ENTITIES = {
+    OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ENERGIES: {
+        "sensor.peugeot_suv_3008_fuel_total_consumption",
+        "sensor.peugeot_suv_3008_battery_total_capacity",
+        "sensor.peugeot_suv_3008_residual_electric_energy",
+        "sensor.peugeot_suv_3008_battery_capacity",
+        "sensor.peugeot_suv_3008_battery_resistance",
+        "sensor.peugeot_suv_3008_charging_status",
+        "sensor.peugeot_suv_3008_charging_remaining_time",
+        "sensor.peugeot_suv_3008_charging_speed",
+        "sensor.peugeot_suv_3008_charging_mode",
+        "sensor.peugeot_suv_3008_next_charge",
+        "sensor.peugeot_suv_3008_fuel_energy_level",
+        "sensor.peugeot_suv_3008_fuel_energy_autonomy",
+        "sensor.peugeot_suv_3008_fuel_instant_consumption",
+        "sensor.peugeot_suv_3008_electric_energy_level",
+        "sensor.peugeot_suv_3008_electric_energy_autonomy",
+    },
+    OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ENGINES: {
+        "sensor.peugeot_suv_3008_thermic_engine_coolant_level",
+        "sensor.peugeot_suv_3008_thermic_engine_coolant_temperature",
+        "sensor.peugeot_suv_3008_thermic_engine_oil_level",
+        "sensor.peugeot_suv_3008_thermic_engine_oil_temperature",
+        "sensor.peugeot_suv_3008_thermic_engine_air_temperature",
+        "sensor.peugeot_suv_3008_thermic_engine_speed",
+    },
+    OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_IGNITION: {
+        "sensor.peugeot_suv_3008_ignition",
+    },
+    OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_POWERTRAIN: {
+        "sensor.peugeot_suv_3008_powertrain_status",
+    },
+    OnboardCapabilitiesEnum.DATA_TELEMETRY_PRIVACY: {
+        "sensor.peugeot_suv_3008_privacy",
+    },
+    OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_BATTERY: {
+        "sensor.peugeot_suv_3008_auxiliary_battery_health",
+    },
+    OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_SAFETY: {
+        "sensor.peugeot_suv_3008_auto_e_call_triggering",
+    },
+    OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ODOMETER: {
+        "sensor.peugeot_suv_3008_mileage",
+    },
+    OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_KINETIC: {
+        "sensor.peugeot_suv_3008_acceleration",
+        "sensor.peugeot_suv_3008_speed",
+    },
+    OnboardCapabilitiesEnum.DATA_TELEMETRY_ENVIRONMENT: {
+        "sensor.peugeot_suv_3008_environment_air_temperature",
+    },
+    OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_DRIVING_BEHAVIOR: {
+        "sensor.peugeot_suv_3008_driving_mode",
+    },
+    OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_PRECONDITIONING: {
+        "sensor.peugeot_suv_3008_preconditioning_status",
+    },
+}
 
 
 @pytest.fixture
@@ -692,3 +754,54 @@ async def test_unavailability_on_api_error(
     updated_state = hass.states.get(entity_id)
     assert updated_state
     assert updated_state.state == STATE_UNAVAILABLE
+
+
+@pytest.mark.parametrize(
+    ("entity_ids", "onboard_capabilities_data"),
+    [(entity_ids, [scope]) for scope, entity_ids in SCOPE_RELATED_ENTITIES.items()],
+    indirect=["onboard_capabilities_data"],
+)
+async def test_entity_provided_if_entity_scope_present(
+    hass: HomeAssistant,
+    entity_ids: set[str],
+) -> None:
+    """Test that entities are created if their scope is present in vehicle details."""
+    for entity_id in entity_ids:
+        assert hass.states.get(entity_id) is not None, f"Entity {entity_id} not found"
+
+
+@pytest.mark.parametrize(
+    ("entity_ids", "onboard_capabilities_data"),
+    [
+        (entity_ids, list(set(OnboardCapabilitiesEnum.__members__.values()) - {scope}))
+        for scope, entity_ids in SCOPE_RELATED_ENTITIES.items()
+    ],
+    indirect=["onboard_capabilities_data"],
+)
+async def test_entity_not_provided_if_entity_scope_not_present(
+    hass: HomeAssistant,
+    entity_ids: list[str],
+) -> None:
+    """Test that entities are not created if their scope is not present in vehicle details."""
+    for entity_id in entity_ids:
+        assert hass.states.get(entity_id) is None, f"Entity {entity_id} found"
+
+
+@pytest.mark.parametrize("onboard_capabilities_data", [None], indirect=True)
+@pytest.mark.parametrize(
+    "entity_id",
+    [
+        entity_id
+        for entity_ids in SCOPE_RELATED_ENTITIES.values()
+        for entity_id in entity_ids
+    ],
+)
+async def test_entity_provided_but_disabled_if_not_onboarding_capabilities_data(
+    entity_registry: er.EntityRegistry,
+    entity_id: str,
+) -> None:
+    """Test that entities are not created if their scope is not present in vehicle details."""
+    entity = entity_registry.async_get(entity_id)
+    assert entity
+    assert entity.disabled
+    assert entity.disabled_by is er.RegistryEntryDisabler.INTEGRATION

@@ -60,6 +60,7 @@ class StellantisBaseEntity(
         self,
         coordinator: StellantisVehicleCoordinator,
         description: StellantisEntityDescription,
+        unknown_supported: bool = True,
     ) -> None:
         """Initialize entity."""
         super().__init__(coordinator, True)
@@ -70,6 +71,7 @@ class StellantisBaseEntity(
             identifiers={(DOMAIN, self.vehicle.vin)},
         )
         self.entity_description = description
+        self._attr_entity_registry_enabled_default = not unknown_supported
 
     @property
     def vehicle(self) -> Vehicle:
@@ -104,10 +106,9 @@ class StellantisActionableEntity(StellantisBaseEntity, Generic[T]):
         unknown_supported: bool = True,
     ) -> None:
         """Initialize entity."""
-        super().__init__(coordinator, description)
+        super().__init__(coordinator, description, unknown_supported)
         self.hass = hass
         self.entry = entry
-        self._attr_entity_registry_enabled_default = not unknown_supported
 
     @abstractmethod
     def _handle_update_from_successful_remote_action(self, state: T) -> None:

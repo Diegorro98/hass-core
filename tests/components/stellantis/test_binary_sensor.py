@@ -5,7 +5,12 @@ from copy import deepcopy
 from unittest.mock import MagicMock
 
 import pytest
-from stellantis.model import BeltStatusEnum, LightStatus, Status
+from stellantis.model import (
+    BeltStatusEnum,
+    LightStatus,
+    OnboardCapabilitiesEnum,
+    Status,
+)
 from stellantis.model.error import StellantisError
 
 from homeassistant.components.stellantis.const import UPDATE_INTERVAL
@@ -17,9 +22,31 @@ from homeassistant.const import (
     Platform,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
 
 from tests.common import async_fire_time_changed
+
+SCOPE_RELATED_ENTITIES = {
+    OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ENERGIES: {
+        "binary_sensor.peugeot_suv_3008_plugged",
+    },
+    OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_SAFETY: {
+        "binary_sensor.peugeot_suv_3008_driver_belt_status",
+    },
+    OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_KINETIC: {
+        "binary_sensor.peugeot_suv_3008_moving",
+    },
+    OnboardCapabilitiesEnum.DATA_TELEMETRY_ENVIRONMENT: {
+        "binary_sensor.peugeot_suv_3008_environment_light",
+    },
+    OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_LIGHTING_SYSTEM: {
+        "binary_sensor.peugeot_suv_3008_front_left_turn_light",
+    },
+    OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_DOORS_STATE: {
+        "binary_sensor.peugeot_suv_3008_driver_door",
+    },
+}
 
 
 @pytest.fixture
@@ -180,3 +207,54 @@ async def test_unavailability_on_api_error(
     updated_state = hass.states.get(entity_id)
     assert updated_state
     assert updated_state.state == STATE_UNAVAILABLE
+
+
+@pytest.mark.parametrize(
+    ("entity_ids", "onboard_capabilities_data"),
+    [(entity_ids, [scope]) for scope, entity_ids in SCOPE_RELATED_ENTITIES.items()],
+    indirect=["onboard_capabilities_data"],
+)
+async def test_entity_provided_if_entity_scope_present(
+    hass: HomeAssistant,
+    entity_ids: set[str],
+) -> None:
+    """Test that entities are created if their scope is present in vehicle details."""
+    for entity_id in entity_ids:
+        assert hass.states.get(entity_id) is not None, f"Entity {entity_id} not found"
+
+
+@pytest.mark.parametrize(
+    ("entity_ids", "onboard_capabilities_data"),
+    [
+        (entity_ids, list(set(OnboardCapabilitiesEnum.__members__.values()) - {scope}))
+        for scope, entity_ids in SCOPE_RELATED_ENTITIES.items()
+    ],
+    indirect=["onboard_capabilities_data"],
+)
+async def test_entity_not_provided_if_entity_scope_not_present(
+    hass: HomeAssistant,
+    entity_ids: list[str],
+) -> None:
+    """Test that entities are not created if their scope is not present in vehicle details."""
+    for entity_id in entity_ids:
+        assert hass.states.get(entity_id) is None, f"Entity {entity_id} found"
+
+
+@pytest.mark.parametrize("onboard_capabilities_data", [None], indirect=True)
+@pytest.mark.parametrize(
+    "entity_id",
+    [
+        entity_id
+        for entity_ids in SCOPE_RELATED_ENTITIES.values()
+        for entity_id in entity_ids
+    ],
+)
+async def test_entity_provided_but_disabled_if_not_onboarding_capabilities_data(
+    entity_registry: er.EntityRegistry,
+    entity_id: str,
+) -> None:
+    """Test that entities are not created if their scope is not present in vehicle details."""
+    entity = entity_registry.async_get(entity_id)
+    assert entity
+    assert entity.disabled
+    assert entity.disabled_by is er.RegistryEntryDisabler.INTEGRATION

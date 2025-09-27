@@ -14,6 +14,7 @@ from stellantis.model import (
     EnergyType,
     EngineType,
     IgnitionType,
+    OnboardCapabilitiesEnum,
     PowertrainStatus,
     PrivacyState,
     Status,
@@ -53,6 +54,8 @@ class StellantisSensorEntityDescription(
 ):
     """Describes Stellantis sensor entity."""
 
+    scope: OnboardCapabilitiesEnum
+
 
 FUEL_ENERGY_EXTENSION_SENSORS = (
     StellantisSensorEntityDescription(
@@ -62,6 +65,7 @@ FUEL_ENERGY_EXTENSION_SENSORS = (
         device_class=SensorDeviceClass.VOLUME,
         native_unit_of_measurement=UnitOfVolume.LITERS,
         suggested_display_precision=4,
+        scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ENERGIES,
         value_fn=lambda status: consumptions.total
         if (energy := get_energy(status, EnergyType.FUEL))
         and (extension := energy.extension)
@@ -77,6 +81,7 @@ ELECTRIC_ENERGY_EXTENSION_SENSORS = (
         key="battery_total_capacity",
         translation_key="battery_total_capacity",
         native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
+        scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ENERGIES,
         value_fn=lambda status: load.capacity
         if (energy := get_energy(status, EnergyType.ELECTRIC))
         and (extension := energy.extension)
@@ -89,6 +94,7 @@ ELECTRIC_ENERGY_EXTENSION_SENSORS = (
         key="residual_electric_energy",
         translation_key="residual_electric_energy",
         native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
+        scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ENERGIES,
         value_fn=lambda status: load.residual
         if (energy := get_energy(status, EnergyType.ELECTRIC))
         and (extension := energy.extension)
@@ -102,6 +108,7 @@ ELECTRIC_ENERGY_EXTENSION_SENSORS = (
         translation_key="battery_capacity",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=PERCENTAGE,
+        scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ENERGIES,
         value_fn=lambda status: health.capacity
         if (energy := get_energy(status, EnergyType.ELECTRIC))
         and (extension := energy.extension)
@@ -115,6 +122,7 @@ ELECTRIC_ENERGY_EXTENSION_SENSORS = (
         translation_key="battery_resistance",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=PERCENTAGE,
+        scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ENERGIES,
         value_fn=lambda status: health.resistance
         if (energy := get_energy(status, EnergyType.ELECTRIC))
         and (extension := energy.extension)
@@ -131,6 +139,7 @@ ELECTRIC_ENERGY_EXTENSION_SENSORS = (
             slugify(charging_status)
             for charging_status in ChargingStatusEnum.__members__.values()
         ],
+        scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ENERGIES,
         value_fn=lambda status: charging.status
         if (energy := get_energy(status, EnergyType.ELECTRIC))
         and (extension := energy.extension)
@@ -143,6 +152,7 @@ ELECTRIC_ENERGY_EXTENSION_SENSORS = (
         translation_key="charging_remaining_time",
         device_class=SensorDeviceClass.DURATION,
         native_unit_of_measurement=UnitOfTime.SECONDS,
+        scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ENERGIES,
         value_fn=lambda status: charging.remaining_time
         if (energy := get_energy(status, EnergyType.ELECTRIC))
         and (extension := energy.extension)
@@ -154,6 +164,7 @@ ELECTRIC_ENERGY_EXTENSION_SENSORS = (
         key="charging_rate",
         translation_key="charging_rate",
         native_unit_of_measurement=UnitOfSpeed.KILOMETERS_PER_HOUR,
+        scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ENERGIES,
         value_fn=lambda status: charging.charging_rate
         if (energy := get_energy(status, EnergyType.ELECTRIC))
         and (extension := energy.extension)
@@ -169,6 +180,7 @@ ELECTRIC_ENERGY_EXTENSION_SENSORS = (
             slugify(charging_mode)
             for charging_mode in ChargingMode.__members__.values()
         ],
+        scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ENERGIES,
         value_fn=lambda status: charging.charging_mode
         if (energy := get_energy(status, EnergyType.ELECTRIC))
         and (extension := energy.extension)
@@ -180,6 +192,7 @@ ELECTRIC_ENERGY_EXTENSION_SENSORS = (
         key="next_charge",
         translation_key="next_charge",
         device_class=SensorDeviceClass.TIMESTAMP,
+        scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ENERGIES,
         value_fn=lambda status: charging.next_delayed_time
         if (energy := get_energy(status, EnergyType.ELECTRIC))
         and (extension := energy.extension)
@@ -196,6 +209,7 @@ THERMIC_ENGINE_EXTENSION_SENSORS = (
         translation_key="thermic_engine_coolant_level",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=PERCENTAGE,
+        scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ENGINES,
         value_fn=lambda status: coolant.level
         if (engine := get_engine(status, EngineType.THERMIC))
         and (extension := engine.extension)
@@ -210,6 +224,7 @@ THERMIC_ENGINE_EXTENSION_SENSORS = (
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         suggested_display_precision=1,
+        scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ENGINES,
         value_fn=lambda status: coolant.temp
         if (engine := get_engine(status, EngineType.THERMIC))
         and (extension := engine.extension)
@@ -222,6 +237,7 @@ THERMIC_ENGINE_EXTENSION_SENSORS = (
         translation_key="thermic_engine_oil_level",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=PERCENTAGE,
+        scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ENGINES,
         value_fn=lambda status: oil.level
         if (engine := get_engine(status, EngineType.THERMIC))
         and (extension := engine.extension)
@@ -236,6 +252,7 @@ THERMIC_ENGINE_EXTENSION_SENSORS = (
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         suggested_display_precision=1,
+        scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ENGINES,
         value_fn=lambda status: oil.temp
         if (engine := get_engine(status, EngineType.THERMIC))
         and (extension := engine.extension)
@@ -250,6 +267,7 @@ THERMIC_ENGINE_EXTENSION_SENSORS = (
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         suggested_display_precision=1,
+        scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ENGINES,
         value_fn=lambda status: air.temp
         if (engine := get_engine(status, EngineType.THERMIC))
         and (extension := engine.extension)
@@ -266,6 +284,7 @@ SENSORS = (
         translation_key="ignition",
         device_class=SensorDeviceClass.ENUM,
         options=[slugify(ignition) for ignition in IgnitionType.__members__.values()],
+        scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_IGNITION,
         value_fn=lambda status: status.ignition.type if status.ignition else UNDEFINED,
     ),
     StellantisSensorEntityDescription(
@@ -275,6 +294,7 @@ SENSORS = (
         options=[
             slugify(powertrain) for powertrain in PowertrainStatus.__members__.values()
         ],
+        scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_POWERTRAIN,
         value_fn=lambda status: status.powertrain.status
         if status.powertrain
         else UNDEFINED,
@@ -287,6 +307,7 @@ SENSORS = (
             slugify(privacy_state)
             for privacy_state in PrivacyState.__members__.values()
         ],
+        scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_PRIVACY,
         value_fn=lambda status: status.privacy.state if status.privacy else UNDEFINED,
     ),
     StellantisSensorEntityDescription(
@@ -295,6 +316,7 @@ SENSORS = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=PERCENTAGE,
         suggested_display_precision=1,
+        scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_BATTERY,
         value_fn=lambda status: status.battery.voltage if status.battery else UNDEFINED,
     ),
     StellantisSensorEntityDescription(
@@ -305,6 +327,7 @@ SENSORS = (
             slugify(auto_e_call)
             for auto_e_call in AutoECallTriggering.__members__.values()
         ],
+        scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_SAFETY,
         value_fn=lambda status: status.safety.auto_e_call_triggering
         if status.safety
         else UNDEFINED,
@@ -316,6 +339,7 @@ SENSORS = (
         device_class=SensorDeviceClass.DISTANCE,
         native_unit_of_measurement=UnitOfLength.KILOMETERS,
         suggested_display_precision=1,
+        scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ODOMETER,
         value_fn=lambda status: status.odometer.mileage
         if status.odometer
         else UNDEFINED,
@@ -325,6 +349,7 @@ SENSORS = (
         translation_key="acceleration",
         native_unit_of_measurement="m/s²",
         suggested_display_precision=1,
+        scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_KINETIC,
         value_fn=lambda status: status.kinetic.acceleration
         if status.kinetic
         else UNDEFINED,
@@ -335,6 +360,7 @@ SENSORS = (
         device_class=SensorDeviceClass.SPEED,
         native_unit_of_measurement=UnitOfSpeed.KILOMETERS_PER_HOUR,
         suggested_display_precision=1,
+        scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_KINETIC,
         value_fn=lambda status: status.kinetic.speed if status.kinetic else UNDEFINED,
     ),
     StellantisSensorEntityDescription(
@@ -343,6 +369,7 @@ SENSORS = (
         device_class=SensorDeviceClass.TEMPERATURE,
         suggested_display_precision=1,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_ENVIRONMENT,
         value_fn=lambda status: air.temp
         if (environment := status.environment) and (air := environment.air)
         else UNDEFINED,
@@ -354,14 +381,11 @@ SENSORS = (
         options=[
             slugify(driving_mode) for driving_mode in DrivingMode.__members__.values()
         ],
+        scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_DRIVING_BEHAVIOR,
         value_fn=lambda status: status.driving_behavior.mode
         if status.driving_behavior
         else UNDEFINED,
     ),
-)
-
-
-PRECONDITIONING_SENSORS = (
     StellantisSensorEntityDescription(
         key="preconditioning_status",
         translation_key="preconditioning_status",
@@ -370,6 +394,7 @@ PRECONDITIONING_SENSORS = (
             slugify(air_conditioning_status)
             for air_conditioning_status in AirConditioningStatus.__members__.values()
         ],
+        scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_PRECONDITIONING,
         value_fn=lambda status: air_conditioning.status
         if (preconditioning := status.preconditioning)
         and (air_conditioning := preconditioning.air_conditioning)
@@ -410,6 +435,7 @@ COMMON_ENERGY_SENSORS = {
             device_class=SensorDeviceClass.BATTERY,
             native_unit_of_measurement=PERCENTAGE,
             suggested_display_precision=1,
+            scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ENERGIES,
             value_fn=_make_energy_level_fn(energy_type),
         ),
         StellantisSensorEntityDescription(
@@ -418,6 +444,7 @@ COMMON_ENERGY_SENSORS = {
             device_class=SensorDeviceClass.DISTANCE,
             native_unit_of_measurement=UnitOfLength.KILOMETERS,
             suggested_display_precision=1,
+            scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ENERGIES,
             value_fn=_make_energy_autonomy_fn(energy_type),
         ),
     )
@@ -449,6 +476,7 @@ FUEL_ENERGY_SENSORS_MAP = {
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=native_unit_of_measurement,
         suggested_display_precision=1,
+        scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ENERGIES,
         value_fn=_make_fuel_instant_consumption_fn(energy_sub_type),
     )
     for energy_sub_type, native_unit_of_measurement in (
@@ -475,6 +503,7 @@ ENGINE_SENSORS_MAP = {
     engine_type: StellantisSensorEntityDescription(
         key=f"{engine_name.lower()}_engine_speed",
         translation_key=f"{engine_name.lower()}_engine_speed",
+        scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ENGINES,
         value_fn=_make_engine_speed_fn(engine_type),
     )
     for engine_name, engine_type in EngineType.__members__.items()
@@ -491,36 +520,49 @@ async def async_setup_entry(
     for vehicle_coordinator in entry.runtime_data.vehicle_coordinators:
         sensors: list[StellantisSensorEntityDescription] = []
 
+        onboard_capabilities_data = (
+            vehicle_coordinator.vehicle.embedded.extension.onboard_capabilities.data
+            if vehicle_coordinator.vehicle.embedded
+            and vehicle_coordinator.vehicle.embedded.extension
+            and vehicle_coordinator.vehicle.embedded.extension.onboard_capabilities
+            else None
+        )
+
         if (
-            vehicle_coordinator.data.preconditioning
-            and vehicle_coordinator.data.preconditioning.air_conditioning
+            onboard_capabilities_data is None
+            or OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ENERGIES
+            in onboard_capabilities_data
         ):
-            sensors += PRECONDITIONING_SENSORS
+            for energy in vehicle_coordinator.data.energies or []:
+                if energy.type:
+                    sensors.extend(COMMON_ENERGY_SENSORS[energy.type])
+                match energy.type:
+                    case EnergyType.FUEL:
+                        sensors += [
+                            *FUEL_ENERGY_EXTENSION_SENSORS,
+                            FUEL_ENERGY_SENSORS_MAP[energy.sub_type],
+                        ]
+                    case EnergyType.ELECTRIC:
+                        sensors += ELECTRIC_ENERGY_EXTENSION_SENSORS
 
-        for energy in vehicle_coordinator.data.energies or []:
-            if energy.type:
-                sensors.extend(COMMON_ENERGY_SENSORS[energy.type])
-            match energy.type:
-                case EnergyType.FUEL:
-                    sensors += [
-                        *FUEL_ENERGY_EXTENSION_SENSORS,
-                        FUEL_ENERGY_SENSORS_MAP[energy.sub_type],
-                    ]
-                case EnergyType.ELECTRIC:
-                    sensors += ELECTRIC_ENERGY_EXTENSION_SENSORS
-
-        for engines in vehicle_coordinator.data.engines or []:
-            if engines.type:
-                sensors.append(ENGINE_SENSORS_MAP[engines.type])
-                if engines.type == EngineType.THERMIC:
-                    sensors += THERMIC_ENGINE_EXTENSION_SENSORS
+        if (
+            onboard_capabilities_data is None
+            or OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ENGINES
+            in onboard_capabilities_data
+        ):
+            for engines in vehicle_coordinator.data.engines or []:
+                if engines.type:
+                    sensors.append(ENGINE_SENSORS_MAP[engines.type])
+                    if engines.type == EngineType.THERMIC:
+                        sensors += THERMIC_ENGINE_EXTENSION_SENSORS
 
         entities.extend(
             StellantisSensor(
-                vehicle_coordinator,
-                description,
+                vehicle_coordinator, description, onboard_capabilities_data is None
             )
             for description in list(SENSORS) + sensors
+            if onboard_capabilities_data is None
+            or description.scope in onboard_capabilities_data
         )
 
     async_add_entities(entities)

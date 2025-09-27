@@ -2,6 +2,8 @@
 
 from dataclasses import asdict, dataclass
 
+from stellantis.model import OnboardCapabilitiesEnum
+
 from homeassistant.components.device_tracker.config_entry import (
     TrackerEntity,
     TrackerEntityDescription,
@@ -35,8 +37,20 @@ async def async_setup_entry(
         StellantisTrackerEntity(
             vehicle_coordinator,
             DEVICE_TRACKER_ENTITY_DESCRIPTION,
+            onboard_capabilities_data is None,
         )
         for vehicle_coordinator in entry.runtime_data.vehicle_coordinators
+        if (
+            onboard_capabilities_data := (
+                vehicle_coordinator.vehicle.embedded.extension.onboard_capabilities.data
+                if vehicle_coordinator.vehicle.embedded
+                and vehicle_coordinator.vehicle.embedded.extension
+                and vehicle_coordinator.vehicle.embedded.extension.onboard_capabilities
+                else None
+            )
+        )
+        is None
+        or OnboardCapabilitiesEnum.DATA_POSITION in onboard_capabilities_data
     )
 
 

@@ -232,11 +232,14 @@ async def setup_integration(
 @pytest.fixture(name="vehicle_details")
 def vehicle_fixture(
     vehicle_details_mod_fn: Callable[[Vehicle], None] | None,
+    onboard_capabilities_data: Callable[[Vehicle], None] | None,
 ) -> Vehicle:
     """Define a vehicle fixture."""
     vehicle_details = deepcopy(FIXTURE_VEHICLE_DETAILS)
     if vehicle_details_mod_fn:
         vehicle_details_mod_fn(vehicle_details)
+    if onboard_capabilities_data:
+        onboard_capabilities_data(vehicle_details)
     return vehicle_details
 
 
@@ -247,6 +250,26 @@ def vehicle_mod_fixture(
     """Define a vehicle fixture modifier function."""
     if hasattr(request, "param"):
         return cast(Callable[[Vehicle], None], request.param)
+    return None
+
+
+@pytest.fixture(name="onboard_capabilities_data")
+def onboard_capabilities_data_fixture(
+    request: pytest.FixtureRequest,
+) -> Callable[[Vehicle], None] | None:
+    """Set the onboard capabilities data in vehicle details."""
+    if hasattr(request, "param"):
+        assert request.param is None or all(
+            isinstance(item, OnboardCapabilitiesEnum) for item in request.param
+        )
+
+        def set_onboard_capabilities_data(vehicle_details: Vehicle) -> None:
+            assert vehicle_details.embedded
+            assert vehicle_details.embedded.extension
+            assert vehicle_details.embedded.extension.onboard_capabilities
+            vehicle_details.embedded.extension.onboard_capabilities.data = request.param
+
+        return set_onboard_capabilities_data
     return None
 
 
