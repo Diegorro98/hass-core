@@ -34,6 +34,8 @@ from .entity import (
 )
 from .helpers import preconditioning_program_setter_body
 
+PARALLEL_UPDATES = 0
+
 
 @dataclass(frozen=True, kw_only=True)
 class StellantisSwitchEntityDescription(

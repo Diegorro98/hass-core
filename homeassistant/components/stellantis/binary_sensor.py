@@ -33,6 +33,8 @@ from .coordinator import StellantisConfigEntry
 from .entity import StellantisBaseEntity, StellantisEntityDescription
 from .helpers import get_energy
 
+PARALLEL_UPDATES = 0
+
 
 class LightTypes(StrEnum):
     """Light types.

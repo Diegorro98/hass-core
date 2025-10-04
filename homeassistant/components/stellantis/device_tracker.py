@@ -14,6 +14,8 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from .coordinator import StellantisConfigEntry
 from .entity import StellantisBaseEntity, StellantisEntityDescription
 
+PARALLEL_UPDATES = 0
+
 
 @dataclass(frozen=True, kw_only=True)
 class StellantisTrackerEntityDescription(

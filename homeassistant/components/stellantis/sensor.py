@@ -45,6 +45,7 @@ from .coordinator import StellantisConfigEntry
 from .entity import StellantisBaseEntity, StellantisEntityDescription
 from .helpers import get_energy, get_engine
 
+PARALLEL_UPDATES = 0
 WEEK_DAYS_LIST = list(WeekDays.__members__.values())
 
 

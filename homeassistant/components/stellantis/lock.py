@@ -22,6 +22,8 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from .coordinator import StellantisConfigEntry
 from .entity import StellantisActionableEntity, StellantisToggleEntityDescription
 
+PARALLEL_UPDATES = 0
+
 
 @dataclass(frozen=True, kw_only=True)
 class StellantisLockEntityDescription(
