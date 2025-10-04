@@ -8,5 +8,6 @@
   "documentation": "https://www.home-assistant.io/integrations/stellantis",
   "iot_class": "cloud_polling",
   "loggers": ["stellantis"],
+  "quality_scale": "platinum",
   "requirements": ["stellantis==0.0.0"]
 }
