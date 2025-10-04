@@ -268,7 +268,7 @@ class StellantisChargingProgramTime(StellantisChargingProgramEntity[time], TimeE
         description: StellantisTimeEntityDescription,
         slot: int,
         attribute: str,
-        unknown_supported=True,
+        unknown_supported: bool = True,
     ) -> None:
         """Initialize the charging program start/end time entity."""
         super().__init__(coordinator, description, slot, unknown_supported)

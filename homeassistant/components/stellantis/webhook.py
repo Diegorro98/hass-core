@@ -104,7 +104,12 @@ class StellantisCallbackEvent(Future[RemoteEventStatus]):
         handlers[self.remote_action_id] = self
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: object,
+    ) -> None:
         """Exit the context manager."""
         handlers: dict[str, dict[str, Any]] = self.hass.data.setdefault(DOMAIN, {})
         handlers.pop(self.remote_action_id, None)
