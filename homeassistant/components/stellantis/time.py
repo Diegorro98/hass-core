@@ -283,12 +283,10 @@ class StellantisChargingProgramTime(StellantisChargingProgramEntity[time], TimeE
 
     @callback
     def _handle_coordinator_update(self) -> None:
-        self._attr_available = False
         self._attr_native_value = None
         self._attr_extra_state_attributes = {}
 
         if program := self.program:
-            self._attr_available = True
             self._attr_native_value = (
                 (datetime(1, 1, 1) + _time).time()
                 if (_time := dt_util.parse_duration(getattr(program, self.attribute)))

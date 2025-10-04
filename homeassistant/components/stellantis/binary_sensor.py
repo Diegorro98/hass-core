@@ -29,6 +29,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.typing import UNDEFINED, UndefinedType
 
+from .const import LOGGER
 from .coordinator import StellantisConfigEntry
 from .entity import StellantisBaseEntity, StellantisEntityDescription
 from .helpers import get_energy
@@ -230,7 +231,15 @@ class StellantisBinarySensor(StellantisBaseEntity, BinarySensorEntity):
         self._attr_is_on = (
             cast(bool | None, status_value) if status_value is not UNDEFINED else None
         )
+        old_available = self._attr_available
         self._attr_available = status_value is not UNDEFINED
+        if old_available != self._attr_available:
+            LOGGER.info(
+                "The entity %s is now available because the value can be retrieved"
+                if self._attr_available
+                else "The entity %s is no longer available because the value cannot be retrieved",
+                self.entity_id,
+            )
         super()._handle_coordinator_update()
 
     @property

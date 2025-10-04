@@ -11,6 +11,7 @@ from homeassistant.components.device_tracker.config_entry import (
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
+from .const import LOGGER
 from .coordinator import StellantisConfigEntry
 from .entity import StellantisBaseEntity, StellantisEntityDescription
 
@@ -76,8 +77,18 @@ class StellantisTrackerEntity(StellantisBaseEntity, TrackerEntity):
                 if len(coordinates) >= 3:
                     self._attr_extra_state_attributes["altitude"] = coordinates[2]
             self._attr_extra_state_attributes.update(asdict(last_position.properties))
+            if not self._attr_available:
+                LOGGER.info(
+                    "The entity %s is now available because the last position can be retrieved",
+                    self.entity_id,
+                )
             self._attr_available = True
         else:
+            if self._attr_available:
+                LOGGER.info(
+                    "The entity %s is no longer available because the last position cannot be retrieved",
+                    self.entity_id,
+                )
             self._attr_available = False
         super()._handle_coordinator_update()
 

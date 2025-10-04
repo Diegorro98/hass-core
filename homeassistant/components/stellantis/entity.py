@@ -250,8 +250,20 @@ class StellantisPreconditioningEntity(StellantisProgramEntity[T], Generic[T]):
         ):
             for program in programs:
                 if program.slot == self.slot:
+                    if not self._attr_available:
+                        LOGGER.info(
+                            "The entity %s is now available because the program number %s exists",
+                            self.entity_id,
+                            program.slot,
+                        )
                     self._attr_available = True
                     return program
+        if self._attr_available:
+            LOGGER.info(
+                "The entity %s is no longer available because the program number %s is missing",
+                self.entity_id,
+                self.slot,
+            )
         self._attr_available = False
         return None
 

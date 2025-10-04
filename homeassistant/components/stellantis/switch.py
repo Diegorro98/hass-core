@@ -408,12 +408,9 @@ class StellantisChargingProgramEnabledSwitch(
 
     @callback
     def _handle_coordinator_update(self) -> None:
-        self._attr_available = False
         self._attr_is_on = None
-        self._attr_extra_state_attributes = {}
 
         if program := self.program:
-            self._attr_available = True
             self._attr_is_on = program.enabled
 
         super()._handle_coordinator_update()

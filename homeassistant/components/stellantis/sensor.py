@@ -41,6 +41,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.typing import UNDEFINED, StateType, UndefinedType
 from homeassistant.util import dt as dt_util, slugify
 
+from .const import LOGGER
 from .coordinator import StellantisConfigEntry
 from .entity import StellantisBaseEntity, StellantisEntityDescription
 from .helpers import get_energy, get_engine
@@ -576,35 +577,48 @@ class StellantisSensor(StellantisBaseEntity, SensorEntity):
 
     @callback
     def _handle_coordinator_update(self) -> None:
-        self._attr_available = True
         status_value = self.status_value
 
         if status_value is None or status_value == UNDEFINED:
             self._attr_native_value = None
             if status_value == UNDEFINED:
+                if self._attr_available:
+                    LOGGER.info(
+                        "The entity %s is no longer available because the value cannot be retrieved",
+                        self.entity_id,
+                    )
                 self._attr_available = False
 
-        elif self.entity_description.key == "fuel_total_consumption":
-            assert isinstance(status_value, float)
-            # Fuel consumption is in centiliters, convert it to liters
-            self._attr_native_value = status_value / 100
-
         else:
-            match self.entity_description.device_class:
-                case SensorDeviceClass.TIMESTAMP:
-                    assert isinstance(status_value, str)
-                    self._attr_native_value = get_next_timestamp(status_value)
-                case SensorDeviceClass.DURATION:
-                    assert isinstance(status_value, str)
-                    duration = dt_util.parse_duration(status_value)
-                    self._attr_native_value = (
-                        duration.total_seconds() if duration is not None else None
-                    )
-                case SensorDeviceClass.ENUM:
-                    assert isinstance(status_value, str)
-                    self._attr_native_value = slugify(status_value)
-                case _:
-                    self._attr_native_value = status_value
+            if not self._attr_available:
+                LOGGER.info(
+                    "The entity %s is now available because the value can be retrieved",
+                    self.entity_id,
+                )
+            self._attr_available = True
+
+            if self.entity_description.key == "fuel_total_consumption":
+                assert isinstance(status_value, float)
+                # Fuel consumption is in centiliters, convert it to liters
+                self._attr_native_value = status_value / 100
+
+            else:
+                match self.entity_description.device_class:
+                    case SensorDeviceClass.TIMESTAMP:
+                        assert isinstance(status_value, str)
+                        self._attr_native_value = get_next_timestamp(status_value)
+                    case SensorDeviceClass.DURATION:
+                        assert isinstance(status_value, str)
+                        duration = dt_util.parse_duration(status_value)
+                        self._attr_native_value = (
+                            duration.total_seconds() if duration is not None else None
+                        )
+                    case SensorDeviceClass.ENUM:
+                        assert isinstance(status_value, str)
+                        self._attr_native_value = slugify(status_value)
+                    case _:
+                        self._attr_native_value = status_value
+
         super()._handle_coordinator_update()
 
     @property
