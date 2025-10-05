@@ -29,6 +29,7 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.const import (
     PERCENTAGE,
+    EntityCategory,
     UnitOfEnergy,
     UnitOfLength,
     UnitOfSpeed,
@@ -67,6 +68,7 @@ FUEL_ENERGY_EXTENSION_SENSORS = (
         device_class=SensorDeviceClass.VOLUME,
         native_unit_of_measurement=UnitOfVolume.LITERS,
         suggested_display_precision=4,
+        entity_category=EntityCategory.DIAGNOSTIC,
         scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ENERGIES,
         value_fn=lambda status: consumptions.total
         if (energy := get_energy(status, EnergyType.FUEL))
@@ -83,6 +85,7 @@ ELECTRIC_ENERGY_EXTENSION_SENSORS = (
         key="battery_total_capacity",
         translation_key="battery_total_capacity",
         native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
+        entity_category=EntityCategory.DIAGNOSTIC,
         scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ENERGIES,
         value_fn=lambda status: load.capacity
         if (energy := get_energy(status, EnergyType.ELECTRIC))
@@ -96,6 +99,7 @@ ELECTRIC_ENERGY_EXTENSION_SENSORS = (
         key="residual_electric_energy",
         translation_key="residual_electric_energy",
         native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
+        entity_category=EntityCategory.DIAGNOSTIC,
         scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ENERGIES,
         value_fn=lambda status: load.residual
         if (energy := get_energy(status, EnergyType.ELECTRIC))
@@ -110,6 +114,7 @@ ELECTRIC_ENERGY_EXTENSION_SENSORS = (
         translation_key="battery_capacity",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=PERCENTAGE,
+        entity_category=EntityCategory.DIAGNOSTIC,
         scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ENERGIES,
         value_fn=lambda status: health.capacity
         if (energy := get_energy(status, EnergyType.ELECTRIC))
@@ -124,6 +129,7 @@ ELECTRIC_ENERGY_EXTENSION_SENSORS = (
         translation_key="battery_resistance",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=PERCENTAGE,
+        entity_category=EntityCategory.DIAGNOSTIC,
         scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ENERGIES,
         value_fn=lambda status: health.resistance
         if (energy := get_energy(status, EnergyType.ELECTRIC))
@@ -309,6 +315,7 @@ SENSORS = (
             slugify(privacy_state)
             for privacy_state in PrivacyState.__members__.values()
         ],
+        entity_category=EntityCategory.DIAGNOSTIC,
         scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_PRIVACY,
         value_fn=lambda status: status.privacy.state if status.privacy else UNDEFINED,
     ),
@@ -318,6 +325,7 @@ SENSORS = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=PERCENTAGE,
         suggested_display_precision=1,
+        entity_category=EntityCategory.DIAGNOSTIC,
         scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_BATTERY,
         value_fn=lambda status: status.battery.voltage if status.battery else UNDEFINED,
     ),
@@ -329,6 +337,7 @@ SENSORS = (
             slugify(auto_e_call)
             for auto_e_call in AutoECallTriggering.__members__.values()
         ],
+        entity_category=EntityCategory.DIAGNOSTIC,
         scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_SAFETY,
         value_fn=lambda status: status.safety.auto_e_call_triggering
         if status.safety
@@ -341,6 +350,7 @@ SENSORS = (
         device_class=SensorDeviceClass.DISTANCE,
         native_unit_of_measurement=UnitOfLength.KILOMETERS,
         suggested_display_precision=1,
+        entity_category=EntityCategory.DIAGNOSTIC,
         scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ODOMETER,
         value_fn=lambda status: status.odometer.mileage
         if status.odometer
@@ -383,6 +393,7 @@ SENSORS = (
         options=[
             slugify(driving_mode) for driving_mode in DrivingMode.__members__.values()
         ],
+        entity_category=EntityCategory.DIAGNOSTIC,
         scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_DRIVING_BEHAVIOR,
         value_fn=lambda status: status.driving_behavior.mode
         if status.driving_behavior
@@ -478,6 +489,7 @@ FUEL_ENERGY_SENSORS_MAP = {
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=native_unit_of_measurement,
         suggested_display_precision=1,
+        entity_category=EntityCategory.DIAGNOSTIC,
         scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_ENERGIES,
         value_fn=_make_fuel_instant_consumption_fn(energy_sub_type),
     )

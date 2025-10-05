@@ -25,6 +25,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.typing import UNDEFINED, UndefinedType
@@ -135,6 +136,7 @@ BINARY_SENSORS = (
         key="moving",
         translation_key="moving",
         device_class=BinarySensorDeviceClass.MOVING,
+        entity_category=EntityCategory.DIAGNOSTIC,
         scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_KINETIC,
         value_fn=lambda status: status.kinetic.moving if status.kinetic else UNDEFINED,
     ),
@@ -156,6 +158,7 @@ BINARY_SENSORS = (
             ),
             translation_key=key,
             device_class=BinarySensorDeviceClass.LIGHT,
+            entity_category=EntityCategory.DIAGNOSTIC,
             scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_LIGHTING_SYSTEM,
             value_fn=_get_light_value_fn(position, direction, _type),
         )
@@ -173,6 +176,7 @@ BINARY_SENSORS = (
             else BinarySensorDeviceClass.WINDOW,
             key=(key := f"{door_identifier_name.lower()}{'_door' if is_door else ''}"),
             translation_key=key,
+            entity_category=EntityCategory.DIAGNOSTIC,
             scope=OnboardCapabilitiesEnum.DATA_TELEMETRY_VEHICLE_DOORS_STATE,
             value_fn=_get_door_value_fn(door_identifier),
         )
