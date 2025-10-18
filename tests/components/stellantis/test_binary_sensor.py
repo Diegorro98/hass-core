@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 from copy import deepcopy
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from stellantis.model import (
@@ -10,10 +10,17 @@ from stellantis.model import (
     LightStatus,
     OnboardCapabilitiesEnum,
     Status,
+    Vehicle,
+    Vehicles,
+    VehiclesEmbedded,
 )
-from stellantis.model.error import StellantisError
+from stellantis.model.error import StellantisApiError, StellantisError
 
-from homeassistant.components.stellantis.const import UPDATE_INTERVAL
+from homeassistant.components.stellantis.const import (
+    DOMAIN,
+    UPDATE_INTERVAL,
+    VEHICLES_UPDATE_INTERVAL,
+)
 from homeassistant.const import (
     STATE_OFF,
     STATE_ON,
@@ -22,7 +29,7 @@ from homeassistant.const import (
     Platform,
 )
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.util import dt as dt_util
 
 from tests.common import async_fire_time_changed
@@ -53,6 +60,88 @@ SCOPE_RELATED_ENTITIES = {
 def platforms() -> list[Platform]:
     """Fixture to specify platforms to test."""
     return [Platform.BINARY_SENSOR]
+
+
+async def test_vehicle_removed_and_added(
+    hass: HomeAssistant,
+    device_registry: dr.DeviceRegistry,
+    entity_registry: er.EntityRegistry,
+    client: MagicMock,
+    vehicle_details: Vehicle,
+) -> None:
+    """Test that binary sensors are removed for a removed vehicle and added for a new vehicle."""
+    vehicle_vin = vehicle_details.vin
+    assert vehicle_vin
+    device = device_registry.async_get_device({(DOMAIN, vehicle_vin)})
+    assert device
+
+    entity_entries = entity_registry.entities.get_entries_for_device_id(device.id)
+    assert entity_entries
+
+    # Simulate vehicle removal
+    original_mock = client.get_vehicles_by_device
+    client.get_vehicles_by_device = AsyncMock(
+        return_value=Vehicles(
+            embedded=VehiclesEmbedded(vehicles=[]),
+            total=1,
+            total_page=1,
+            current_page=1,
+            links={},
+        )
+    )
+    async_fire_time_changed(hass, dt_util.utcnow() + VEHICLES_UPDATE_INTERVAL)
+    await hass.async_block_till_done()
+
+    assert not device_registry.async_get_device({(DOMAIN, vehicle_vin)})
+    for entity_entry in entity_entries:
+        assert not entity_registry.async_get(entity_entry.entity_id)
+
+    # Simulate vehicle addition
+    client.get_vehicles_by_device = original_mock
+    async_fire_time_changed(hass, dt_util.utcnow() + VEHICLES_UPDATE_INTERVAL)
+    await hass.async_block_till_done()
+
+    assert device_registry.async_get_device({(DOMAIN, vehicle_vin)})
+    for entity_entry in entity_entries:
+        assert entity_registry.async_get(entity_entry.entity_id)
+
+
+async def test_vehicle_removed_and_added_on_vehicle_update(
+    hass: HomeAssistant,
+    device_registry: dr.DeviceRegistry,
+    entity_registry: er.EntityRegistry,
+    client: MagicMock,
+    vehicle_details: Vehicle,
+) -> None:
+    """Test that binary sensors are removed for a removed vehicle and added for a new vehicle."""
+    vehicle_vin = vehicle_details.vin
+    assert vehicle_vin
+    device = device_registry.async_get_device({(DOMAIN, vehicle_vin)})
+    assert device
+
+    entity_entries = entity_registry.entities.get_entries_for_device_id(device.id)
+    assert entity_entries
+
+    # Simulate vehicle removal
+    original_mock = client.get_vehicle_status
+    client.get_vehicle_status = AsyncMock(
+        side_effect=StellantisApiError(404, "Vehicle not found")
+    )
+    async_fire_time_changed(hass, dt_util.utcnow() + UPDATE_INTERVAL)
+    await hass.async_block_till_done()
+
+    assert not device_registry.async_get_device({(DOMAIN, vehicle_vin)})
+    for entity_entry in entity_entries:
+        assert not entity_registry.async_get(entity_entry.entity_id)
+
+    # Simulate vehicle addition
+    client.get_vehicle_status = original_mock
+    async_fire_time_changed(hass, dt_util.utcnow() + VEHICLES_UPDATE_INTERVAL)
+    await hass.async_block_till_done()
+
+    assert device_registry.async_get_device({(DOMAIN, vehicle_vin)})
+    for entity_entry in entity_entries:
+        assert entity_registry.async_get(entity_entry.entity_id)
 
 
 @pytest.mark.parametrize(

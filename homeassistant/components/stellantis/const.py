@@ -4,6 +4,7 @@ from datetime import timedelta
 from enum import StrEnum
 import logging
 
+VEHICLES_UPDATE_INTERVAL = timedelta(hours=1)
 UPDATE_INTERVAL = timedelta(seconds=60)
 
 CONF_BRAND = "brand"

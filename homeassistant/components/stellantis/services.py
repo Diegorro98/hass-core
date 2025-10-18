@@ -101,12 +101,9 @@ def _get_stellantis_data(
     device_vin = next(
         (identifier[1] for identifier in device.identifiers if identifier[0] == DOMAIN),
     )
-    vehicle_coordinator: StellantisVehicleCoordinator | None = None
-    for _vehicle_coordinator in config_entry.runtime_data.vehicle_coordinators:
-        if _vehicle_coordinator.vehicle.vin == device_vin:
-            vehicle_coordinator = _vehicle_coordinator
-            break
-    assert vehicle_coordinator
+    vehicle_coordinator: StellantisVehicleCoordinator = (
+        config_entry.runtime_data.coordinator.data[device_vin]
+    )
 
     if not config_entry.runtime_data.callback_id:
         raise HomeAssistantError(

@@ -41,11 +41,8 @@ async def async_get_config_entry_diagnostics(
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
     return {
-        vehicle_coordinator.vehicle.vin: await _generate_appliance_diagnostics(
-            vehicle_coordinator
-        )
-        for vehicle_coordinator in entry.runtime_data.vehicle_coordinators
-        if vehicle_coordinator.vehicle.vin is not None
+        vin: await _generate_appliance_diagnostics(vehicle_coordinator)
+        for vin, vehicle_coordinator in entry.runtime_data.coordinator.data.items()
     }
 
 
@@ -57,7 +54,7 @@ async def async_get_device_diagnostics(
         (identifier[1] for identifier in device.identifiers if identifier[0] == DOMAIN),
     )
     vehicle_coordinator: StellantisVehicleCoordinator | None = None
-    for _vehicle_coordinator in config_entry.runtime_data.vehicle_coordinators:
+    for _vehicle_coordinator in config_entry.runtime_data.coordinator.data.values():
         if _vehicle_coordinator.vehicle.vin == device_vin:
             vehicle_coordinator = _vehicle_coordinator
             break

@@ -3,6 +3,7 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from functools import partial
 
 from stellantis.model import (
     AirConditioningStatus,
@@ -524,14 +525,22 @@ ENGINE_SENSORS_MAP = {
 }
 
 
-async def async_setup_entry(
-    hass: HomeAssistant,
+def _check_vehicles_and_add_entities(
     entry: StellantisConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
+    known_vehicles: set[str],
 ) -> None:
-    """Set up the Stellantis sensors."""
+    coordinator_data = entry.runtime_data.coordinator.data
+    current_vehicles = set(coordinator_data.keys())
+    new_vehicles = current_vehicles - known_vehicles
+    no_longer_known_vehicles = known_vehicles - current_vehicles
+    for vin in no_longer_known_vehicles:
+        known_vehicles.remove(vin)
+    known_vehicles.update(new_vehicles)
+
     entities: list[StellantisBaseEntity] = []
-    for vehicle_coordinator in entry.runtime_data.vehicle_coordinators:
+    for vehicle_vin in new_vehicles:
+        vehicle_coordinator = coordinator_data[vehicle_vin]
         sensors: list[StellantisSensorEntityDescription] = []
 
         onboard_capabilities_data = (
@@ -579,7 +588,28 @@ async def async_setup_entry(
             or description.scope in onboard_capabilities_data
         )
 
-    async_add_entities(entities)
+    if entities:
+        async_add_entities(entities)
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: StellantisConfigEntry,
+    async_add_entities: AddConfigEntryEntitiesCallback,
+) -> None:
+    """Set up the Stellantis switches."""
+    known_vehicles: set[str] = set()
+
+    entry.async_on_unload(
+        entry.runtime_data.coordinator.async_add_listener(
+            partial(
+                _check_vehicles_and_add_entities,
+                entry,
+                async_add_entities,
+                known_vehicles,
+            )
+        )
+    )
 
 
 class StellantisSensor(StellantisBaseEntity, SensorEntity):

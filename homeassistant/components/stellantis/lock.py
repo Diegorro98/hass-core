@@ -1,6 +1,7 @@
 """Stellantis switch platform."""
 
 from dataclasses import dataclass
+from functools import partial
 from typing import Any
 
 from stellantis.model import (
@@ -43,19 +44,23 @@ DOORS_LOCK_ENTITY_DESCRIPTION = StellantisLockEntityDescription(
 )
 
 
-async def async_setup_entry(
-    hass: HomeAssistant,
+def _check_vehicles_and_add_entities(
     entry: StellantisConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
+    known_vehicles: set[str],
 ) -> None:
-    """Set up the Stellantis locks."""
-    async_add_entities(
-        StellantisDoorsLock(
-            vehicle_coordinator,
-            DOORS_LOCK_ENTITY_DESCRIPTION,
-            lock_supported is None,
-        )
-        for vehicle_coordinator in entry.runtime_data.vehicle_coordinators
+    coordinator_data = entry.runtime_data.coordinator.data
+    current_vehicles = set(coordinator_data.keys())
+    new_vehicles = current_vehicles - known_vehicles
+    no_longer_known_vehicles = known_vehicles - current_vehicles
+    for vin in no_longer_known_vehicles:
+        known_vehicles.remove(vin)
+    known_vehicles.update(new_vehicles)
+
+    entities: list[StellantisDoorsLock] = []
+    for vehicle_vin in new_vehicles:
+        vehicle_coordinator = coordinator_data[vehicle_vin]
+
         if (
             lock_supported := (
                 embedded.extension.onboard_capabilities.remote.door.supported
@@ -65,8 +70,36 @@ async def async_setup_entry(
                 and embedded.extension.onboard_capabilities.remote
                 else None
             )
+        ) is not False:
+            entities.append(
+                StellantisDoorsLock(
+                    vehicle_coordinator,
+                    DOORS_LOCK_ENTITY_DESCRIPTION,
+                    lock_supported is None,
+                )
+            )
+
+    if entities:
+        async_add_entities(entities)
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: StellantisConfigEntry,
+    async_add_entities: AddConfigEntryEntitiesCallback,
+) -> None:
+    """Set up the Stellantis switches."""
+    known_vehicles: set[str] = set()
+
+    entry.async_on_unload(
+        entry.runtime_data.coordinator.async_add_listener(
+            partial(
+                _check_vehicles_and_add_entities,
+                entry,
+                async_add_entities,
+                known_vehicles,
+            )
         )
-        is not False
     )
 
 
