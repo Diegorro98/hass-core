@@ -252,7 +252,7 @@ class StellantisPreconditioningEntity(StellantisProgramEntity[T], Generic[T]):
                 if program.slot == self.slot:
                     if not self._attr_available:
                         LOGGER.info(
-                            "The entity %s is now available because the program number %s exists",
+                            "The entity %s is now available because the preconditioning program number %s exists",
                             self.entity_id,
                             program.slot,
                         )
@@ -260,7 +260,7 @@ class StellantisPreconditioningEntity(StellantisProgramEntity[T], Generic[T]):
                     return program
         if self._attr_available:
             LOGGER.info(
-                "The entity %s is no longer available because the program number %s is missing",
+                "The entity %s is no longer available because the preconditioning program number %s is missing",
                 self.entity_id,
                 self.slot,
             )
@@ -274,6 +274,9 @@ class StellantisChargingProgramEntity(StellantisProgramEntity[T], Generic[T]):
     @property
     def programs(self) -> list[ChargeScheduleProgram] | None:
         """Return the charging programs."""
+        if not self.coordinator.last_update_success:
+            self._attr_available = True
+            return None
         for energy in self.vehicle_status.energies or []:
             if (
                 energy.type == EnergyType.ELECTRIC
@@ -295,5 +298,19 @@ class StellantisChargingProgramEntity(StellantisProgramEntity[T], Generic[T]):
         """Return the charging program."""
         programs = self.programs
         if programs and self.slot <= len(programs):
+            if not self._attr_available:
+                LOGGER.info(
+                    "The entity %s is now available because the charging program number %s exists",
+                    self.entity_id,
+                    self.slot,
+                )
+            self._attr_available = True
             return programs[self.slot - 1]
+        if self._attr_available:
+            LOGGER.info(
+                "The entity %s is no longer available because the charging program number %s is missing",
+                self.entity_id,
+                self.slot,
+            )
+        self._attr_available = False
         return None
