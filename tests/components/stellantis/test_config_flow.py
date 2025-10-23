@@ -16,6 +16,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import config_entry_oauth2_flow
 
+from .conftest import FAKE_AUTH_IMPL
+
 from tests.common import MockConfigEntry
 from tests.test_util.aiohttp import AiohttpClientMocker
 
@@ -44,17 +46,10 @@ async def setup_integration_override(
 
 
 @pytest.mark.parametrize(
-    ("brand", "brand_tld", "client_id", "redirect_scheme", "realm"),
+    ("brand", "brand_tld", "redirect_scheme", "realm"),
     zip(
         Brand.__members__.values(),
         ("citroen.com", "driveds.com", "opel.com", "peugeot.com", "vauxhall.co.uk"),
-        (
-            "5364defc-80e6-447b-bec6-4af8d1542cae",
-            "cbf74ee7-a303-4c3d-aba3-29f5994e2dfa",
-            "07364655-93cb-4194-8158-6b035ac2c24c",
-            "1eebc2d5-5df3-459b-a624-20abfcf82530",
-            "122f3511-4f74-4a0c-bcda-af2f3b2e3a65",
-        ),
         ("mymacsdk", "mymdssdk", "mymopsdk", "mymap", "mymvxsdk"),
         (
             "clientsB2CCitroen",
@@ -66,12 +61,12 @@ async def setup_integration_override(
         strict=True,
     ),
 )
+@pytest.mark.usefixtures("current_request_with_host")
 async def test_full_flow(
     hass: HomeAssistant,
     aioclient_mock: AiohttpClientMocker,
     brand: Brand,
     brand_tld: str,
-    client_id: str,
     redirect_scheme: str,
     realm: str,
 ) -> None:
@@ -101,7 +96,7 @@ async def test_full_flow(
     assert oauth_url.query["redirect_uri"] == redirect_uri
     state = oauth_url.query["state"]
     assert oauth_url.query["response_type"] == "code"
-    assert oauth_url.query["client_id"] == client_id
+    assert oauth_url.query["client_id"] == "1234"
     assert oauth_url.query["scope"] == "openid profile"
 
     auth_code = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
@@ -150,6 +145,7 @@ async def test_full_flow(
     entry = entries[0]
     assert entry.state is ConfigEntryState.LOADED
     assert entry.data[CONF_BRAND] == brand
+    assert entry.data["auth_implementation"] == FAKE_AUTH_IMPL
     assert CONF_COUNTRY in entry.data
     mock_setup_entry.assert_called_once_with(hass, entry)
 
@@ -160,6 +156,7 @@ async def test_full_flow(
 
 
 @pytest.mark.usefixtures("setup_integration_override")
+@pytest.mark.usefixtures("current_request_with_host")
 async def test_reauth_flow(
     hass: HomeAssistant,
     config_entry: MockConfigEntry,
@@ -226,6 +223,7 @@ async def test_reauth_flow(
     mock_setup_entry.assert_called_once_with(hass, entry)
 
 
+@pytest.mark.usefixtures("current_request_with_host")
 async def test_flow_invalid_url_abort(
     hass: HomeAssistant,
     aioclient_mock: AiohttpClientMocker,
@@ -254,6 +252,7 @@ async def test_flow_invalid_url_abort(
     assert result["reason"] == "invalid_url"
 
 
+@pytest.mark.usefixtures("current_request_with_host")
 async def test_flow_get_user_error_abort(
     hass: HomeAssistant,
     aioclient_mock: AiohttpClientMocker,
@@ -284,7 +283,7 @@ async def test_flow_get_user_error_abort(
     assert oauth_url.query["redirect_uri"] == redirect_uri
     state = oauth_url.query["state"]
     assert oauth_url.query["response_type"] == "code"
-    assert oauth_url.query["client_id"] == "1eebc2d5-5df3-459b-a624-20abfcf82530"
+    assert oauth_url.query["client_id"] == "1234"
     assert oauth_url.query["scope"] == "openid profile"
 
     auth_code = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
@@ -319,6 +318,7 @@ async def test_flow_get_user_error_abort(
     assert result["description_placeholders"]["error"] == "A test error"
 
 
+@pytest.mark.usefixtures("current_request_with_host")
 async def test_flow_get_user_missing_email(
     hass: HomeAssistant,
     aioclient_mock: AiohttpClientMocker,
@@ -349,7 +349,7 @@ async def test_flow_get_user_missing_email(
     assert oauth_url.query["redirect_uri"] == redirect_uri
     state = oauth_url.query["state"]
     assert oauth_url.query["response_type"] == "code"
-    assert oauth_url.query["client_id"] == "1eebc2d5-5df3-459b-a624-20abfcf82530"
+    assert oauth_url.query["client_id"] == "1234"
     assert oauth_url.query["scope"] == "openid profile"
 
     auth_code = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
@@ -382,6 +382,7 @@ async def test_flow_get_user_missing_email(
 
 
 @pytest.mark.usefixtures("setup_integration_override")
+@pytest.mark.usefixtures("current_request_with_host")
 async def test_reauth_flow_different_id_abort(
     hass: HomeAssistant,
     config_entry: MockConfigEntry,

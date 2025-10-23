@@ -32,6 +32,7 @@ APPLICATION_CREDENTIALS = [
     "point",
     "senz",
     "smartthings",
+    "stellantis",
     "spotify",
     "tesla_fleet",
     "twitch",

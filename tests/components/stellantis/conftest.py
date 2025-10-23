@@ -44,6 +44,10 @@ from stellantis.model import (
     Webhook,
 )
 
+from homeassistant.components.application_credentials import (
+    ClientCredential,
+    async_import_client_credential,
+)
 from homeassistant.components.stellantis.const import CONF_BRAND, DOMAIN, Brand
 from homeassistant.components.webhook import DOMAIN as WEBHOOK_DOMAIN
 from homeassistant.config_entries import ConfigEntryState
@@ -196,10 +200,23 @@ def mock_config_entry(
             CONF_BRAND: Brand.PEUGEOT.value,
             CONF_COUNTRY: "ES",
             CONF_WEBHOOK_ID: "mock-webhook-id",
+            "auth_implementation": FAKE_AUTH_IMPL,
             "token": token_entry,
             **overwriting_data,
         },
         unique_id="example@domain.com",
+    )
+
+
+@pytest.fixture(autouse=True)
+async def setup_credentials(hass: HomeAssistant) -> None:
+    """Fixture to setup credentials."""
+    assert await async_setup_component(hass, "application_credentials", {})
+    await async_import_client_credential(
+        hass,
+        DOMAIN,
+        ClientCredential(CLIENT_ID, CLIENT_SECRET),
+        FAKE_AUTH_IMPL,
     )
 
 

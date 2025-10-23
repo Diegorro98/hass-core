@@ -30,6 +30,8 @@ from homeassistant.const import CONF_COUNTRY, CONF_WEBHOOK_ID, EVENT_HOMEASSISTA
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
+from .conftest import FAKE_AUTH_IMPL
+
 from tests.common import MockConfigEntry, async_mock_cloud_connection_status
 from tests.components.cloud import mock_cloud
 from tests.test_util.aiohttp import AiohttpClientMocker
@@ -439,6 +441,7 @@ async def test_reusable_callback_created(
         data={
             CONF_BRAND: Brand.PEUGEOT.value,
             CONF_COUNTRY: "ES",
+            "auth_implementation": FAKE_AUTH_IMPL,
             "token": token_entry,
         },
         unique_id="example@domain.com",
@@ -474,6 +477,7 @@ async def test_reusable_callback_created_with_cloudhook(
         data={
             CONF_BRAND: Brand.PEUGEOT.value,
             CONF_COUNTRY: "ES",
+            "auth_implementation": FAKE_AUTH_IMPL,
             "token": token_entry,
         },
         unique_id="example@domain.com",
@@ -491,6 +495,9 @@ async def test_reusable_callback_created_with_cloudhook(
             "homeassistant.components.cloud.async_create_cloudhook",
             return_value="https://hooks.nabu.casa/ABCD",
         ) as fake_create_cloudhook,
+        patch(
+            "homeassistant.helpers.config_entry_oauth2_flow.async_get_config_entry_implementation",
+        ),
     ):
         assert await _setup_integration(hass, config_entry, client)
         fake_create_cloudhook.assert_called_once_with(
@@ -521,6 +528,7 @@ async def test_reusable_callback_created_with_ext_url_but_cloud_later(
         data={
             CONF_BRAND: Brand.PEUGEOT.value,
             CONF_COUNTRY: "ES",
+            "auth_implementation": FAKE_AUTH_IMPL,
             "token": token_entry,
         },
         unique_id="example@domain.com",
@@ -537,6 +545,9 @@ async def test_reusable_callback_created_with_ext_url_but_cloud_later(
         patch(
             "homeassistant.components.cloud.async_create_cloudhook",
         ) as fake_create_cloudhook,
+        patch(
+            "homeassistant.helpers.config_entry_oauth2_flow.async_get_config_entry_implementation",
+        ),
     ):
         assert await _setup_integration(hass, config_entry, client)
         fake_create_cloudhook.assert_not_called()
@@ -596,6 +607,7 @@ async def test_reusable_callback_created_with_cloud_but_with_ext_url_later(
         data={
             CONF_BRAND: Brand.PEUGEOT.value,
             CONF_COUNTRY: "ES",
+            "auth_implementation": FAKE_AUTH_IMPL,
             "token": token_entry,
         },
         unique_id="example@domain.com",
@@ -613,6 +625,9 @@ async def test_reusable_callback_created_with_cloud_but_with_ext_url_later(
             "homeassistant.components.cloud.async_create_cloudhook",
             return_value="https://hooks.nabu.casa/ABCD",
         ) as fake_create_cloudhook,
+        patch(
+            "homeassistant.helpers.config_entry_oauth2_flow.async_get_config_entry_implementation",
+        ),
     ):
         assert await _setup_integration(hass, config_entry, client)
         fake_create_cloudhook.assert_called_once()
@@ -677,6 +692,7 @@ async def test_reusable_callback_is_not_created_if_no_external_url(
         data={
             CONF_BRAND: Brand.PEUGEOT.value,
             CONF_COUNTRY: "ES",
+            "auth_implementation": FAKE_AUTH_IMPL,
             "token": token_entry,
         },
         unique_id="example@domain.com",
@@ -704,6 +720,7 @@ async def test_cloudhook_not_recreated_if_already_created(
             CONF_COUNTRY: "ES",
             CONF_WEBHOOK_ID: "mock-webhook-id",
             CONF_CLOUDHOOK_URL: "https://hooks.nabu.casa/ABCD",
+            "auth_implementation": FAKE_AUTH_IMPL,
             "token": token_entry,
         },
         unique_id="example@domain.com",
@@ -718,6 +735,9 @@ async def test_cloudhook_not_recreated_if_already_created(
         patch(
             "homeassistant.components.cloud.async_create_cloudhook",
         ) as fake_create_cloudhook,
+        patch(
+            "homeassistant.helpers.config_entry_oauth2_flow.async_get_config_entry_implementation",
+        ),
     ):
         assert await _setup_integration(hass, config_entry, client)
         fake_create_cloudhook.assert_not_called()
@@ -786,6 +806,9 @@ async def test_error_on_updating_remote(
         patch.object(cloud, "async_active_subscription", return_value=True),
         patch.object(cloud, "async_is_connected", return_value=False),
         patch("homeassistant.components.cloud.async_create_cloudhook"),
+        patch(
+            "homeassistant.helpers.config_entry_oauth2_flow.async_get_config_entry_implementation",
+        ),
     ):
         assert await _setup_integration(hass, config_entry, client)
 

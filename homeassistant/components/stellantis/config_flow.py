@@ -10,10 +10,12 @@ from stellantis.model.error import StellantisError
 import voluptuous as vol
 from yarl import URL
 
+from homeassistant.components.application_credentials import ClientCredential
 from homeassistant.config_entries import SOURCE_REAUTH, ConfigFlowResult
 from homeassistant.const import CONF_COUNTRY, CONF_URL
 from homeassistant.helpers.config_entry_oauth2_flow import (
     AbstractOAuth2FlowHandler,
+    LocalOAuth2Implementation,
     _decode_jwt,
 )
 from homeassistant.helpers.selector import CountrySelector, CountrySelectorConfig
@@ -47,10 +49,10 @@ class StellantisConfigFlow(AbstractOAuth2FlowHandler, domain=DOMAIN):
             )
         )
 
-    async def async_step_user(
+    async def async_step_auth(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Handle the initial step."""
+        """Handle the initial step after picking auth implementation."""
         return await self.async_step_brand_country(user_input)
 
     async def async_step_reauth(
@@ -70,18 +72,15 @@ class StellantisConfigFlow(AbstractOAuth2FlowHandler, domain=DOMAIN):
                 description_placeholders={"brand": self.init_data[CONF_BRAND]},
             )
 
-        return await self.async_step_user(self.init_data)
+        return await self.async_step_user()
 
     async def async_step_brand_country(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Handle the initial step."""
-        if (
-            user_input is not None
-            and CONF_BRAND in user_input
-            and CONF_COUNTRY in user_input
-        ):
-            return await self.async_step_login(user_input)
+        _input: dict[str, Any] | None = self.init_data or user_input
+        if _input is not None and CONF_BRAND in _input and CONF_COUNTRY in _input:
+            return await self.async_step_login(_input)
 
         return self.async_show_form(
             step_id="brand_country",
@@ -115,9 +114,19 @@ class StellantisConfigFlow(AbstractOAuth2FlowHandler, domain=DOMAIN):
 
         self.brand = cast(str, user_input[CONF_BRAND])
         self.country_code = cast(str, user_input[CONF_COUNTRY]).lower()
+        # Pick implementation step sets the the flow_impl to an instance of LocalOAuth2Implementation
+        flow_impl = cast(LocalOAuth2Implementation, self.flow_impl)
 
         self.flow_impl = StellantisOauth2Implementation(
-            self.hass, DOMAIN, Brand(self.brand), self.country_code
+            self.hass,
+            flow_impl.domain,
+            ClientCredential(
+                flow_impl.client_id,
+                flow_impl.client_secret,
+                flow_impl.name,
+            ),
+            Brand(self.brand),
+            self.country_code,
         )
         oauth_url = await self.flow_impl.async_generate_authorize_url(self.flow_id)
         return self.async_show_form(

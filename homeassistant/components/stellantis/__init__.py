@@ -2,16 +2,18 @@
 
 import contextlib
 from json import JSONDecodeError
+from typing import cast
 
 import aiohttp
 from stellantis.client import Client as StellantisClient
 from stellantis.model.error import StellantisError
 
+from homeassistant.components.application_credentials import ClientCredential
 from homeassistant.components.webhook import async_unregister as webhook_unregister
 from homeassistant.const import CONF_COUNTRY, CONF_WEBHOOK_ID, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
-from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import config_entry_oauth2_flow, config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
 from .api import AsyncConfigEntryAuth
@@ -49,11 +51,25 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: StellantisConfigEntry) -> bool:
     """Set up Stellantis from a config entry."""
-    implementation = StellantisOauth2Implementation(
-        hass, entry.domain, Brand(entry.data[CONF_BRAND]), entry.data[CONF_COUNTRY]
+    implementation = cast(
+        config_entry_oauth2_flow.LocalOAuth2Implementation,
+        await config_entry_oauth2_flow.async_get_config_entry_implementation(
+            hass, entry
+        ),
+    )
+    stellantis_implementation = StellantisOauth2Implementation(
+        hass,
+        implementation.domain,
+        ClientCredential(
+            implementation.client_id,
+            implementation.client_secret,
+            implementation.name,
+        ),
+        Brand(entry.data[CONF_BRAND]),
+        entry.data[CONF_COUNTRY],
     )
 
-    oauth_session = StellantisOAuth2Session(hass, entry, implementation)
+    oauth_session = StellantisOAuth2Session(hass, entry, stellantis_implementation)
 
     config_entry_auth = AsyncConfigEntryAuth(hass, oauth_session)
     try:
@@ -95,12 +111,26 @@ async def async_unload_entry(hass: HomeAssistant, entry: StellantisConfigEntry) 
 
 async def async_remove_entry(hass: HomeAssistant, entry: StellantisConfigEntry) -> None:
     """Handle removal of an entry."""
-    implementation = StellantisOauth2Implementation(
-        hass, entry.domain, Brand(entry.data[CONF_BRAND]), entry.data[CONF_COUNTRY]
+    implementation = cast(
+        config_entry_oauth2_flow.LocalOAuth2Implementation,
+        await config_entry_oauth2_flow.async_get_config_entry_implementation(
+            hass, entry
+        ),
+    )
+    stellantis_implementation = StellantisOauth2Implementation(
+        hass,
+        implementation.domain,
+        ClientCredential(
+            implementation.client_id,
+            implementation.client_secret,
+            implementation.name,
+        ),
+        Brand(entry.data[CONF_BRAND]),
+        entry.data[CONF_COUNTRY],
     )
     with contextlib.suppress(
         aiohttp.ClientResponseError, aiohttp.ClientError, JSONDecodeError
     ):
-        await implementation.async_revoke_token(
-            await implementation.async_refresh_token(entry.data["token"])
+        await stellantis_implementation.async_revoke_token(
+            await stellantis_implementation.async_refresh_token(entry.data["token"])
         )
