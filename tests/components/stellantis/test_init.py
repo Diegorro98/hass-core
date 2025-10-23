@@ -302,7 +302,7 @@ async def test_entry_unload(
 
     assert config_entry.state is ConfigEntryState.NOT_LOADED
     assert not hass.data.get(WEBHOOK_DOMAIN, {}).get(config_entry.data[CONF_WEBHOOK_ID])
-    assert client.delete_user_remote.awaited_once_with("mock-callback-id")
+    client.delete_user_remote.assert_awaited_once_with("mock-callback-id")
 
 
 @pytest.mark.parametrize(

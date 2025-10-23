@@ -3,8 +3,12 @@
     "step": {
       "brand_country": {
         "data": {
-          "brand": "Manufacturer brand:",
+          "brand": "Brand",
           "country": "Country"
+        },
+        "data_description": {
+          "brand": "Manufacturer brand",
+          "country": "Account country"
         },
         "description": "Select your car brand and select a country:"
       },
@@ -13,6 +17,9 @@
         "description": "To access to your {brand} account, you will need to do the following steps in a browser that can use DevTools:\n\n1. Open this [link]({oauth_url}) and login with your account.\n2. After login, click on \"Ok\" button.\n\tIf the {brand} app gets opened, uninstall it temporary.\n3. Open the console in DevTools and look for an error message saying \"Failed to launch '`{redirect_uri}?code=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx...`' because the scheme does not have a registered handler\".\n4. Copy the url into the field.",
         "data": {
           "url": "[%key:common::config_flow::data::url%]"
+        },
+        "data_description": {
+          "url": "Url obtained from the DevTools"
         }
       },
       "reauth_confirm": {

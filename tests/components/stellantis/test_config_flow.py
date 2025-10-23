@@ -45,6 +45,11 @@ async def setup_integration_override(
         return await hass.config_entries.async_setup(config_entry.entry_id)
 
 
+async def _setup_entry_mock(_: HomeAssistant, entry: MockConfigEntry) -> bool:
+    entry.runtime_data = MagicMock(callback_id=None)
+    return True
+
+
 @pytest.mark.parametrize(
     ("brand", "brand_tld", "redirect_scheme", "realm"),
     zip(
@@ -123,7 +128,8 @@ async def test_full_flow(
             StellantisClient, "__init__", return_value=None
         ) as mock_client_init,
         patch(
-            "homeassistant.components.stellantis.async_setup_entry", return_value=True
+            "homeassistant.components.stellantis.async_setup_entry",
+            side_effect=_setup_entry_mock,
         ) as mock_setup_entry,
     ):
         result = await hass.config_entries.flow.async_configure(
@@ -201,7 +207,8 @@ async def test_reauth_flow(
             StellantisClient, "get_user", return_value=User(email="example@domain.com")
         ),
         patch(
-            "homeassistant.components.stellantis.async_setup_entry", return_value=True
+            "homeassistant.components.stellantis.async_setup_entry",
+            side_effect=_setup_entry_mock,
         ) as mock_setup_entry,
     ):
         result = await hass.config_entries.flow.async_configure(
@@ -219,6 +226,8 @@ async def test_reauth_flow(
     assert entries
     assert len(entries) == 1
     entry = entries[0]
+    assert entry.data[CONF_BRAND] == "Peugeot"
+    assert entry.data["auth_implementation"] == FAKE_AUTH_IMPL
     assert entry.state is ConfigEntryState.LOADED
     mock_setup_entry.assert_called_once_with(hass, entry)
 
