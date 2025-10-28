@@ -1,5 +1,15 @@
 {
   "config": {
+    "abort": {
+      "get_user_error": "Unable to retrieve user information.",
+      "invalid_brand_selected": "The brand selected is invalid. Please check that it has been correctly written and try again.",
+      "invalid_url": "The url is invalid. Please check that it has been correctly pasted and try again.",
+      "missing_email": "Unable to get the user email.",
+      "no_brand_selected": "The brand is required. Please select a brand.",
+      "no_country_selected": "The country is required. Please select a country.",
+      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
+      "wrong_account": "Please ensure you reconfigure against the same account."
+    },
     "step": {
       "brand_country": {
         "data": {
@@ -13,100 +23,90 @@
         "description": "Select your car brand and select a country:"
       },
       "login": {
-        "title": "Login into {brand}",
-        "description": "To access to your {brand} account, you will need to do the following steps in a browser that can use DevTools:\n\n1. Open this [link]({oauth_url}) and login with your account.\n2. After login, click on \"Ok\" button.\n\tIf the {brand} app gets opened, uninstall it temporary.\n3. Open the console in DevTools and look for an error message saying \"Failed to launch '`{redirect_uri}?code=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx...`' because the scheme does not have a registered handler\".\n4. Copy the url into the field.",
         "data": {
           "url": "[%key:common::config_flow::data::url%]"
         },
         "data_description": {
           "url": "Url obtained from the DevTools"
-        }
+        },
+        "description": "To access to your {brand} account, you will need to do the following steps in a browser that can use DevTools:\n\n1. Open this [link]({oauth_url}) and login with your account.\n2. After login, click on \"Ok\" button.\n\tIf the {brand} app gets opened, uninstall it temporary.\n3. Open the console in DevTools and look for an error message saying \"Failed to launch '`{redirect_uri}?code=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx...`' because the scheme does not have a registered handler\".\n4. Copy the url into the field.",
+        "title": "Login into {brand}"
       },
       "reauth_confirm": {
-        "title": "[%key:common::config_flow::title::reauth%]",
-        "description": "The Stellantis integration needs to re-authenticate your {brand} account."
+        "description": "The Stellantis integration needs to re-authenticate your {brand} account.",
+        "title": "[%key:common::config_flow::title::reauth%]"
       }
-    },
-    "abort": {
-      "invalid_brand_selected": "The brand selected is invalid. Please check that it has been correctly written and try again.",
-      "no_brand_selected": "The brand is required. Please select a brand.",
-      "no_country_selected": "The country is required. Please select a country.",
-      "invalid_url": "The url is invalid. Please check that it has been correctly pasted and try again.",
-      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
-      "get_user_error": "Unable to retrieve user information.",
-      "missing_email": "Unable to get the user email.",
-      "wrong_account": "Please ensure you reconfigure against the same account."
     }
   },
   "entity": {
     "binary_sensor": {
-      "plugged": {
-        "name": "Plugged"
-      },
       "driver_belt_status": {
         "name": "Driver belt status",
         "state": {
-          "on": "Normal",
-          "off": "Omission"
+          "off": "Omission",
+          "on": "Normal"
         }
-      },
-      "passenger_belt_status": {
-        "name": "Passenger belt status",
-        "state": {
-          "on": "[%key:component::stellantis::entity::binary_sensor::driver_belt_status::state::on%]",
-          "off": "[%key:component::stellantis::entity::binary_sensor::driver_belt_status::state::off%]"
-        }
-      },
-      "moving": {
-        "name": "Moving"
-      },
-      "environment_light": {
-        "name": "Environment light"
-      },
-      "front_left_turn_light": {
-        "name": "Front left turn light"
-      },
-      "front_left_fog_light": {
-        "name": "Front left fog light"
-      },
-      "front_right_turn_light": {
-        "name": "Front right turn light"
-      },
-      "front_right_fog_light": {
-        "name": "Front right fog light"
-      },
-      "rear_left_turn_light": {
-        "name": "Rear left turn light"
-      },
-      "rear_left_fog_light": {
-        "name": "Rear left fog light"
-      },
-      "rear_right_turn_light": {
-        "name": "Rear right turn light"
-      },
-      "rear_right_fog_light": {
-        "name": "Rear right fog light"
       },
       "driver_door": {
         "name": "Driver door"
       },
+      "environment_light": {
+        "name": "Environment light"
+      },
+      "front_left_fog_light": {
+        "name": "Front left fog light"
+      },
+      "front_left_turn_light": {
+        "name": "Front left turn light"
+      },
+      "front_right_fog_light": {
+        "name": "Front right fog light"
+      },
+      "front_right_turn_light": {
+        "name": "Front right turn light"
+      },
+      "moving": {
+        "name": "Moving"
+      },
+      "passenger_belt_status": {
+        "name": "Passenger belt status",
+        "state": {
+          "off": "[%key:component::stellantis::entity::binary_sensor::driver_belt_status::state::off%]",
+          "on": "[%key:component::stellantis::entity::binary_sensor::driver_belt_status::state::on%]"
+        }
+      },
       "passenger_door": {
         "name": "Passenger door"
+      },
+      "plugged": {
+        "name": "Plugged"
       },
       "rear_left_door": {
         "name": "Rear left door"
       },
+      "rear_left_fog_light": {
+        "name": "Rear left fog light"
+      },
+      "rear_left_turn_light": {
+        "name": "Rear left turn light"
+      },
       "rear_right_door": {
         "name": "Rear right door"
       },
-      "trunk_door": {
-        "name": "Trunk door"
+      "rear_right_fog_light": {
+        "name": "Rear right fog light"
+      },
+      "rear_right_turn_light": {
+        "name": "Rear right turn light"
       },
       "rear_window": {
         "name": "Rear window"
       },
       "roof_window": {
         "name": "Roof window"
+      },
+      "trunk_door": {
+        "name": "Trunk door"
       }
     },
     "light": {
@@ -125,29 +125,19 @@
       }
     },
     "sensor": {
-      "fuel_energy_level": {
-        "name": "Fuel energy level"
+      "acceleration": {
+        "name": "Acceleration"
       },
-      "fuel_energy_autonomy": {
-        "name": "Fuel energy autonomy"
+      "auto_e_call_triggering": {
+        "name": "Auto E-Call triggering",
+        "state": {
+          "detected": "[%key:component::binary_sensor::entity_component::gas::state::on%]",
+          "notdetected": "Not detected",
+          "shockdetectionunabled": "Shock detection unabled"
+        }
       },
-      "fuel_total_consumption": {
-        "name": "Fuel total consumption"
-      },
-      "fuel_instant_consumption": {
-        "name": "Fuel instant consumption"
-      },
-      "electric_energy_level": {
-        "name": "Electric energy level"
-      },
-      "electric_energy_autonomy": {
-        "name": "Electric energy autonomy"
-      },
-      "battery_total_capacity": {
-        "name": "Battery total capacity"
-      },
-      "residual_electric_energy": {
-        "name": "Residual electric energy"
+      "auxiliary_battery_health": {
+        "name": "Auxiliary battery health"
       },
       "battery_capacity": {
         "name": "Battery capacity"
@@ -155,42 +145,133 @@
       "battery_resistance": {
         "name": "Battery resistance"
       },
-      "charging_status": {
-        "name": "Charging status",
-        "state": {
-          "disconnected": "[%key:common::state::disconnected%]",
-          "inprogress": "In Progress",
-          "failure": "Failure",
-          "stopped": "Stopped",
-          "finished": "Finished"
-        }
-      },
-      "charging_remaining_time": {
-        "name": "Charging remaining time"
-      },
-      "charging_rate": {
-        "name": "Charging speed"
+      "battery_total_capacity": {
+        "name": "Battery total capacity"
       },
       "charging_mode": {
         "name": "Charging mode",
         "state": {
           "no": "[%key:component::binary_sensor::entity_component::battery_charging::state::off%]",
-          "slow": "Slow",
-          "quick": "Quick"
+          "quick": "Quick",
+          "slow": "Slow"
         }
       },
-      "next_charge": {
-        "name": "Next charge"
+      "charging_rate": {
+        "name": "Charging speed"
+      },
+      "charging_remaining_time": {
+        "name": "Charging remaining time"
+      },
+      "charging_status": {
+        "name": "Charging status",
+        "state": {
+          "disconnected": "[%key:common::state::disconnected%]",
+          "failure": "Failure",
+          "finished": "Finished",
+          "inprogress": "In Progress",
+          "stopped": "Stopped"
+        }
       },
       "charging_type": {
         "name": "Charging type",
         "state": {
-          "partial": "Partial",
-          "full": "Full"
+          "full": "Full",
+          "partial": "Partial"
         }
       },
-      "thermic_engine_speed": {
-        "name": "Thermic engine speed"
+      "driving_mode": {
+        "name": "Driving mode",
+        "state": {
+          "4awd": "4AWD",
+          "comfort": "Comfort",
+          "eawd": "eAWD",
+          "eco": "Eco",
+          "ecoplus": "EcoPlus",
+          "hybrid": "Hybrid",
+          "hybrideco": "HybridEco",
+          "mud": "Mud",
+          "normal": "Normal",
+          "reinforcedload": "Reinforced load",
+          "sand": "Sand",
+          "snow": "Snow",
+          "sport": "Sport",
+          "zev": "ZEV",
+          "zeveco": "ZEVEco"
+        }
+      },
+      "electric_energy_autonomy": {
+        "name": "Electric energy autonomy"
+      },
+      "electric_energy_level": {
+        "name": "Electric energy level"
+      },
+      "electric_engine_speed": {
+        "name": "Electric engine speed"
+      },
+      "environment_air_temperature": {
+        "name": "Environment air temperature"
+      },
+      "fuel_energy_autonomy": {
+        "name": "Fuel energy autonomy"
+      },
+      "fuel_energy_level": {
+        "name": "Fuel energy level"
+      },
+      "fuel_instant_consumption": {
+        "name": "Fuel instant consumption"
+      },
+      "fuel_total_consumption": {
+        "name": "Fuel total consumption"
+      },
+      "ignition": {
+        "name": "Ignition",
+        "state": {
+          "start": "[%key:common::action::start%]",
+          "startup": "Start Up",
+          "stop": "[%key:common::action::stop%]"
+        }
+      },
+      "mileage": {
+        "name": "Mileage"
+      },
+      "next_charge": {
+        "name": "Next charge"
+      },
+      "powertrain_status": {
+        "name": "Powertrain status",
+        "state": {
+          "not_running": "Not running",
+          "running": "Running",
+          "starting": "Starting",
+          "stopped": "Stopped",
+          "stopping": "Stopping"
+        }
+      },
+      "preconditioning_status": {
+        "name": "Preconditioning status",
+        "state": {
+          "disabled": "[%key:common::state::disabled%]",
+          "enabled": "[%key:common::state::enabled%]",
+          "failure": "Failure",
+          "finished": "Finished"
+        }
+      },
+      "privacy": {
+        "name": "Privacy",
+        "state": {
+          "full": "Full",
+          "geolocation": "Geolocation",
+          "none": "[%key:component::climate::entity_component::_::state_attributes::preset_mode::state::none%]"
+        }
+      },
+      "residual_electric_energy": {
+        "name": "Residual electric energy"
+      },
+      "speed": {
+        "name": "Speed"
+      },
+      "thermic_engine_air_temperature": {
+        "name": "Thermic engine air temperature"
       },
       "thermic_engine_coolant_level": {
         "name": "Thermic engine coolant level"
@@ -204,97 +285,16 @@
       "thermic_engine_oil_temperature": {
         "name": "Thermic engine oil temperature"
       },
-      "thermic_engine_air_temperature": {
-        "name": "Thermic engine air temperature"
-      },
-      "electric_engine_speed": {
-        "name": "Electric engine speed"
-      },
-      "ignition": {
-        "name": "Ignition",
-        "state": {
-          "stop": "[%key:common::action::stop%]",
-          "startup": "Start Up",
-          "start": "[%key:common::action::start%]"
-        }
-      },
-      "preconditioning_status": {
-        "name": "Preconditioning status",
-        "state": {
-          "enabled": "[%key:common::state::enabled%]",
-          "disabled": "[%key:common::state::disabled%]",
-          "finished": "Finished",
-          "failure": "Failure"
-        }
-      },
-      "powertrain_status": {
-        "name": "Powertrain status",
-        "state": {
-          "not_running": "Not running",
-          "starting": "Starting",
-          "running": "Running",
-          "stopping": "Stopping",
-          "stopped": "Stopped"
-        }
-      },
-      "privacy": {
-        "name": "Privacy",
-        "state": {
-          "none": "[%key:component::climate::entity_component::_::state_attributes::preset_mode::state::none%]",
-          "geolocation": "Geolocation",
-          "full": "Full"
-        }
-      },
-      "auxiliary_battery_health": {
-        "name": "Auxiliary battery health"
-      },
-      "auto_e_call_triggering": {
-        "name": "Auto E-Call triggering",
-        "state": {
-          "notdetected": "Not detected",
-          "detected": "[%key:component::binary_sensor::entity_component::gas::state::on%]",
-          "shockdetectionunabled": "Shock detection unabled"
-        }
-      },
-      "mileage": {
-        "name": "Mileage"
-      },
-      "acceleration": {
-        "name": "Acceleration"
-      },
-      "speed": {
-        "name": "Speed"
-      },
-      "environment_air_temperature": {
-        "name": "Environment air temperature"
-      },
-      "driving_mode": {
-        "name": "Driving mode",
-        "state": {
-          "normal": "Normal",
-          "sport": "Sport",
-          "comfort": "Comfort",
-          "eco": "Eco",
-          "sand": "Sand",
-          "mud": "Mud",
-          "snow": "Snow",
-          "zev": "ZEV",
-          "hybrid": "Hybrid",
-          "zeveco": "ZEVEco",
-          "hybrideco": "HybridEco",
-          "ecoplus": "EcoPlus",
-          "eawd": "eAWD",
-          "4awd": "4AWD",
-          "reinforcedload": "Reinforced load"
-        }
+      "thermic_engine_speed": {
+        "name": "Thermic engine speed"
       }
     },
     "siren": {
       "horn": {
         "name": "Horn",
         "state": {
-          "on": "Activated",
-          "off": "Deactivated"
+          "off": "Deactivated",
+          "on": "Activated"
         }
       }
     },
@@ -302,9 +302,19 @@
       "charge": {
         "name": "Charge",
         "state": {
-          "on": "[%key:common::state::charging%]",
-          "off": "Delayed"
+          "off": "Delayed",
+          "on": "[%key:common::state::charging%]"
         }
+      },
+      "charging_program": {
+        "name": "Charging program {slot}",
+        "state": {
+          "off": "[%key:common::state::disabled%]",
+          "on": "[%key:common::state::enabled%]"
+        }
+      },
+      "charging_program_charge_until_full": {
+        "name": "Charging program {slot} charge until full"
       },
       "partial_charge": {
         "name": "Partial charge"
@@ -315,60 +325,50 @@
       "preconditioning_program": {
         "name": "Preconditioning program {slot}",
         "state": {
-          "on": "[%key:common::state::enabled%]",
-          "off": "[%key:common::state::disabled%]"
+          "off": "[%key:common::state::disabled%]",
+          "on": "[%key:common::state::enabled%]"
         }
-      },
-      "charging_program": {
-        "name": "Charging program {slot}",
-        "state": {
-          "on": "[%key:common::state::enabled%]",
-          "off": "[%key:common::state::disabled%]"
-        }
-      },
-      "charging_program_charge_until_full": {
-        "name": "Charging program {slot} charge until full"
       }
     },
     "time": {
+      "charging_program_end": {
+        "name": "Charging program {slot} end time"
+      },
+      "charging_program_start": {
+        "name": "Charging program {slot} start time"
+      },
       "charging_time": {
         "name": "Charging time"
       },
       "preconditioning_program": {
         "name": "Preconditioning program {slot} start time"
-      },
-      "charging_program_start": {
-        "name": "Charging program {slot} start time"
-      },
-      "charging_program_end": {
-        "name": "Charging program {slot} end time"
       }
     }
   },
   "exceptions": {
-    "preconditioning_program_not_defined": {
-      "message": "Preconditioning program {slot} is not defined, define it first using \"stellantis.set_preconditioning_program\" action"
-    },
-    "remote_request_callback_id_not_found": {
-      "message": "Callback ID not found"
+    "action_config_entry_not_found": {
+      "message": "Stellantis config entry for device with ID '\"{device_id}\"' not found"
     },
     "action_device_not_found": {
       "message": "Device with ID \"{device_id}\" not found"
     },
-    "action_config_entry_not_found": {
-      "message": "Stellantis config entry for device with ID '\"{device_id}\"' not found"
+    "action_new_charging_program_missing_fields": {
+      "message": "To define a new program, 'start' field is required"
     },
     "action_new_preconditioning_program_missing_fields": {
       "message": "To define a new program, all fields are required"
-    },
-    "action_new_charging_program_missing_fields": {
-      "message": "To define a new program, 'start' field is required"
     },
     "action_program_not_found": {
       "message": "Program {slot} not found, so it cannot be edited"
     },
     "executing_remote_request_failed": {
       "message": "Execution of the remote action failed. Cause: {failure_cause}"
+    },
+    "preconditioning_program_not_defined": {
+      "message": "Preconditioning program {slot} is not defined, define it first using \"stellantis.set_preconditioning_program\" action"
+    },
+    "remote_request_callback_id_not_found": {
+      "message": "Callback ID not found"
     },
     "remote_request_failed": {
       "message": "Remote action failed. Cause: {failure_cause}"
@@ -383,150 +383,150 @@
     },
     "weekdays": {
       "options": {
-        "mon": "[%key:common::time::monday%]",
-        "tue": "[%key:common::time::tuesday%]",
-        "wed": "[%key:common::time::wednesday%]",
-        "thu": "[%key:common::time::thursday%]",
         "fri": "[%key:common::time::friday%]",
+        "mon": "[%key:common::time::monday%]",
         "sat": "[%key:common::time::saturday%]",
-        "sun": "[%key:common::time::sunday%]"
+        "sun": "[%key:common::time::sunday%]",
+        "thu": "[%key:common::time::thursday%]",
+        "tue": "[%key:common::time::tuesday%]",
+        "wed": "[%key:common::time::wednesday%]"
       }
     }
   },
   "services": {
     "delete_preconditioning_program": {
-      "name": "Delete preconditioning program",
       "description": "Delete a preconditioning program from the vehicle.",
       "fields": {
         "device_id": {
-          "name": "Device ID",
-          "description": "Device identifier of the vehicle."
+          "description": "Device identifier of the vehicle.",
+          "name": "Device ID"
         },
         "program_number": {
-          "name": "Program number",
-          "description": "Number of the preconditioning program to delete."
+          "description": "Number of the preconditioning program to delete.",
+          "name": "Program number"
         }
-      }
+      },
+      "name": "Delete preconditioning program"
     },
     "send_navigation_positions": {
-      "name": "Send navigation positions",
       "description": "Send positions to the vehicle so that it creates a route based on them. You don't need to use all the positions in order (for example, you can use optional positions 1 and 3).",
       "fields": {
         "device_id": {
-          "name": "[%key:component::stellantis::services::delete_preconditioning_program::fields::device_id::name%]",
-          "description": "[%key:component::stellantis::services::delete_preconditioning_program::fields::device_id::description%]"
+          "description": "[%key:component::stellantis::services::delete_preconditioning_program::fields::device_id::description%]",
+          "name": "[%key:component::stellantis::services::delete_preconditioning_program::fields::device_id::name%]"
         },
         "position": {
-          "name": "Position",
-          "description": "Position to navigate to. If additional positions are used, this will be the first one."
+          "description": "Position to navigate to. If additional positions are used, this will be the first one.",
+          "name": "Position"
         },
         "position_1": {
-          "name": "[%key:component::stellantis::services::send_navigation_positions::fields::position::name%]",
-          "description": "Additional position"
+          "description": "Additional position",
+          "name": "[%key:component::stellantis::services::send_navigation_positions::fields::position::name%]"
         },
         "position_2": {
-          "name": "[%key:component::stellantis::services::send_navigation_positions::fields::position::name%]",
-          "description": "[%key:component::stellantis::services::send_navigation_positions::fields::position_1::description%]"
+          "description": "[%key:component::stellantis::services::send_navigation_positions::fields::position_1::description%]",
+          "name": "[%key:component::stellantis::services::send_navigation_positions::fields::position::name%]"
         },
         "position_3": {
-          "name": "[%key:component::stellantis::services::send_navigation_positions::fields::position::name%]",
-          "description": "[%key:component::stellantis::services::send_navigation_positions::fields::position_1::description%]"
+          "description": "[%key:component::stellantis::services::send_navigation_positions::fields::position_1::description%]",
+          "name": "[%key:component::stellantis::services::send_navigation_positions::fields::position::name%]"
         },
         "position_4": {
-          "name": "[%key:component::stellantis::services::send_navigation_positions::fields::position::name%]",
-          "description": "[%key:component::stellantis::services::send_navigation_positions::fields::position_1::description%]"
+          "description": "[%key:component::stellantis::services::send_navigation_positions::fields::position_1::description%]",
+          "name": "[%key:component::stellantis::services::send_navigation_positions::fields::position::name%]"
         },
         "position_5": {
-          "name": "[%key:component::stellantis::services::send_navigation_positions::fields::position::name%]",
-          "description": "[%key:component::stellantis::services::send_navigation_positions::fields::position_1::description%]"
+          "description": "[%key:component::stellantis::services::send_navigation_positions::fields::position_1::description%]",
+          "name": "[%key:component::stellantis::services::send_navigation_positions::fields::position::name%]"
         },
         "position_6": {
-          "name": "[%key:component::stellantis::services::send_navigation_positions::fields::position::name%]",
-          "description": "[%key:component::stellantis::services::send_navigation_positions::fields::position_1::description%]"
+          "description": "[%key:component::stellantis::services::send_navigation_positions::fields::position_1::description%]",
+          "name": "[%key:component::stellantis::services::send_navigation_positions::fields::position::name%]"
         },
         "position_7": {
-          "name": "[%key:component::stellantis::services::send_navigation_positions::fields::position::name%]",
-          "description": "[%key:component::stellantis::services::send_navigation_positions::fields::position_1::description%]"
+          "description": "[%key:component::stellantis::services::send_navigation_positions::fields::position_1::description%]",
+          "name": "[%key:component::stellantis::services::send_navigation_positions::fields::position::name%]"
         },
         "position_8": {
-          "name": "[%key:component::stellantis::services::send_navigation_positions::fields::position::name%]",
-          "description": "[%key:component::stellantis::services::send_navigation_positions::fields::position_1::description%]"
+          "description": "[%key:component::stellantis::services::send_navigation_positions::fields::position_1::description%]",
+          "name": "[%key:component::stellantis::services::send_navigation_positions::fields::position::name%]"
         },
         "position_9": {
-          "name": "[%key:component::stellantis::services::send_navigation_positions::fields::position::name%]",
-          "description": "[%key:component::stellantis::services::send_navigation_positions::fields::position_1::description%]"
+          "description": "[%key:component::stellantis::services::send_navigation_positions::fields::position_1::description%]",
+          "name": "[%key:component::stellantis::services::send_navigation_positions::fields::position::name%]"
         }
-      }
+      },
+      "name": "Send navigation positions"
     },
     "set_charging_program": {
-      "name": "Set charging program",
       "description": "Add or adjust a charging program for in the vehicle. The fields that are not set will be kept unchanged.",
       "fields": {
         "device_id": {
-          "name": "[%key:component::stellantis::services::delete_preconditioning_program::fields::device_id::name%]",
-          "description": "[%key:component::stellantis::services::delete_preconditioning_program::fields::device_id::description%]"
-        },
-        "program_number": {
-          "name": "[%key:component::stellantis::services::delete_preconditioning_program::fields::program_number::name%]",
-          "description": "Number of the charging program to modify"
+          "description": "[%key:component::stellantis::services::delete_preconditioning_program::fields::device_id::description%]",
+          "name": "[%key:component::stellantis::services::delete_preconditioning_program::fields::device_id::name%]"
         },
         "enabled": {
-          "name": "[%key:component::stellantis::services::set_preconditioning_program::fields::enabled::name%]",
-          "description": "[%key:component::stellantis::services::set_preconditioning_program::fields::enabled::description%]"
-        },
-        "start": {
-          "name": "[%key:component::stellantis::services::set_preconditioning_program::fields::start::name%]",
-          "description": "[%key:component::stellantis::services::set_preconditioning_program::fields::start::description%]"
+          "description": "[%key:component::stellantis::services::set_preconditioning_program::fields::enabled::description%]",
+          "name": "[%key:component::stellantis::services::set_preconditioning_program::fields::enabled::name%]"
         },
         "end": {
-          "name": "End",
-          "description": "Time to end the program (Seconds are ignored)."
+          "description": "Time to end the program (Seconds are ignored).",
+          "name": "End"
         },
         "occurrence": {
-          "name": "[%key:component::stellantis::services::set_preconditioning_program::fields::occurrence::name%]",
-          "description": "[%key:component::stellantis::services::set_preconditioning_program::fields::occurrence::description%]"
+          "description": "[%key:component::stellantis::services::set_preconditioning_program::fields::occurrence::description%]",
+          "name": "[%key:component::stellantis::services::set_preconditioning_program::fields::occurrence::name%]"
+        },
+        "program_number": {
+          "description": "Number of the charging program to modify",
+          "name": "[%key:component::stellantis::services::delete_preconditioning_program::fields::program_number::name%]"
+        },
+        "start": {
+          "description": "[%key:component::stellantis::services::set_preconditioning_program::fields::start::description%]",
+          "name": "[%key:component::stellantis::services::set_preconditioning_program::fields::start::name%]"
         }
-      }
+      },
+      "name": "Set charging program"
     },
     "set_preconditioning_program": {
-      "name": "Set preconditioning program",
       "description": "Add or adjust a preconditioning program for in the vehicle. The fields that are not set will be kept unchanged.",
       "fields": {
         "device_id": {
-          "name": "[%key:component::stellantis::services::delete_preconditioning_program::fields::device_id::name%]",
-          "description": "[%key:component::stellantis::services::delete_preconditioning_program::fields::device_id::description%]"
-        },
-        "program_number": {
-          "name": "[%key:component::stellantis::services::delete_preconditioning_program::fields::program_number::name%]",
-          "description": "Number of the preconditioning program to modify"
+          "description": "[%key:component::stellantis::services::delete_preconditioning_program::fields::device_id::description%]",
+          "name": "[%key:component::stellantis::services::delete_preconditioning_program::fields::device_id::name%]"
         },
         "enabled": {
-          "name": "Enabled",
-          "description": "Enable or disable the program."
-        },
-        "start": {
-          "name": "Start",
-          "description": "Time to start the program (Seconds are ignored)."
-        },
-        "recurrence": {
-          "name": "Recurrence",
-          "description": "Enable or disable if the program should be repeated over the week."
+          "description": "Enable or disable the program.",
+          "name": "Enabled"
         },
         "occurrence": {
-          "name": "Occurrence",
-          "description": "Days of the week to repeat the program."
+          "description": "Days of the week to repeat the program.",
+          "name": "Occurrence"
+        },
+        "program_number": {
+          "description": "Number of the preconditioning program to modify",
+          "name": "[%key:component::stellantis::services::delete_preconditioning_program::fields::program_number::name%]"
+        },
+        "recurrence": {
+          "description": "Enable or disable if the program should be repeated over the week.",
+          "name": "Recurrence"
+        },
+        "start": {
+          "description": "Time to start the program (Seconds are ignored).",
+          "name": "Start"
         }
-      }
+      },
+      "name": "Set preconditioning program"
     },
     "wake_up": {
-      "name": "Wake up vehicle",
       "description": "Wake up the vehicle so it can update its data.",
       "fields": {
         "device_id": {
-          "name": "[%key:component::stellantis::services::delete_preconditioning_program::fields::device_id::name%]",
-          "description": "[%key:component::stellantis::services::delete_preconditioning_program::fields::device_id::description%]"
+          "description": "[%key:component::stellantis::services::delete_preconditioning_program::fields::device_id::description%]",
+          "name": "[%key:component::stellantis::services::delete_preconditioning_program::fields::device_id::name%]"
         }
-      }
+      },
+      "name": "Wake up vehicle"
     }
   }
 }

@@ -1,6 +1,7 @@
 {
   "domain": "stellantis",
   "name": "Stellantis",
+  "after_dependencies": ["cloud"],
   "codeowners": ["@Diegorro98"],
   "config_flow": true,
   "dependencies": ["application_credentials"],

@@ -1,8 +1,29 @@
 {
   "entity": {
     "binary_sensor": {
+      "driver_belt_status": {
+        "default": "mdi:seatbelt"
+      },
       "driver_door": {
         "default": "mdi:car-door"
+      },
+      "front_left_fog_light": {
+        "default": "mdi:car-light-fog"
+      },
+      "front_left_turn_light": {
+        "default": "mdi:arrow-left-bold"
+      },
+      "front_right_fog_light": {
+        "default": "mdi:car-light-fog"
+      },
+      "front_right_turn_light": {
+        "default": "mdi:arrow-right-bold"
+      },
+      "moving": {
+        "default": "mdi:motion"
+      },
+      "passenger_belt_status": {
+        "default": "mdi:seatbelt"
       },
       "passenger_door": {
         "default": "mdi:car-door"
@@ -10,51 +31,30 @@
       "rear_left_door": {
         "default": "mdi:car-door"
       },
-      "rear_right_door": {
-        "default": "mdi:car-door"
-      },
-      "rear_window": {
-        "default": "mdi:mdi:window-closed",
-        "state": {
-          "on": "mdi:window-open",
-          "off": "mdi:window-closed"
-        }
-      },
-      "roof_window": {
-        "default": "mdi:car-select"
-      },
-      "driver_belt_status": {
-        "default": "mdi:seatbelt"
-      },
-      "passenger_belt_status": {
-        "default": "mdi:seatbelt"
-      },
-      "moving": {
-        "default": "mdi:motion"
-      },
-      "front_left_turn_light": {
-        "default": "mdi:arrow-left-bold"
-      },
-      "front_left_fog_light": {
-        "default": "mdi:car-light-fog"
-      },
-      "front_right_turn_light": {
-        "default": "mdi:arrow-right-bold"
-      },
-      "front_right_fog_light": {
+      "rear_left_fog_light": {
         "default": "mdi:car-light-fog"
       },
       "rear_left_turn_light": {
         "default": "mdi:arrow-left-bold"
       },
-      "rear_left_fog_light": {
+      "rear_right_door": {
+        "default": "mdi:car-door"
+      },
+      "rear_right_fog_light": {
         "default": "mdi:car-light-fog"
       },
       "rear_right_turn_light": {
         "default": "mdi:arrow-right-bold"
       },
-      "rear_right_fog_light": {
-        "default": "mdi:car-light-fog"
+      "rear_window": {
+        "default": "mdi:mdi:window-closed",
+        "state": {
+          "off": "mdi:window-closed",
+          "on": "mdi:window-open"
+        }
+      },
+      "roof_window": {
+        "default": "mdi:car-select"
       }
     },
     "device_tracker": {
@@ -76,26 +76,14 @@
       }
     },
     "sensor": {
-      "fuel_energy_level": {
-        "default": "mdi:gas-station"
+      "acceleration": {
+        "default": "mdi:motion"
       },
-      "fuel_energy_autonomy": {
-        "default": "mdi:fuel"
+      "auto_e_call_triggering": {
+        "default": "mdi:phone-in-talk"
       },
-      "fuel_total_consumption": {
-        "default": "mdi:fuel"
-      },
-      "fuel_instant_consumption": {
-        "default": "mdi:fuel"
-      },
-      "electric_energy_autonomy": {
-        "default": "mdi:lightning-bolt"
-      },
-      "battery_total_capacity": {
-        "default": "mdi:battery"
-      },
-      "residual_electric_energy": {
-        "default": "mdi:lightning-bolt"
+      "auxiliary_battery_health": {
+        "default": "mdi:car-battery"
       },
       "battery_capacity": {
         "default": "mdi:battery-heart-variant"
@@ -103,30 +91,83 @@
       "battery_resistance": {
         "default": "mdi:resistor"
       },
-      "charging_status": {
-        "default": "mdi:lightning-bolt",
-        "state": {
-          "disconnected": "mdi:power-plug-off",
-          "in_progress": "mdi:battery-charging-50",
-          "failure": "mdi:battery-alert",
-          "stopped": "mdi:battery-clock",
-          "finished": "mdi:battery"
-        }
-      },
-      "charging_remaining_time": {
-        "default": "mdi:progress-clock"
-      },
-      "charging_rate": {
-        "default": "mdi:lightning-bolt"
+      "battery_total_capacity": {
+        "default": "mdi:battery"
       },
       "charging_mode": {
         "default": "mdi:lightning-bolt"
       },
+      "charging_rate": {
+        "default": "mdi:lightning-bolt"
+      },
+      "charging_remaining_time": {
+        "default": "mdi:progress-clock"
+      },
+      "charging_status": {
+        "default": "mdi:lightning-bolt",
+        "state": {
+          "disconnected": "mdi:power-plug-off",
+          "failure": "mdi:battery-alert",
+          "finished": "mdi:battery",
+          "in_progress": "mdi:battery-charging-50",
+          "stopped": "mdi:battery-clock"
+        }
+      },
+      "driving_mode": {
+        "default": "mdi:steering"
+      },
+      "electric_energy_autonomy": {
+        "default": "mdi:lightning-bolt"
+      },
+      "electric_engine_speed": {
+        "default": "mdi:speedometer"
+      },
+      "environment_air_temperature": {
+        "default": "mdi:thermometer-lines"
+      },
+      "fuel_energy_autonomy": {
+        "default": "mdi:fuel"
+      },
+      "fuel_energy_level": {
+        "default": "mdi:gas-station"
+      },
+      "fuel_instant_consumption": {
+        "default": "mdi:fuel"
+      },
+      "fuel_total_consumption": {
+        "default": "mdi:fuel"
+      },
+      "ignition": {
+        "default": "mdi:engine"
+      },
+      "mileage": {
+        "default": "mdi:counter"
+      },
       "next_charge": {
         "default": "mdi:battery-clock"
       },
-      "thermic_engine_speed": {
+      "powertrain_status": {
+        "default": "mdi:car-info"
+      },
+      "preconditioning_status": {
+        "default": "mdi:air-conditioner"
+      },
+      "privacy": {
+        "default": "mdi:eye-outline",
+        "state": {
+          "full": "mdi:eye-off-outline",
+          "geolocation": "mdi:map-marker-off",
+          "none": "mdi:eye-outline"
+        }
+      },
+      "residual_electric_energy": {
+        "default": "mdi:lightning-bolt"
+      },
+      "speed": {
         "default": "mdi:speedometer"
+      },
+      "thermic_engine_air_temperature": {
+        "default": "mdi:thermometer"
       },
       "thermic_engine_coolant_level": {
         "default": "mdi:car-coolant-level"
@@ -140,49 +181,8 @@
       "thermic_engine_oil_temperature": {
         "default": "mdi:oil-temperature"
       },
-      "thermic_engine_air_temperature": {
-        "default": "mdi:thermometer"
-      },
-      "electric_engine_speed": {
+      "thermic_engine_speed": {
         "default": "mdi:speedometer"
-      },
-      "ignition": {
-        "default": "mdi:engine"
-      },
-      "preconditioning_status": {
-        "default": "mdi:air-conditioner"
-      },
-      "powertrain_status": {
-        "default": "mdi:car-info"
-      },
-      "privacy": {
-        "default": "mdi:eye-outline",
-        "state": {
-          "none": "mdi:eye-outline",
-          "geolocation": "mdi:map-marker-off",
-          "full": "mdi:eye-off-outline"
-        }
-      },
-      "auxiliary_battery_health": {
-        "default": "mdi:car-battery"
-      },
-      "auto_e_call_triggering": {
-        "default": "mdi:phone-in-talk"
-      },
-      "mileage": {
-        "default": "mdi:counter"
-      },
-      "acceleration": {
-        "default": "mdi:motion"
-      },
-      "speed": {
-        "default": "mdi:speedometer"
-      },
-      "environment_air_temperature": {
-        "default": "mdi:thermometer-lines"
-      },
-      "driving_mode": {
-        "default": "mdi:steering"
       }
     },
     "siren": {
@@ -191,21 +191,21 @@
       }
     },
     "switch": {
+      "charge": {
+        "default": "mdi:battery-clock"
+      },
       "charging_type": {
         "default": "mdi:battery-50",
         "state": {
-          "on": "mdi:battery-50",
-          "off": "mdi:battery"
+          "off": "mdi:battery",
+          "on": "mdi:battery-50"
         }
-      },
-      "charge": {
-        "default": "mdi:battery-clock"
       },
       "partial_charge": {
         "default": "mdi:battery-50",
         "state": {
-          "on": "mdi:battery-50",
-          "off": "mdi:battery"
+          "off": "mdi:battery",
+          "on": "mdi:battery-50"
         }
       },
       "preconditioning": {
@@ -216,17 +216,17 @@
       }
     },
     "time": {
+      "charging_program_end": {
+        "default": "mdi:battery-clock"
+      },
+      "charging_program_start": {
+        "default": "mdi:battery-clock"
+      },
       "next_delayed_time": {
         "default": "mdi:battery-clock"
       },
       "preconditioning_program": {
         "default": "mdi:air-conditioner"
-      },
-      "charging_program_start": {
-        "default": "mdi:battery-clock"
-      },
-      "charging_program_end": {
-        "default": "mdi:battery-clock"
       }
     }
   },
