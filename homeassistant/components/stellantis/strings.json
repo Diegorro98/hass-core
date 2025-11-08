@@ -364,6 +364,9 @@
     "executing_remote_request_failed": {
       "message": "Execution of the remote action failed. Cause: {failure_cause}"
     },
+    "oauth2_implementation_unavailable": {
+      "message": "OAuth2 implementation temporarily unavailable, will retry"
+    },
     "preconditioning_program_not_defined": {
       "message": "Preconditioning program {slot} is not defined, define it first using \"stellantis.set_preconditioning_program\" action"
     },

@@ -29,6 +29,9 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import CONF_COUNTRY, CONF_WEBHOOK_ID, EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.config_entry_oauth2_flow import (
+    ImplementationUnavailableError,
+)
 
 from .conftest import FAKE_AUTH_IMPL
 
@@ -114,6 +117,21 @@ async def test_token_refresh_on_expired_token(
     assert config_entry.state is ConfigEntryState.LOADED
     assert aioclient_mock.call_count == 1
     assert config_entry.data["token"]["access_token"] == "mock-refresed-access-token"
+
+
+async def test_setup_implementation_unavailable(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    client: MagicMock,
+) -> None:
+    """Test setup when OAuth2 implementation is unavailable."""
+
+    with patch(
+        "homeassistant.components.stellantis.async_get_config_entry_implementation",
+        side_effect=ImplementationUnavailableError,
+    ):
+        assert not await _setup_integration(hass, config_entry, client)
+    assert config_entry.state is ConfigEntryState.SETUP_RETRY
 
 
 @pytest.mark.parametrize(
@@ -496,7 +514,7 @@ async def test_reusable_callback_created_with_cloudhook(
             return_value="https://hooks.nabu.casa/ABCD",
         ) as fake_create_cloudhook,
         patch(
-            "homeassistant.helpers.config_entry_oauth2_flow.async_get_config_entry_implementation",
+            "homeassistant.components.stellantis.async_get_config_entry_implementation",
         ),
     ):
         assert await _setup_integration(hass, config_entry, client)
@@ -546,7 +564,7 @@ async def test_reusable_callback_created_with_ext_url_but_cloud_later(
             "homeassistant.components.cloud.async_create_cloudhook",
         ) as fake_create_cloudhook,
         patch(
-            "homeassistant.helpers.config_entry_oauth2_flow.async_get_config_entry_implementation",
+            "homeassistant.components.stellantis.async_get_config_entry_implementation",
         ),
     ):
         assert await _setup_integration(hass, config_entry, client)
@@ -626,7 +644,7 @@ async def test_reusable_callback_created_with_cloud_but_with_ext_url_later(
             return_value="https://hooks.nabu.casa/ABCD",
         ) as fake_create_cloudhook,
         patch(
-            "homeassistant.helpers.config_entry_oauth2_flow.async_get_config_entry_implementation",
+            "homeassistant.components.stellantis.async_get_config_entry_implementation",
         ),
     ):
         assert await _setup_integration(hass, config_entry, client)
@@ -736,7 +754,7 @@ async def test_cloudhook_not_recreated_if_already_created(
             "homeassistant.components.cloud.async_create_cloudhook",
         ) as fake_create_cloudhook,
         patch(
-            "homeassistant.helpers.config_entry_oauth2_flow.async_get_config_entry_implementation",
+            "homeassistant.components.stellantis.async_get_config_entry_implementation",
         ),
     ):
         assert await _setup_integration(hass, config_entry, client)
@@ -807,7 +825,7 @@ async def test_error_on_updating_remote(
         patch.object(cloud, "async_is_connected", return_value=False),
         patch("homeassistant.components.cloud.async_create_cloudhook"),
         patch(
-            "homeassistant.helpers.config_entry_oauth2_flow.async_get_config_entry_implementation",
+            "homeassistant.components.stellantis.async_get_config_entry_implementation",
         ),
     ):
         assert await _setup_integration(hass, config_entry, client)

@@ -13,7 +13,12 @@ from homeassistant.components.webhook import async_unregister as webhook_unregis
 from homeassistant.const import CONF_COUNTRY, CONF_WEBHOOK_ID, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
-from homeassistant.helpers import config_entry_oauth2_flow, config_validation as cv
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.config_entry_oauth2_flow import (
+    ImplementationUnavailableError,
+    LocalOAuth2Implementation,
+    async_get_config_entry_implementation,
+)
 from homeassistant.helpers.typing import ConfigType
 
 from .api import AsyncConfigEntryAuth
@@ -51,12 +56,17 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: StellantisConfigEntry) -> bool:
     """Set up Stellantis from a config entry."""
-    implementation = cast(
-        config_entry_oauth2_flow.LocalOAuth2Implementation,
-        await config_entry_oauth2_flow.async_get_config_entry_implementation(
-            hass, entry
-        ),
-    )
+    try:
+        implementation = cast(
+            LocalOAuth2Implementation,
+            await async_get_config_entry_implementation(hass, entry),
+        )
+    except ImplementationUnavailableError as err:
+        raise ConfigEntryNotReady(
+            translation_domain=DOMAIN,
+            translation_key="oauth2_implementation_unavailable",
+        ) from err
+
     stellantis_implementation = StellantisOauth2Implementation(
         hass,
         implementation.domain,
@@ -112,10 +122,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: StellantisConfigEntry) 
 async def async_remove_entry(hass: HomeAssistant, entry: StellantisConfigEntry) -> None:
     """Handle removal of an entry."""
     implementation = cast(
-        config_entry_oauth2_flow.LocalOAuth2Implementation,
-        await config_entry_oauth2_flow.async_get_config_entry_implementation(
-            hass, entry
-        ),
+        LocalOAuth2Implementation,
+        await async_get_config_entry_implementation(hass, entry),
     )
     stellantis_implementation = StellantisOauth2Implementation(
         hass,
