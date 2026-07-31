@@ -6,6 +6,7 @@
   },
   "postCreateCommand": "git config --global --add safe.directory ${containerWorkspaceFolder} && script/setup",
   "postStartCommand": "script/bootstrap",
+  "remoteUser": "root",
   "containerEnv": {
     "PYTHONASYNCIODEBUG": "1"
   },
@@ -16,9 +17,7 @@
   "appPort": ["8123:8123", "5683:5683/udp"],
   "runArgs": [
     "-e",
-    "GIT_EDITOR=code --wait",
-    "--security-opt",
-    "label=disable"
+    "GIT_EDITOR=code --wait"
   ],
   "customizations": {
     "vscode": {
