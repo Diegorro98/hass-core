@@ -152,14 +152,6 @@
         }
       }
     },
-    "image": {
-      "door_right_camera": {
-        "name": "Door right camera"
-      },
-      "interior_right_camera": {
-        "name": "Interior right camera"
-      }
-    },
     "light": {
       "ambient_light": {
         "name": "Ambient light"
@@ -1600,9 +1592,6 @@
     },
     "fetch_api_error": {
       "message": "Error obtaining data from the API: {error}"
-    },
-    "fetch_image_error": {
-      "message": "Error obtaining image from the API: {error}"
     },
     "fetch_program_error": {
       "message": "Error obtaining the selected or active program: {error}"
