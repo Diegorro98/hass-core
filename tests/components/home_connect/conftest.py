@@ -331,9 +331,9 @@ def mock_client(
         autospec=HomeConnectClient,
     )
 
-    event_queue: asyncio.Queue[list[EventMessage | Exception]] = asyncio.Queue()
+    event_queue: asyncio.Queue[list[EventMessage | Exception | None]] = asyncio.Queue()
 
-    async def add_events(events: list[EventMessage | Exception]) -> None:
+    async def add_events(events: list[EventMessage | Exception | None]) -> None:
         await event_queue.put(events)
 
     mock.add_events = add_events
